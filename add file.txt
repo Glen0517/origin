@@ -1,1 +1,1 @@
-project2
+project2:state_machine project
