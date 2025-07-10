@@ -1,5 +1,5 @@
 #introduce
-#pro1:
+#pro1:it become the freertos project.
 #pro2:
 #pro3:
 #pro4:
