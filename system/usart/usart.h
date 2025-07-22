@@ -1,33 +1,57 @@
 #ifndef _USART_H
 #define _USART_H
-#include "sys.h"
-#include "stdio.h"	
+#include <stdint.h>
+#include <stdbool.h>	
 //////////////////////////////////////////////////////////////////////////////////	 
-//±¾³ÌĞòÖ»¹©Ñ§Ï°Ê¹ÓÃ£¬Î´¾­×÷ÕßĞí¿É£¬²»µÃÓÃÓÚÆäËüÈÎºÎÓÃÍ¾
-//ALIENTEK STM32F429¿ª·¢°å
-//´®¿Ú1³õÊ¼»¯		   
-//ÕıµãÔ­×Ó@ALIENTEK
-//¼¼ÊõÂÛÌ³:www.openedv.csom
-//ĞŞ¸ÄÈÕÆÚ:2015/6/23
-//°æ±¾£ºV1.0
-//°æÈ¨ËùÓĞ£¬µÁ°æ±Ø¾¿¡£
-//Copyright(C) ÕıµãÔ­×Ó 2009-2019
+//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö»ï¿½ï¿½Ñ§Ï°Ê¹ï¿½Ã£ï¿½Î´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Îºï¿½ï¿½ï¿½Í¾
+//ALIENTEK STM32F429ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+//ï¿½ï¿½ï¿½ï¿½1ï¿½ï¿½Ê¼ï¿½ï¿½		   
+//ï¿½ï¿½ï¿½ï¿½Ô­ï¿½ï¿½@ALIENTEK
+//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì³:www.openedv.csom
+//ï¿½Ş¸ï¿½ï¿½ï¿½ï¿½ï¿½:2015/6/23
+//ï¿½æ±¾ï¿½ï¿½V1.0
+//ï¿½ï¿½È¨ï¿½ï¿½ï¿½Ğ£ï¿½ï¿½ï¿½ï¿½ï¿½Ø¾ï¿½ï¿½ï¿½
+//Copyright(C) ï¿½ï¿½ï¿½ï¿½Ô­ï¿½ï¿½ 2009-2019
 //All rights reserved
 //********************************************************************************
-//V1.0ĞŞ¸ÄËµÃ÷ 
+//V1.0ï¿½Ş¸ï¿½Ëµï¿½ï¿½ 
 ////////////////////////////////////////////////////////////////////////////////// 	
-#define USART_REC_LEN  			200  	//¶¨Òå×î´ó½ÓÊÕ×Ö½ÚÊı 200
-#define EN_USART1_RX 			1		//Ê¹ÄÜ£¨1£©/½ûÖ¹£¨0£©´®¿Ú1½ÓÊÕ
+#define USART_REC_LEN  			200  	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö½ï¿½ï¿½ï¿½ 200
+#define EN_USART1_RX 			1		//Ê¹ï¿½Ü£ï¿½1ï¿½ï¿½/ï¿½ï¿½Ö¹ï¿½ï¿½0ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½1ï¿½ï¿½ï¿½ï¿½
 	  	
-extern u8  USART_RX_BUF[USART_REC_LEN]; //½ÓÊÕ»º³å,×î´óUSART_REC_LEN¸ö×Ö½Ú.Ä©×Ö½ÚÎª»»ĞĞ·û 
-extern u16 USART_RX_STA;         		//½ÓÊÕ×´Ì¬±ê¼Ç	
-extern UART_HandleTypeDef UART1_Handler; //UART¾ä±ú
+// æ— ç¬¦å·æ•´æ•°ï¼ˆ8ä½åˆ°64ä½ï¼‰
+typedef unsigned char       uint8_t;    // 8ä½æ— ç¬¦å·ï¼ˆèŒƒå›´ï¼š0~255ï¼‰
+typedef unsigned short      uint16_t;   // 16ä½æ— ç¬¦å·ï¼ˆèŒƒå›´ï¼š0~65535ï¼‰
+typedef unsigned int        uint32_t;   // 32ä½æ— ç¬¦å·ï¼ˆèŒƒå›´ï¼š0~4294967295ï¼‰
+typedef unsigned long long  uint64_t;   // 64ä½æ— ç¬¦å·
 
-#define RXBUFFERSIZE   1 //»º´æ´óĞ¡
-extern u8 aRxBuffer[RXBUFFERSIZE];//HAL¿âUSART½ÓÊÕBuffer
+// æœ‰ç¬¦å·æ•´æ•°ï¼ˆ8ä½åˆ°64ä½ï¼‰
+typedef signed char         int8_t;     // 8ä½æœ‰ç¬¦å·ï¼ˆèŒƒå›´ï¼š-128~127ï¼‰
+typedef short               int16_t;    // 16ä½æœ‰ç¬¦å·ï¼ˆèŒƒå›´ï¼š-32768~32767ï¼‰
+typedef int                 int32_t;    // 32ä½æœ‰ç¬¦å·
+typedef long long           int64_t;    // 64ä½æœ‰ç¬¦å·
 
-//Èç¹ûÏë´®¿ÚÖĞ¶Ï½ÓÊÕ£¬Çë²»Òª×¢ÊÍÒÔÏÂºê¶¨Òå
-void uart_init(u32 bound);
+// å¸ƒå°”ç±»å‹ï¼ˆé€šå¸¸ç”¨8ä½æ— ç¬¦å·ï¼‰
+typedef uint8_t             bool_t;     // 0=false, é0=true
 
+#define TX_BUFFER_SIZE  256  // USARTå‘é€ç¼“å†²åŒºå¤§å°
+#define RX_BUFFER_SIZE  256  // USARTæ¥æ”¶ç¼“å†²åŒºå¤§å°
 
+// USARTå‘é€ç¼“å†²åŒºç»“æ„ä½“
+typedef struct {
+    uint8_t tx_buffer[TX_BUFFER_SIZE];
+    uint32_t tx_head;
+    uint32_t tx_tail;
+} TX_Buffer_Struct;
+
+// USARTæ¥æ”¶ç¼“å†²åŒºç»“æ„ä½“
+typedef struct {
+    uint8_t rx_buffer[RX_BUFFER_SIZE];
+    uint32_t rx_head;
+    uint32_t rx_tail;
+} RX_Buffer_Struct;
+
+extern bool uart_send(uint8_t *data, uint32_t length) ;
+extern uint32_t uart_receive(uint8_t *buffer, uint32_t max_length) ;
+void UARTx_RX_IRQHandler(void);
 #endif
