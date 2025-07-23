@@ -99,3 +99,192 @@ void UARTx_RX_IRQHandler(void) {
         }
     }
 }
+
+// 校验和计算函数
+uint8_t calculate_checksum(uint8_t *data, uint32_t length) {
+    uint8_t sum = 0;
+    for (uint32_t i = 0; i < length; i++) {
+        sum += data[i];
+    }
+    return sum;
+    //或其他校验方式
+}
+
+// 数据解析函数
+void uart_receive_unpackage(uint8_t *rece_data) {
+    uint8_t ptr = 0;
+    
+    // 验证帧头
+    if (rece_data[ptr++] != UART_HEADER_0 || 
+        rece_data[ptr++] != UART_HEADER_1) {
+        return; // 帧头错误，丢弃
+    }
+    
+    // 获取命令码
+    uint8_t cmd = rece_data[ptr++];
+    
+    // 获取数据长度
+    uint8_t len = rece_data[ptr++];
+    
+    // 验证数据长度（确保不越界）
+    if (ptr + len + 1 > 4) {
+        return; // 数据过长，丢弃
+    }
+    
+    // 指向数据区
+    uint8_t *data = &rece_data[ptr];
+    ptr += len;
+    
+    // 获取校验和
+    uint8_t checksum = rece_data[ptr];
+    
+    // 验证校验和
+    if (calculate_checksum(&rece_data[2], ptr - 2) != checksum) {
+        return; // 校验和错误，丢弃
+    }
+    
+    // 根据命令码处理数据
+    switch (cmd) {
+        case CMD_LED_CTRL:
+            // 处理LED控制命令
+            // data[0]: LED编号
+            // data[1]: 亮度值(0-255)
+            //handle_led_control(data[0], data[1]);
+            break;
+            
+        case CMD_MOTOR_CTRL:
+            // 处理电机控制命令
+            // data[0]: 电机编号
+            // data[1]: 速度值(-100~100)
+            //handle_motor_control(data[0], (int8_t)data[1]);
+            break;
+            
+        case CMD_SENSOR_READ:
+            // 处理传感器读取命令
+            // data[0]: 传感器类型
+            //read_sensor(data[0]);
+            break;
+            
+        case CMD_SYSTEM_INFO:
+            // 处理系统信息请求
+            //send_system_info();
+            break;
+            
+        case CMD_FIRMWARE_UPGRADE:
+            // 处理固件升级命令
+            // data: 固件数据块
+            //handle_firmware_upgrade(data, len);
+            break;
+            
+        default:
+            // 未知命令处理
+            break;
+    }
+}
+/*               解包状态机                    */
+// 全局解析上下文
+static ParseContext ctx = {STATE_HEADER_0, {0}, 0, 0};
+
+// 帧解析完成回调函数
+void frame_received_callback(uint8_t *data, uint8_t length) {
+    // 在这里处理完整的帧数据
+    // 例如解析命令、分发处理等
+
+    for(uint8_t i = 0; i < length; i++){
+     // 根据命令码处理数据
+    switch (data[i]) {
+        case CMD_LED_CTRL:
+            // 处理LED控制命令
+            // data[0]: LED编号
+            // data[1]: 亮度值(0-255)
+            //handle_led_control(data[0], data[1]);
+            break;
+            
+        case CMD_MOTOR_CTRL:
+            // 处理电机控制命令
+            // data[0]: 电机编号
+            // data[1]: 速度值(-100~100)
+            //handle_motor_control(data[0], (int8_t)data[1]);
+            break;
+            
+        case CMD_SENSOR_READ:
+            // 处理传感器读取命令
+            // data[0]: 传感器类型
+            //read_sensor(data[0]);
+            break;
+            
+        case CMD_SYSTEM_INFO:
+            // 处理系统信息请求
+            //send_system_info();
+            break;
+            
+        case CMD_FIRMWARE_UPGRADE:
+            // 处理固件升级命令
+            // data: 固件数据块
+            //handle_firmware_upgrade(data, len);
+            break;
+            
+        default:
+            // 未知命令处理
+            break;
+    }
+  }
+}
+
+// UART解析函数
+void uart_rece_unp(uint8_t *rece_d, uint8_t len) {
+    for (uint8_t i = 0; i < len; i++) {
+        uint8_t byte = rece_d[i];
+        
+        switch (ctx.state) {
+            case STATE_HEADER_0:
+                if (byte == UART_HEADER_0) {
+                    ctx.buffer[ctx.index++] = byte;
+                    ctx.state = STATE_HEADER_1;
+                }
+                break;
+                
+            case STATE_HEADER_1:
+                if (byte == UART_HEADER_1) {
+                    ctx.buffer[ctx.index++] = byte;
+                    ctx.state = STATE_LENGTH;
+                } else {
+                    // 帧头不匹配，重置解析器
+                    ctx.state = STATE_HEADER_0;
+                    ctx.index = 0;
+                }
+                break;
+                
+            case STATE_LENGTH:
+                if (byte <= UART_MAX_LENGTH - 3) { // 确保有足够空间
+                    ctx.length = byte;
+                    ctx.buffer[ctx.index++] = byte;
+                    ctx.state = STATE_DATA;
+                } else {
+                    // 长度无效，重置解析器
+                    ctx.state = STATE_HEADER_0;
+                    ctx.index = 0;
+                }
+                break;
+                
+            case STATE_DATA:
+                ctx.buffer[ctx.index++] = byte;
+                if (ctx.index >= ctx.length + 3) { // 数据+帧头+长度
+                    ctx.state = STATE_CHECKSUM;
+                }
+                break;
+                
+            case STATE_CHECKSUM:
+                // 验证校验和
+                uint8_t checksum = calculate_checksum(ctx.buffer, ctx.index);
+                if (checksum == byte) {
+                    // 校验和正确，回调处理完整帧
+                    frame_received_callback(ctx.buffer, ctx.index);
+                }
+                // 无论校验和是否正确，都重置解析器
+                ctx.state = STATE_HEADER_0;
+                ctx.index = 0;
+                break;
+        }
+    }
+}

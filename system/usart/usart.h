@@ -1,8 +1,8 @@
 #ifndef _USART_H
 #define _USART_H
 #include <stdint.h>
-#include <stdbool.h>	
-//////////////////////////////////////////////////////////////////////////////////	 
+#include <stdbool.h>
+//////////////////////////////////////////////////////////////////////////////////
 //������ֻ��ѧϰʹ�ã�δ���������ɣ��������������κ���;
 //ALIENTEK STM32F429������
 //����1��ʼ��		   
@@ -36,6 +36,35 @@ typedef uint8_t             bool_t;     // 0=false, 非0=true
 
 #define TX_BUFFER_SIZE  256  // USART发送缓冲区大小
 #define RX_BUFFER_SIZE  256  // USART接收缓冲区大小
+
+// 定义命令码
+#define CMD_LED_CTRL    0x01
+#define CMD_MOTOR_CTRL  0x02
+#define CMD_SENSOR_READ 0x03
+#define CMD_SYSTEM_INFO 0x04
+#define CMD_FIRMWARE_UPGRADE 0x05
+
+// 协议常量定义
+#define UART_HEADER_0     0xAA    // 帧头第一个字节
+#define UART_HEADER_1     0x55    // 帧头第二个字节
+#define UART_MAX_LENGTH   64      // 最大帧长度
+
+// 解析状态枚举
+typedef enum {
+    STATE_HEADER_0,
+    STATE_HEADER_1,
+    STATE_LENGTH,
+    STATE_DATA,
+    STATE_CHECKSUM
+} ParseState;
+
+// 解析上下文结构
+typedef struct {
+    ParseState state;            // 当前状态
+    uint8_t buffer[UART_MAX_LENGTH]; // 接收缓冲区
+    uint8_t index;               // 当前缓冲区索引
+    uint8_t length;              // 帧数据长度
+} ParseContext;
 
 // USART发送缓冲区结构体
 typedef struct {
