@@ -739,25 +739,51 @@ static int hdmi_earc_setup_alsa_device(HdmiEarcService* service) {
         goto error;
     }
 
-    // 设置格式 - e-ARC可能支持更高的位深度
+    // 设置格式 - e-ARC可能支持更高的位深度和Dolby编解码器
     snd_pcm_format_t format;
-    if (service->session.earc_active) {
-        // e-ARC通常支持更高质量的音频
-        switch (service->config.bit_depth) {
-            case 8: format = SND_PCM_FORMAT_U8; break;
-            case 16: format = SND_PCM_FORMAT_S16_LE; break;
-            case 24: format = SND_PCM_FORMAT_S24_LE; break;
-            case 32: format = SND_PCM_FORMAT_S32_LE; break;
-            case 24_3: format = SND_PCM_FORMAT_S24_3LE; break;
-            default: format = SND_PCM_FORMAT_S32_LE; service->config.bit_depth = 32;
+    bool use_dolby = service->session.earc_active && service->config.enable_dolby;
+    
+    if (use_dolby) {
+        // 设置Dolby编解码器参数
+        ret = snd_pcm_hw_params_set_dolby_format(service->session.pcm_handle, params, SND_PCM_DOLBY_ATMOS);
+        if (ret == 0) {
+            log_info("Enabled Dolby ATMOS support");
+            format = SND_PCM_FORMAT_S32_LE;
+            service->config.bit_depth = 32;
+            service->session.format.dolby_atmos = true;
+        } else {
+            ret = snd_pcm_hw_params_set_dolby_format(service->session.pcm_handle, params, SND_PCM_DOLBY_EAC3);
+            if (ret == 0) {
+                log_info("Enabled Dolby E-AC3 support");
+                format = SND_PCM_FORMAT_S16_LE;
+                service->config.bit_depth = 16;
+                service->session.format.dolby_eac3 = true;
+            } else {
+                log_warn("Dolby codecs not supported, falling back to standard format");
+                use_dolby = false;
+            }
         }
-    } else {
-        switch (service->config.bit_depth) {
-            case 8: format = SND_PCM_FORMAT_U8; break;
-            case 16: format = SND_PCM_FORMAT_S16_LE; break;
-            case 24: format = SND_PCM_FORMAT_S24_LE; break;
-            case 32: format = SND_PCM_FORMAT_S32_LE; break;
-            default: format = SND_PCM_FORMAT_S16_LE; service->config.bit_depth = 16;
+    }
+    
+    if (!use_dolby) {
+        if (service->session.earc_active) {
+            // e-ARC通常支持更高质量的音频
+            switch (service->config.bit_depth) {
+                case 8: format = SND_PCM_FORMAT_U8; break;
+                case 16: format = SND_PCM_FORMAT_S16_LE; break;
+                case 24: format = SND_PCM_FORMAT_S24_LE; break;
+                case 32: format = SND_PCM_FORMAT_S32_LE; break;
+                case 24_3: format = SND_PCM_FORMAT_S24_3LE; break;
+                default: format = SND_PCM_FORMAT_S32_LE; service->config.bit_depth = 32;
+            }
+        } else {
+            switch (service->config.bit_depth) {
+                case 8: format = SND_PCM_FORMAT_U8; break;
+                case 16: format = SND_PCM_FORMAT_S16_LE; break;
+                case 24: format = SND_PCM_FORMAT_S24_LE; break;
+                case 32: format = SND_PCM_FORMAT_S32_LE; break;
+                default: format = SND_PCM_FORMAT_S16_LE; service->config.bit_depth = 16;
+            }
         }
     }
 

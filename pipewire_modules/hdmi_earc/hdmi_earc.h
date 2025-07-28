@@ -30,6 +30,8 @@ typedef struct {
     bool is_hdmi;             // 是否为HDMI格式
     bool is_arc;              // 是否为ARC
     bool is_earc;             // 是否为e-ARC
+    bool dolby_atmos;         // 是否启用Dolby ATMOS
+    bool dolby_eac3;          // 是否启用Dolby E-AC3
 } HdmiEarcAudioFormat;
 
 /**

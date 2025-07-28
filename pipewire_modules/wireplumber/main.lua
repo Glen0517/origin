@@ -102,6 +102,15 @@ local function init_routing_policy()
       "S16_LE",
       "S32_LE",
       "FLOAT32_LE"
+    },
+    supported_codecs = {
+      "dolby-atmos",
+      "dolby-eac3",
+      "aac",
+      "lc3",
+      "ogg",
+      "alac",
+      "flac"
     }
   })
 
@@ -116,7 +125,13 @@ local function init_routing_policy()
       supported_codecs = {
         "sbc",
         "aac",
-        "aptx"
+        "aptx",
+        "lc3",
+        "ogg",
+        "alac",
+        "flac",
+        "dolby-atmos",
+        "dolby-eac3"
       }
     })
   end
