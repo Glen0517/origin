@@ -9,6 +9,8 @@
 #include <pipewire/pipewire.h>
 #include <spa/utils/result.h>
 #include <spa/param/audio/format-utils.h>
+#include <spa/param/audio/codec.h>
+#include <spa/param/bluetooth.h>
 
 #include "bluez_audio.h"
 
@@ -283,6 +285,27 @@ static int bluez_connect_to_device(struct bluez_audio_device* dev) {
     dev->state = CONNECTION_STATE_CONNECTING;
     bluez_emit_connection_state_changed(dev);
 
+    // 新增: 解析广告数据以检测LE Audio和AVRCP支持
+    bluez_parse_advertising_data(dev, dev->advertising_data, dev->advertising_data_len);
+
+    // 新增: 协商编解码器
+    if (bluez_negotiate_codec(dev) != 0) {
+        fprintf(stderr, "Codec negotiation failed\n");
+        dev->state = CONNECTION_STATE_DISCONNECTED;
+        bluez_emit_connection_state_changed(dev);
+        return -1;
+    }
+
+    // 新增: 如果是LE Audio设备，设置CIS
+    if (dev->le_audio_supported) {
+        if (bluez_le_audio_setup_cis(dev) != 0) {
+            fprintf(stderr, "LE Audio CIS setup failed\n");
+            dev->state = CONNECTION_STATE_DISCONNECTED;
+            bluez_emit_connection_state_changed(dev);
+            return -1;
+        }
+    }
+
     // 模拟连接延迟
     sleep(2);
 
@@ -303,7 +326,7 @@ static int bluez_connect_to_device(struct bluez_audio_device* dev) {
 }
 
 // 创建PipeWire流
-static struct pw_stream* bluez_create_pipewire_stream(struct bluez_audio_device* dev) {
+static struct pw_stream* bluez_create_pipewire_stream(struct bluez_audio_device *dev) {
     struct pw_properties* props = pw_properties_new(
         PW_KEY_MEDIA_TYPE, "Audio",
         PW_KEY_MEDIA_CATEGORY, "Playback",
@@ -449,4 +472,177 @@ int bluez_audio_write(struct bluez_audio_device* dev, const void* data, size_t s
     // 将音频数据写入PipeWire流
     // 简化实现
     return size;
+}
+
+typedef enum {
+    DEVICE_TYPE_HEADPHONES,
+    DEVICE_TYPE_SPEAKER,
+    DEVICE_TYPE_MICROPHONE,
+    DEVICE_TYPE_LE_AUDIO
+} device_type;
+
+static int bluez_negotiate_codec(struct bluez_audio_device *dev) {
+    // 实现A2DP编解码器协商
+    // 查询设备支持的编解码器
+    const char *supported_codecs[] = {"aptX", "AAC", "SBC", NULL};
+    int codec_index = 0;
+
+    // 简化实现：优先选择aptX，然后AAC，最后SBC
+    while (supported_codecs[codec_index]) {
+        if (strcmp(supported_codecs[codec_index], "aptX") == 0) {
+            dev->a2dp_params.codec = SPA_BLUETOOTH_A2DP_CODEC_APTX;
+            dev->a2dp_params.sample_rate = 48000;
+            dev->a2dp_params.channels = 2;
+            dev->a2dp_params.bitrate = 352000;
+            strcpy(dev->codec_name, "aptX");
+            dev->codec_sample_rate = 48000;
+            dev->codec_channels = 2;
+            dev->codec_bits_per_sample = 16;
+            return 0;
+        } else if (strcmp(supported_codecs[codec_index], "AAC") == 0) {
+            dev->a2dp_params.codec = SPA_BLUETOOTH_A2DP_CODEC_AAC;
+            dev->a2dp_params.sample_rate = 44100;
+            dev->a2dp_params.channels = 2;
+            dev->a2dp_params.bitrate = 320000;
+            strcpy(dev->codec_name, "AAC");
+            dev->codec_sample_rate = 44100;
+            dev->codec_channels = 2;
+            dev->codec_bits_per_sample = 16;
+            return 0;
+        }
+        codec_index++;
+    }
+
+    // 默认使用SBC
+    dev->a2dp_params.codec = SPA_BLUETOOTH_A2DP_CODEC_SBC;
+    dev->a2dp_params.sample_rate = 44100;
+    dev->a2dp_params.channels = 2;
+    dev->a2dp_params.bitrate = 320000;
+    strcpy(dev->codec_name, "SBC");
+    dev->codec_sample_rate = 44100;
+    dev->codec_channels = 2;
+    dev->codec_bits_per_sample = 16;
+
+    return 0;
+}
+
+// AVRCP Control Functions
+static int bluez_avrcp_send_command(struct bluez_audio_device *dev, uint8_t command, uint8_t data) {
+    if (!dev->avrcp_supported) return -1;
+
+    DBusMessage* msg;
+    DBusMessageIter args;
+    DBusError err;
+    dbus_error_init(&err);
+
+    // 创建D-Bus消息
+    msg = dbus_message_new_method_call(
+        "org.bluez",
+        "/org/bluez/hci0/dev_" + dev->address,
+        "org.bluez.MediaControl1",
+        "SendCommand"
+    );
+
+    if (!msg) return -1;
+
+    // 添加参数
+    dbus_message_iter_init_append(msg, &args);
+    if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_BYTE, &command) ||
+        !dbus_message_iter_append_basic(&args, DBUS_TYPE_BYTE, &data)) {
+        dbus_message_unref(msg);
+        return -1;
+    }
+
+    // 发送消息
+    DBusMessage* reply = dbus_connection_send_with_reply_and_block(dev->dbus_conn, msg, -1, &err);
+    dbus_message_unref(msg);
+
+    if (dbus_error_is_set(&err)) {
+        dbus_error_free(&err);
+        return -1;
+    }
+
+    dbus_message_unref(reply);
+    return 0;
+}
+
+// LE Audio Functions
+static int bluez_le_audio_setup_cis(struct bluez_audio_device *dev) {
+    if (!dev->le_audio_supported) return -1;
+
+    // 设置LE Audio参数
+    dev->le_audio_params.codec = SPA_BLUETOOTH_LE_AUDIO_CODEC_LC3;
+    dev->le_audio_params.sample_rate = 48000;
+    dev->le_audio_params.channels = 2;
+    dev->le_audio_params.frame_duration = 7500;
+    dev->le_audio_params.bitrate = 128000;
+
+    // 创建CIS连接
+    struct hci_cis_create_conn_cp cp;
+    memset(&cp, 0, sizeof(cp));
+    // 设置CIS连接参数
+    // ...
+
+    // 发送HCI命令
+    int ret = hci_send_cmd(dev->hci_socket, OGF_LE_CTL, OCF_LE_CREATE_CIS, sizeof(cp), &cp);
+    if (ret < 0) {
+        perror("Failed to create CIS connection");
+        return -1;
+    }
+
+    dev->cis_connected = true;
+    strcpy(dev->codec_name, "LC3");
+    dev->codec_sample_rate = 48000;
+    dev->codec_channels = 2;
+    dev->codec_bits_per_sample = 16;
+
+    return 0;
+}
+
+// New BLE control functions
+int bluez_ble_send_command(const char *address, uint8_t *data, size_t length) {
+    // 查找设备
+    struct bluez_audio_device* dev = NULL;
+    pthread_mutex_lock(&devices_mutex);
+    for (int i = 0; i < device_count; i++) {
+        if (strcmp(devices[i]->address, address) == 0) {
+            dev = devices[i];
+            break;
+        }
+    }
+    pthread_mutex_unlock(&devices_mutex);
+
+    if (!dev) return -1;
+
+    // 发送BLE GATT命令
+    // ... 实现D-Bus调用或HCI命令 ...
+    return 0;
+}
+
+int bluez_ble_start_scan(void) {
+    // 实现BLE扫描开始逻辑
+    return bluez_start_discovery(hci_get_route(NULL));
+}
+
+int bluez_ble_stop_scan(void) {
+    // 实现BLE扫描停止逻辑
+    int hci_sock = hci_open_dev(hci_get_route(NULL));
+    if (hci_sock < 0) return -1;
+
+    int ret = hci_le_set_scan_enable(hci_sock, 0x00, 0, 10000);
+    close(hci_sock);
+    return ret;
+}
+static void bluez_parse_advertising_data(struct bluez_audio_device *dev, uint8_t *data, size_t length) {
+    // Check for LE Audio support in advertising data
+    for (int i = 0; i < length; i++) {
+        if (data[i] == 0x06 && data[i+1] == 0x16 && data[i+2] == 0x00 && data[i+3] == 0x0F) {
+            dev->le_audio_supported = true;
+            dev->type = DEVICE_TYPE_LE_AUDIO;
+        }
+        // Check for AVRCP support
+        if (data[i] == 0x03 && data[i+1] == 0x03 && data[i+2] == 0x11 && data[i+3] == 0x0E) {
+            dev->avrcp_supported = true;
+        }
+    }
 }
