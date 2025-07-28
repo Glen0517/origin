@@ -18,6 +18,9 @@ file(GLOB SOURCES "src/*.c")
 find_package(ALSA REQUIRED)
 find_package(PipeWire 0.3 REQUIRED)
 find_package(Systemd REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(DBUS REQUIRED dbus-1)
+include_directories(${DBUS_INCLUDE_DIRS})
 
 # Kernel module configuration
 option(BUILD_KERNEL_MODULE "Build kernel module" ON)
@@ -39,6 +42,7 @@ target_link_libraries(audio_framework PRIVATE
     PipeWire::PipeWire
     audio_processing
     routing
+    ${DBUS_LIBRARIES}
 )
 
 # Install library
