@@ -60,3 +60,7 @@ add_subdirectory(examples)
 # Tests
 enable_testing()
 add_subdirectory(tests)
+
+add_subdirectory(pipewire_modules/system_log)
+add_subdirectory(pipewire_modules/dft)
+add_subdirectory(pipewire_modules/ota_update)

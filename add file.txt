@@ -1,1 +1,4 @@
 project4: add Audio Linux SDK
+In this project, we will add Audio Linux SDK to our project.
+It run on Linux platform.
+The next step that we will add a MCU to control some peripheral modules.
