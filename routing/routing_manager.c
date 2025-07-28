@@ -9,48 +9,69 @@
 // 全局路由管理器实例
 static RoutingManager g_routing_manager;
 
+// 修改为:
+// 路由管理器实例指针
+static RoutingManager* g_routing_manager = NULL;
+
 // 静态函数声明
 static int validate_route_rule(const RouteRule* rule);
 static RouteRule* create_route_rule(const RouteRule* rule);
 static void destroy_route_rule(RouteRule* rule);
 
+// 添加创建函数
+RoutingManager* routing_manager_create(const RoutingConfig* config)
+{
+    if (!config) return NULL;
+    if (g_routing_manager) return NULL; // 确保单实例
+
+    RoutingManager* rm = malloc(sizeof(RoutingManager));
+    if (!rm) return NULL;
+
+    memset(rm, 0, sizeof(RoutingManager));
+    rm->config = *config;
+    INIT_LIST_HEAD(&rm->routes);
+    pthread_mutex_init(&rm->lock, NULL);
+    rm->initialized = true;
+
+    g_routing_manager = rm;
+    return rm;
+}
+
+// 修改初始化函数
 int routing_manager_init(const RoutingConfig* config)
 {
     if (!config) return -EINVAL;
-    if (g_routing_manager.initialized) return -EBUSY;
+    if (g_routing_manager) return -EBUSY;
 
-    // 初始化路由管理器
-    memset(&g_routing_manager, 0, sizeof(RoutingManager));
-    g_routing_manager.config = *config;
-    INIT_LIST_HEAD(&g_routing_manager.routes);
-    pthread_mutex_init(&g_routing_manager.lock, NULL);
-    g_routing_manager.initialized = true;
-
-    return 0;
+    // 创建并初始化路由管理器
+    RoutingManager* rm = routing_manager_create(config);
+    return rm ? 0 : -ENOMEM;
 }
 
+// 修改销毁函数
 void routing_manager_destroy(void)
 {
-    if (!g_routing_manager.initialized) return;
+    if (!g_routing_manager) return;
 
-    pthread_mutex_lock(&g_routing_manager.lock);
+    pthread_mutex_lock(&g_routing_manager->lock);
 
     // 删除所有路由规则
     RouteRule *rule, *temp;
-    list_for_each_entry_safe(rule, temp, &g_routing_manager.routes, list) {
+    list_for_each_entry_safe(rule, temp, &g_routing_manager->routes, list) {
         list_del(&rule->list);
         destroy_route_rule(rule);
     }
 
-    pthread_mutex_unlock(&g_routing_manager.lock);
-    pthread_mutex_destroy(&g_routing_manager.lock);
-    memset(&g_routing_manager, 0, sizeof(RoutingManager));
+    pthread_mutex_unlock(&g_routing_manager->lock);
+    pthread_mutex_destroy(&g_routing_manager->lock);
+    free(g_routing_manager);
+    g_routing_manager = NULL;
 }
 
+// 修改获取实例函数
 RoutingManager* routing_manager_get_instance(void)
 {
-    if (!g_routing_manager.initialized) return NULL;
-    return &g_routing_manager;
+    return g_routing_manager;
 }
 
 int routing_manager_add_route(const RouteRule* rule)
@@ -349,3 +370,255 @@ static void destroy_route_rule(RouteRule* rule)
 
     free(rule);
 }
+
+// 添加路由优先级枚举
+typedef enum {
+    ROUTE_PRIORITY_LOW = 0,
+    ROUTE_PRIORITY_NORMAL = 1,
+    ROUTE_PRIORITY_HIGH = 2,
+    ROUTE_PRIORITY_CRITICAL = 3
+} RoutePriority;
+
+// 修改路由结构体，添加优先级字段
+struct AudioRoute {
+    char *name;
+    char *input_device;
+    char *output_device;
+    AudioProcessingChain *processing_chain;
+    bool active;
+    RoutePriority priority;
+    uint32_t route_id;
+};
+
+// 添加冲突解决策略枚举
+typedef enum {
+    CONFLICT_RESOLUTION_REPLACE_LOWER,
+    CONFLICT_RESOLUTION_IGNORE_NEW,
+    CONFLICT_RESOLUTION_MERGE,
+    CONFLICT_RESOLUTION_ABORT
+} ConflictResolutionPolicy;
+
+// 修改路由管理器结构体
+struct RoutingManager {
+    struct pw_loop *loop;
+    pthread_mutex_t mutex;
+    struct AudioRoute **routes;
+    uint32_t num_routes;
+    uint32_t max_routes;
+    uint32_t next_route_id;
+    ConflictResolutionPolicy conflict_policy;
+    RoutingManagerCallback *callback;
+    void *user_data;
+    // 保留现有结构体字段
+    const RoutingConfig* config;
+    bool initialized;
+};
+
+// 修改创建函数，添加冲突策略参数
+RoutingManager* routing_manager_create(const RoutingConfig* config)
+{
+    if (!config) return NULL;
+
+    RoutingManager *rm = malloc(sizeof(RoutingManager));
+    if (!rm) return NULL;
+
+    memset(rm, 0, sizeof(RoutingManager));
+    rm->config = config;
+    rm->max_routes = config->max_routes > 0 ? config->max_routes : 10;
+    rm->conflict_policy = CONFLICT_RESOLUTION_REPLACE_LOWER; // 默认策略
+    rm->routes = calloc(rm->max_routes, sizeof(struct AudioRoute*));
+    rm->num_routes = 0;
+    rm->next_route_id = 1;
+    rm->callback = NULL;
+    rm->user_data = NULL;
+    rm->initialized = false;
+
+    pthread_mutex_init(&rm->mutex, NULL);
+
+    // 初始化现有代码
+    if (routing_manager_init(rm) != 0) {
+        free(rm->routes);
+        free(rm);
+        return NULL;
+    }
+
+    rm->initialized = true;
+    return rm;
+}
+
+// 添加冲突检测函数
+static int routing_manager_detect_conflicts(RoutingManager *manager, const struct AudioRoute *new_route, uint32_t *conflict_indices, uint32_t *num_conflicts)
+{
+    if (!manager || !new_route || !conflict_indices || !num_conflicts) return -1;
+
+    *num_conflicts = 0;
+    pthread_mutex_lock(&manager->mutex);
+
+    for (uint32_t i = 0; i < manager->num_routes; i++) {
+        struct AudioRoute *existing = manager->routes[i];
+        if (!existing || !existing->active) continue;
+
+        // 检测输入/输出设备冲突
+        bool input_conflict = strcmp(existing->input_device, new_route->input_device) == 0;
+        bool output_conflict = strcmp(existing->output_device, new_route->output_device) == 0;
+
+        // 如果有设备冲突，记录索引
+        if (input_conflict || output_conflict) {
+            if (*num_conflicts < manager->max_routes) {
+                conflict_indices[*num_conflicts] = i;
+                (*num_conflicts)++;
+            }
+        }
+    }
+
+    pthread_mutex_unlock(&manager->mutex);
+    return 0;
+}
+
+// 添加冲突解决函数
+static int routing_manager_resolve_conflicts(RoutingManager *manager, struct AudioRoute *new_route)
+{
+    if (!manager || !new_route) return -1;
+
+    uint32_t *conflict_indices = calloc(manager->max_routes, sizeof(uint32_t));
+    uint32_t num_conflicts = 0;
+
+    if (routing_manager_detect_conflicts(manager, new_route, conflict_indices, &num_conflicts) != 0 || num_conflicts == 0) {
+        free(conflict_indices);
+        return 0; // 无冲突
+    }
+
+    int result = 0;
+    pthread_mutex_lock(&manager->mutex);
+
+    switch (manager->conflict_policy) {
+        case CONFLICT_RESOLUTION_REPLACE_LOWER:
+            // 替换优先级较低的冲突路由
+            for (uint32_t i = 0; i < num_conflicts; i++) {
+                uint32_t idx = conflict_indices[i];
+                struct AudioRoute *existing = manager->routes[idx];
+                if (existing->priority < new_route->priority) {
+                    // 移除低优先级路由
+                    routing_manager_remove_route_internal(manager, idx);
+                }
+            }
+            break;
+
+        case CONFLICT_RESOLUTION_IGNORE_NEW:
+            // 如果有任何冲突，忽略新路由
+            result = -1;
+            break;
+
+        case CONFLICT_RESOLUTION_MERGE:
+            // 合并冲突路由（简单实现：保留高优先级路由的设置）
+            for (uint32_t i = 0; i < num_conflicts; i++) {
+                uint32_t idx = conflict_indices[i];
+                struct AudioRoute *existing = manager->routes[idx];
+                if (existing->priority < new_route->priority) {
+                    // 用新路由替换低优先级路由
+                    routing_manager_remove_route_internal(manager, idx);
+                } else {
+                    // 保留高优先级现有路由
+                    result = -1;
+                }
+            }
+            break;
+
+        case CONFLICT_RESOLUTION_ABORT:
+            // 遇到冲突则中止
+            result = -1;
+            break;
+    }
+
+    pthread_mutex_unlock(&manager->mutex);
+    free(conflict_indices);
+    return result;
+}
+
+// 修改添加路由函数
+int routing_manager_add_route(RoutingManager *manager, const char *name, const char *input_device, const char *output_device, 
+                             AudioProcessingChain *processing_chain, RoutePriority priority)
+{
+    if (!manager || !name || !input_device || !output_device || !processing_chain) return -1;
+
+    // 创建新路由
+    struct AudioRoute *route = calloc(1, sizeof(struct AudioRoute));
+    if (!route) return -1;
+
+    route->name = strdup(name);
+    route->input_device = strdup(input_device);
+    route->output_device = strdup(output_device);
+    route->processing_chain = processing_chain;
+    route->active = true;
+    route->priority = priority;
+    route->route_id = manager->next_route_id++;
+
+    // 检查冲突
+    if (routing_manager_resolve_conflicts(manager, route) != 0) {
+        // 冲突无法解决，清理新路由
+        free(route->name);
+        free(route->input_device);
+        free(route->output_device);
+        free(route);
+        return -1;
+    }
+
+    pthread_mutex_lock(&manager->mutex);
+
+    // 检查是否有空间
+    if (manager->num_routes >= manager->max_routes) {
+        pthread_mutex_unlock(&manager->mutex);
+        free(route->name);
+        free(route->input_device);
+        free(route->output_device);
+        free(route);
+        return -1;
+    }
+
+    // 添加新路由
+    manager->routes[manager->num_routes++] = route;
+
+    pthread_mutex_unlock(&manager->mutex);
+
+    // 通知回调
+    if (manager->callback) {
+        manager->callback(manager, ROUTE_EVENT_ADDED, route->route_id, manager->user_data);
+    }
+
+    return 0;
+}
+
+// 添加设置冲突策略的函数
+void routing_manager_set_conflict_policy(RoutingManager *manager, ConflictResolutionPolicy policy)
+{
+    if (manager) {
+        pthread_mutex_lock(&manager->mutex);
+        manager->conflict_policy = policy;
+        pthread_mutex_unlock(&manager->mutex);
+    }
+}
+
+// 添加按优先级获取路由的函数
+struct AudioRoute* routing_manager_get_highest_priority_route(RoutingManager *manager, const char *output_device)
+{
+    if (!manager || !output_device) return NULL;
+
+    struct AudioRoute *highest_route = NULL;
+    int highest_priority = -1;
+
+    pthread_mutex_lock(&manager->mutex);
+
+    for (uint32_t i = 0; i < manager->num_routes; i++) {
+        struct AudioRoute *route = manager->routes[i];
+        if (route && route->active && strcmp(route->output_device, output_device) == 0 &&
+            route->priority > highest_priority) {
+            highest_priority = route->priority;
+            highest_route = route;
+        }
+    }
+
+    pthread_mutex_unlock(&manager->mutex);
+    return highest_route;
+}
+
+// ... existing code ...

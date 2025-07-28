@@ -34,6 +34,31 @@ add_subdirectory(audio_processing)
 # Routing logic
 add_subdirectory(routing)
 
+# 添加模块管理器
+add_library(module_manager STATIC src/module_manager.c)
+target_include_directories(module_manager PUBLIC include)
+ target_link_libraries(module_manager PUBLIC dl pthread)
+
+# 动态模块构建配置
+function(add_audio_module MODULE_NAME MODULE_DIR)
+    add_library(${MODULE_NAME} SHARED ${MODULE_DIR}/${MODULE_NAME}.c)
+    set_target_properties(${MODULE_NAME} PROPERTIES
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/pipewire_modules/${MODULE_NAME}
+        PREFIX "lib"
+        SUFFIX ".so"
+    )
+    target_include_directories(${MODULE_NAME} PUBLIC include)
+    target_link_libraries(${MODULE_NAME} PUBLIC module_manager audio_framework)
+    install(TARGETS ${MODULE_NAME} DESTINATION ${CMAKE_INSTALL_LIBDIR}/audio_modules)
+endfunction()
+
+# 添加现有模块的动态构建
+add_audio_module(system_log pipewire_modules/system_log)
+add_audio_module(alsa_plugin pipewire_modules/alsa)
+add_audio_module(bluez_audio pipewire_modules/bluez)
+add_audio_module(dft pipewire_modules/dft)
+add_audio_module(ota_update pipewire_modules/ota_update)
+
 # Create shared library
 add_library(audio_framework SHARED ${SOURCES})
 
@@ -64,3 +89,7 @@ add_subdirectory(tests)
 add_subdirectory(pipewire_modules/system_log)
 add_subdirectory(pipewire_modules/dft)
 add_subdirectory(pipewire_modules/ota_update)
+add_subdirectory(pipewire_modules/bluez)
+
+# 链接模块管理器到主框架
+ target_link_libraries(audio_framework PUBLIC module_manager)

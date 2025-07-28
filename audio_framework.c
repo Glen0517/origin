@@ -10,6 +10,8 @@
 #include "routing/routing_manager.h"
 #include "audio_processing/audio_processing.h"
 #include "audio_output/audio_output.h"
+#include "module_manager.h"
+#include "module_interface.h"
 
 // 音频框架状态枚举
 typedef enum {
@@ -50,11 +52,17 @@ typedef struct {
     // 音频缓冲区
     void* audio_buffer;
     size_t buffer_size_bytes;
+    ModuleManager* module_manager;
 } AudioFramework;
 
 // 全局框架实例
 static AudioFramework* framework = NULL;
 static volatile bool keep_running = true;
+
+// 修改为:
+// 框架实例指针
+static AudioFramework* g_framework = NULL;
+static volatile bool g_keep_running = true;
 
 // 前向声明
 static void handle_signal(int sig);
@@ -65,6 +73,12 @@ static void cleanup_components(AudioFramework* fw);
 // 创建音频框架
 AudioFramework* audio_framework_create(const AudioFrameworkConfig* config)
 {
+    // 添加实例检查
+    if (g_framework) {
+        fprintf(stderr, "Framework instance already exists\n");
+        return NULL;
+    }
+
     if (!config || config->sample_rate == 0 || config->channels == 0 || config->buffer_size == 0) {
         fprintf(stderr, "Invalid framework configuration\n");
         return NULL;
@@ -93,8 +107,12 @@ AudioFramework* audio_framework_create(const AudioFrameworkConfig* config)
         case AUDIO_FORMAT_S16_LE: bytes_per_sample = 2; break;
         case AUDIO_FORMAT_S32_LE: bytes_per_sample = 4; break;
         case AUDIO_FORMAT_FLOAT32_LE: bytes_per_sample = 4; break;
-        default: bytes_per_sample = 2; break; // 默认16位
+        default: 
+            fprintf(stderr, "Unsupported audio format\n");
+            free(fw);
+            return NULL;
     }
+
     fw->buffer_size_bytes = config->buffer_size * config->channels * bytes_per_sample;
 
     // 分配音频缓冲区
@@ -105,21 +123,61 @@ AudioFramework* audio_framework_create(const AudioFrameworkConfig* config)
         return NULL;
     }
 
-    framework = fw;
+    g_framework = fw;
     return fw;
+}
+
+// 添加获取实例函数
+AudioFramework* audio_framework_get_instance(void)
+{
+    return g_framework;
+}
+
+// 修改销毁函数
+void audio_framework_destroy(void)
+{
+    if (!g_framework) return;
+
+    pthread_mutex_lock(&g_framework->mutex);
+
+    // 停止框架
+    if (g_framework->state == FRAMEWORK_RUNNING) {
+        g_keep_running = false;
+        pthread_cond_wait(&g_framework->cond, &g_framework->mutex);
+    }
+
+    // 清理组件
+    cleanup_components(g_framework);
+
+    // 释放缓冲区
+    free(g_framework->audio_buffer);
+
+    // 销毁同步原语
+    pthread_cond_destroy(&g_framework->cond);
+    pthread_mutex_unlock(&g_framework->mutex);
+    pthread_mutex_destroy(&g_framework->mutex);
+
+    // 释放框架实例
+    free(g_framework);
+    g_framework = NULL;
 }
 
 // 初始化框架组件
 static int initialize_components(AudioFramework* fw)
 {
     int ret = 0;
+    bool routing_initialized = false;
+    bool processing_initialized = false;
+    bool output_initialized = false;
+    bool stream_initialized = false;
 
     // 1. 初始化路由管理器
-    fw->routing_manager = routing_manager_create();
+    fw->routing_manager = routing_manager_create(&fw->config.routing_config);
     if (!fw->routing_manager) {
         fprintf(stderr, "Failed to create routing manager\n");
         return -1;
     }
+    routing_initialized = true;
 
     // 2. 初始化音频处理链
     if (fw->config.enable_processing) {
@@ -129,29 +187,30 @@ static int initialize_components(AudioFramework* fw)
             ret = -1;
             goto cleanup;
         }
+        processing_initialized = true;
 
-        // 添加默认效果器 - 可以根据需要修改
+        // 添加默认效果器
         AudioProcessingParams params = {0};
         
         // 添加压缩器
-        params.compressor.threshold = -18.0f; // -18dB
-        params.compressor.ratio = 4.0f;       // 4:1
-        params.compressor.attack = 10.0f;     // 10ms
-        params.compressor.release = 100.0f;   // 100ms
+        params.compressor.threshold = -18.0f;
+        params.compressor.ratio = 4.0f;
+        params.compressor.attack = 10.0f;
+        params.compressor.release = 100.0f;
         ret = audio_processing_chain_add_node(fw->processing_chain, AUDIO_EFFECT_COMPRESSOR, &params);
         if (ret < 0) {
-            fprintf(stderr, "Failed to add compressor to processing chain\n");
+            fprintf(stderr, "Failed to add compressor\n");
             goto cleanup;
         }
 
         // 添加混响
-        params.reverb.room_size = 0.5f;       // 50%
-        params.reverb.damp = 0.5f;            // 50%
-        params.reverb.wet = 0.3f;             // 30% wet
-        params.reverb.dry = 0.7f;             // 70% dry
+        params.reverb.room_size = 0.5f;
+        params.reverb.damp = 0.5f;
+        params.reverb.wet = 0.3f;
+        params.reverb.dry = 0.7f;
         ret = audio_processing_chain_add_node(fw->processing_chain, AUDIO_EFFECT_REVERB, &params);
         if (ret < 0) {
-            fprintf(stderr, "Failed to add reverb to processing chain\n");
+            fprintf(stderr, "Failed to add reverb\n");
             goto cleanup;
         }
     }
@@ -170,14 +229,15 @@ static int initialize_components(AudioFramework* fw)
 
     fw->output_device = audio_output_create(&output_config);
     if (!fw->output_device) {
-        fprintf(stderr, "Failed to create audio output device\n");
+        fprintf(stderr, "Failed to create output device\n");
         ret = -1;
         goto cleanup;
     }
+    output_initialized = true;
 
     ret = audio_output_open(fw->output_device);
     if (ret < 0) {
-        fprintf(stderr, "Failed to open audio output device\n");
+        fprintf(stderr, "Failed to open output device\n");
         goto cleanup;
     }
 
@@ -188,6 +248,7 @@ static int initialize_components(AudioFramework* fw)
         ret = -1;
         goto cleanup;
     }
+    stream_initialized = true;
 
     ret = pipewire_stream_connect(fw->input_stream, fw->config.input_device);
     if (ret < 0) {
@@ -198,17 +259,17 @@ static int initialize_components(AudioFramework* fw)
     return 0;
 
 cleanup:
-    if (fw->processing_chain) {
-        audio_processing_chain_destroy(fw->processing_chain);
-        fw->processing_chain = NULL;
+    if (stream_initialized) {
+        pipewire_stream_destroy(fw->input_stream);
     }
-    if (fw->output_device) {
+    if (output_initialized) {
         audio_output_destroy(fw->output_device);
-        fw->output_device = NULL;
     }
-    if (fw->routing_manager) {
+    if (processing_initialized) {
+        audio_processing_chain_destroy(fw->processing_chain);
+    }
+    if (routing_initialized) {
         routing_manager_destroy(fw->routing_manager);
-        fw->routing_manager = NULL;
     }
     return ret;
 }
@@ -410,4 +471,107 @@ int main(int argc, char* argv[])
     }
 
     return 0;
+}
+
+
+int audio_framework_init(struct AudioFramework *fw, const AudioFrameworkConfig *config)
+{
+    // ... existing initialization code ...
+
+    // 初始化路由管理器
+    fw->routing_manager = routing_manager_create(&fw->config.routing_config);
+    if (!fw->routing_manager) {
+        fprintf(stderr, "Failed to create routing manager\n");
+        return -1;
+    }
+
+    // 初始化模块管理器
+    if (module_manager_init(10) != MODULE_SUCCESS) {
+        fprintf(stderr, "Failed to initialize module manager\n");
+        return -1;
+    }
+
+    // 预加载核心模块
+    module_manager_preload_common_modules();
+
+    // 加载系统日志模块
+    ModuleInterface* log_module = NULL;
+    if (module_manager_load("pipewire_modules/system_log/libsystem_log.so", NULL) == MODULE_SUCCESS) {
+        log_module = module_manager_get_module("system_log");
+        if (log_module) {
+            fw->log_module = log_module;
+            log_module->set_parameter("log_level", "INFO");
+            log_module->set_parameter("max_file_size", "2097152"); // 2MB
+            log_module->set_parameter("max_backup_files", "10");
+            log_module->init(NULL);
+            log_module->process_audio(NULL, NULL, 0, NULL); // 触发日志服务启动
+        }
+    }
+
+    // 加载ALSA输出模块
+    if (module_manager_load("pipewire_modules/alsa/libalsa_plugin.so", NULL) == MODULE_SUCCESS) {
+        fw->audio_output_module = module_manager_get_module("alsa_output");
+        if (fw->audio_output_module) {
+            fw->audio_output_module->init(&alsa_config);
+        }
+    }
+
+    return 0;
+}
+
+
+// 性能优化：实现音频缓冲区池管理
+void audio_framework_init_buffer_pool(struct AudioFramework *fw, size_t buffer_count, size_t buffer_size)
+{
+    // ... existing buffer initialization ...
+
+    // 优化：预分配缓冲区池
+    fw->buffer_pool = calloc(buffer_count, sizeof(AudioBuffer));
+    if (!fw->buffer_pool) {
+        fprintf(stderr, "Failed to allocate buffer pool\n");
+        return;
+    }
+
+    for (size_t i = 0; i < buffer_count; i++) {
+        fw->buffer_pool[i].data = malloc(buffer_size);
+        fw->buffer_pool[i].size = buffer_size;
+        fw->buffer_pool[i].in_use = false;
+        pthread_mutex_init(&fw->buffer_pool[i].mutex, NULL);
+    }
+
+    fw->buffer_count = buffer_count;
+    fw->free_buffers = buffer_count;
+}
+
+// 性能优化：从池中获取缓冲区
+AudioBuffer* audio_framework_acquire_buffer(struct AudioFramework *fw)
+{
+    pthread_mutex_lock(&fw->buffer_mutex);
+
+    // 等待可用缓冲区（带超时）
+    struct timespec timeout;
+    clock_gettime(CLOCK_REALTIME, &timeout);
+    timeout.tv_sec += 1; // 1秒超时
+
+    while (fw->free_buffers == 0) {
+        int ret = pthread_cond_timedwait(&fw->buffer_cond, &fw->buffer_mutex, &timeout);
+        if (ret == ETIMEDOUT) {
+            pthread_mutex_unlock(&fw->buffer_mutex);
+            fprintf(stderr, "Buffer pool timeout\n");
+            return NULL;
+        }
+    }
+
+    // 查找空闲缓冲区
+    for (size_t i = 0; i < fw->buffer_count; i++) {
+        if (!fw->buffer_pool[i].in_use) {
+            fw->buffer_pool[i].in_use = true;
+            fw->free_buffers--;
+            pthread_mutex_unlock(&fw->buffer_mutex);
+            return &fw->buffer_pool[i];
+        }
+    }
+
+    pthread_mutex_unlock(&fw->buffer_mutex);
+    return NULL;
 }
