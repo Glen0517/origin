@@ -1,0 +1,14 @@
+obj-m += audio_framework.o
+audio_framework-y := core/module.o core/rt_patches.o drivers/audio.o
+
+EXTRA_CFLAGS += -Wall -Werror -Wextra -std=gnu17
+
+all:
+	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
+
+clean:
+	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
+
+install:
+	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules_install
+	depmod -a
