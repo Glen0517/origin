@@ -1,102 +1,130 @@
 #include "sys.h"
 #include "delay.h"
 #include "usart.h"
+#include "usart_demo.h"
 #include "led.h"
 #include "FreeRTOS.h"
 #include "task.h"
 /************************************************
- ALIENTEK ╟╒╡╗бчSTM32F429©╙╥╒╟Е FreeRTOSй╣яИ2-1
- FreeRTOSрфж╡й╣яИ-HAL©Б╟Ф╠╬
- ╪╪йУж╖Ёжё╨www.openedv.com
- лт╠╕╣Йфлё╨http://eboard.taobao.com 
- ╧ьв╒н╒пе╧╚жзф╫л╗н╒пе╨её╨"уЩ╣Цт╜вс"ё╛цБ╥я╩Ях║STM32вйао║ё
- ╧ЦжщйппгрМ╣Гвс©ф╪╪споч╧╚к╬  
- вВуъё╨уЩ╣Цт╜вс @ALIENTEK
+ ALIENTEK О©╫О©╫О©╫О©╫О©╫О©╫STM32F429О©╫О©╫О©╫О©╫О©╫О©╫ FreeRTOSй╣О©╫О©╫2-1
+ FreeRTOSО©╫О©╫ж╡й╣О©╫О©╫-HALО©╫О©╫Ф╠╬
+ О©╫О©╫О©╫О©╫ж╖О©╫жёО©╫www.openedv.com
+ О©╫т╠О©╫О©╫О©╫О©╫лёО©╫http://eboard.taobao.com 
+ О©╫О©╫в╒н╒О©╫е╧О©╫О©╫О©╫ф╫л╗н╒О©╫е╨еёО©╫"О©╫О©╫О©╫О©╫т╜О©╫О©╫"О©╫О©╫О©╫О©╫я╩О©╫х║STM32О©╫О©╫О©╫о║О©╫
+ О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫с©ф╪О©╫О©╫О©╫О©╫ч╧О©╫к╬  
+ О©╫О©╫О©╫ъёО©╫О©╫О©╫О©╫О©╫т╜О©╫О©╫ @ALIENTEK
 ************************************************/
 
-//хннЯсеох╪╤
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫х╪О©╫
 #define START_TASK_PRIO		1
-//хннЯ╤яу╩╢Сп║	
+//О©╫О©╫О©╫О©╫О©╫у╩О©╫О©╫п║	
 #define START_STK_SIZE 		128  
-//хннЯ╬Д╠З
+//О©╫О©╫О©╫О©╫О©╫О©╫
 TaskHandle_t StartTask_Handler;
-//хннЯ╨╞йЩ
+//О©╫О©╫О©╫О©╫О©╫О©╫
 void start_task(void *pvParameters);
 
-//хннЯсеох╪╤
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫х╪О©╫
 #define LED0_TASK_PRIO		2
-//хннЯ╤яу╩╢Сп║	
+//О©╫О©╫О©╫О©╫О©╫у╩О©╫О©╫п║	
 #define LED0_STK_SIZE 		50  
-//хннЯ╬Д╠З
+//О©╫О©╫О©╫О©╫О©╫О©╫
 TaskHandle_t LED0Task_Handler;
-//хннЯ╨╞йЩ
+//О©╫О©╫О©╫О©╫О©╫О©╫
 void led0_task(void *pvParameters);
 
-//хннЯсеох╪╤
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫х╪О©╫
 #define LED1_TASK_PRIO		3
-//хннЯ╤яу╩╢Сп║	
+//О©╫О©╫О©╫О©╫О©╫у╩О©╫О©╫п║	
 #define LED1_STK_SIZE 		50  
-//хннЯ╬Д╠З
+//О©╫О©╫О©╫О©╫О©╫О©╫
 TaskHandle_t LED1Task_Handler;
-//хннЯ╨╞йЩ
+//О©╫О©╫О©╫О©╫О©╫О©╫
 void led1_task(void *pvParameters);
 
-//хннЯсеох╪╤
-#define FLOAT_TASK_PRIO		4
-//хннЯ╤яу╩╢Сп║	
-#define FLOAT_STK_SIZE 		128
-//хннЯ╬Д╠З
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫х╪О©╫
+#define FLOAT_TASK_PRIO		3
+//О©╫О©╫О©╫О©╫О©╫у╩О©╫О©╫п║
+#define FLOAT_STK_SIZE 		64
+//О©╫О©╫О©╫О©╫О©╫О©╫
 TaskHandle_t FLOATTask_Handler;
-//хннЯ╨╞йЩ
+//О©╫О©╫О©╫О©╫О©╫О©╫
 void float_task(void *pvParameters);
+
+//UARTФ╪■Г╓╨Д╩╩Е┼║Д╪≤Е┘┬Г╨╖
+#define UART_DEMO_TASK_PRIO		4
+//UARTФ╪■Г╓╨Д╩╩Е┼║Е═├Ф═┬Е╓╖Е╟▐
+#define UART_DEMO_STK_SIZE 		128
+//UARTФ╪■Г╓╨Д╩╩Е┼║Е▐╔Ф÷└
+TaskHandle_t UARTDemoTask_Handler;
+//UARTФ╪■Г╓╨Д╩╩Е┼║Е┤╫Ф∙╟
+void uart_demo_task(void *pvParameters);
+
+//О©╫О©╫О©╫з╢О©╫О©╫О©╫О©╫О©╫й╖О©╫э╧О©╫О©╫с╨О©╫О©╫О©╫
+void vApplicationMallocFailedHook(void)
+{
+    printf("Е├┘Е╜≤Е┬├И┘█Е╓╠Х╢╔О╪│\r\n");
+    printf("Е┴╘Д╫≥Е├┘Е╜≤: %u Е╜≈Х┼┌\r\n", xPortGetFreeHeapSize());
+    printf("Ф°─Е╟▐Е┴╘Д╫≥Е├┘Е╜≤: %u Е╜≈Х┼┌\r\n", xPortGetMinimumEverFreeHeapSize());
+    while(1);
+}
 
 int main(void)
 {
-    HAL_Init();                     //ЁУй╪╩╞HAL©Б   
-    Stm32_Clock_Init(360,25,2,8);   //иХжцй╠жс,180Mhz
-	delay_init(180);                //ЁУй╪╩╞ясй╠╨╞йЩ
-    LED_Init();                     //ЁУй╪╩╞LED 
-    uart_init(115200);              //ЁУй╪╩╞╢╝©з
-    //╢╢╫╗©╙й╪хннЯ
-    xTaskCreate((TaskFunction_t )start_task,            //хннЯ╨╞йЩ
-                (const char*    )"start_task",          //хннЯцШЁф
-                (uint16_t       )START_STK_SIZE,        //хннЯ╤яу╩╢Сп║
-                (void*          )NULL,                  //╢╚╣щ╦ЬхннЯ╨╞йЩ╣д╡нйЩ
-                (UBaseType_t    )START_TASK_PRIO,       //хннЯсеох╪╤
-                (TaskHandle_t*  )&StartTask_Handler);   //хннЯ╬Д╠З              
-    vTaskStartScheduler();          //©╙фТхннЯ╣В╤х
+    HAL_Init();                     //О©╫О©╫й╪О©╫О©╫HALО©╫О©╫   
+    Stm32_Clock_Init(360,25,2,8);   //О©╫О©╫О©╫О©╫й╠О©╫О©╫,180Mhz
+	delay_init(180);                //О©╫О©╫й╪О©╫О©╫О©╫О©╫й╠О©╫О©╫О©╫О©╫
+    LED_Init();                     //О©╫О©╫й╪О©╫О©╫LED 
+    uart_init(115200);              //О©╫О©╫й╪О©╫О©╫О©╫О©╫О©╫О©╫
+    //О©╫О©╫О©╫О©╫О©╫О©╫й╪О©╫О©╫О©╫О©╫
+    xTaskCreate((TaskFunction_t )start_task,            //О©╫О©╫О©╫О©╫О©╫О©╫
+                (const char*    )"start_task",          //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
+                (uint16_t       )START_STK_SIZE,        //О©╫О©╫О©╫О©╫О©╫у╩О©╫О©╫п║
+                (void*          )NULL,                  //О©╫О©╫О©╫щ╦О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫д╡О©╫О©╫О©╫
+                (UBaseType_t    )START_TASK_PRIO,       //О©╫О©╫О©╫О©╫О©╫О©╫О©╫х╪О©╫
+                (TaskHandle_t*  )&StartTask_Handler);   //О©╫О©╫О©╫О©╫О©╫О©╫              
+    vTaskStartScheduler();          //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 }
 
-//©╙й╪хннЯхннЯ╨╞йЩ
+//О©╫О©╫й╪О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 void start_task(void *pvParameters)
 {
-    taskENTER_CRITICAL();           //╫ЬхКаы╫ГгЬ
-    //╢╢╫╗LED0хннЯ
+    taskENTER_CRITICAL();           //О©╫О©╫О©╫О©╫О©╫ы╫О©╫О©╫О©╫
+    //О©╫О©╫О©╫О©╫LED0О©╫О©╫О©╫О©╫
     xTaskCreate((TaskFunction_t )led0_task,     	
                 (const char*    )"led0_task",   	
                 (uint16_t       )LED0_STK_SIZE, 
                 (void*          )NULL,				
                 (UBaseType_t    )LED0_TASK_PRIO,	
                 (TaskHandle_t*  )&LED0Task_Handler);   
-    //╢╢╫╗LED1хннЯ
+    //О©╫О©╫О©╫О©╫LED1О©╫О©╫О©╫О©╫
     xTaskCreate((TaskFunction_t )led1_task,     
                 (const char*    )"led1_task",   
                 (uint16_t       )LED1_STK_SIZE, 
-                (void*          )NULL,
-                (UBaseType_t    )LED1_TASK_PRIO,
+                (void*          )NULL,	
+                (UBaseType_t    )LED1_TASK_PRIO,	
                 (TaskHandle_t*  )&LED1Task_Handler);        
-    //╦║╣Ц╡БйтхннЯ
+    //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
     xTaskCreate((TaskFunction_t )float_task,     
                 (const char*    )"float_task",   
                 (uint16_t       )FLOAT_STK_SIZE, 
-                (void*          )NULL,
-                (UBaseType_t    )FLOAT_TASK_PRIO,
+                (void*          )NULL,    
+                (UBaseType_t    )FLOAT_TASK_PRIO,    
                 (TaskHandle_t*  )&FLOATTask_Handler);  
-    vTaskDelete(StartTask_Handler); //и╬ЁЩ©╙й╪хннЯ
-    taskEXIT_CRITICAL();            //мкЁЖаы╫ГгЬ
+                
+    //Е┬⌡Е╩╨UARTФ╪■Г╓╨Д╩╩Е┼║
+    xTaskCreate((TaskFunction_t )uart_demo_task,     
+                (const char*    )"uart_demo_task",   
+                (uint16_t       )UART_DEMO_STK_SIZE, 
+                (void*          )NULL,    
+                (UBaseType_t    )UART_DEMO_TASK_PRIO,    
+                (TaskHandle_t*  )&UARTDemoTask_Handler);  
+                
+    vTaskDelete(NULL); //Е┬═И≥╓Е╫⌠Е┴█Д╩╩Е┼║(Е░╞Е┼╗Д╩╩Е┼║)
+    taskEXIT_CRITICAL();            //И──Е┤╨Д╦╢Г∙▄Е▄╨
 }
 
-//LED0хннЯ╨╞йЩ 
+//LED0О©╫О©╫О©╫О©╫О©╫О©╫ 
 void led0_task(void *pvParameters)
 {
     while(1)
@@ -106,7 +134,7 @@ void led0_task(void *pvParameters)
     }
 }   
 
-//LED1хннЯ╨╞йЩ
+//LED1О©╫О©╫О©╫О©╫О©╫О©╫
 void led1_task(void *pvParameters)
 {
     while(1)
@@ -118,16 +146,23 @@ void led1_task(void *pvParameters)
     }
 }
 
-//╦║╣Ц╡БйтхннЯ
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 void float_task(void *pvParameters)
 {
 	static float float_num=0.00;
 	while(1)
 	{
 		float_num+=0.01f;
-		printf("float_num╣дж╣н╙: %.4f\r\n",float_num);
+		printf("float_numО©╫О©╫ж╣н╙: %.4f\r\n",float_num);
         vTaskDelay(1000);
 	}
+}
+
+//UARTФ╪■Г╓╨Д╩╩Е┼║Е┤╫Ф∙╟
+void uart_demo_task(void *pvParameters)
+{
+    // Х╟┐Г■╗UARTФ╪■Г╓╨Е┤╫Ф∙╟
+    uart_demo();
 }
 
 

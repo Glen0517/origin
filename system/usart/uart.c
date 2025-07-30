@@ -1,55 +1,95 @@
-#include "usart.h"
-//#include "stm32_driver.h"需要包含官方驱动头文件
-#if SYSTEM_SUPPORT_OS
-#include "FreeRTOS.h"      //os ʹ��	  
-#endif
+#include "uart.h"
+#include <stdbool.h>
 
-#pragma import(__use_no_semihosting)      
+// 定义UART实例（根据实际硬件配置修改）
+#define USARTx USART1
 
-#define UART_SWITCH 0
+// 定义UART句柄
+UART_HandleTypeDef huart;
 
-//初始化发送缓冲区
+// 缓冲区定义
+#define UART_SWITCH 1  // 启用UART中断
+
+// 初始化发送缓冲区
 TX_Buffer_Struct Tx_Buffer_t ={
 	.tx_buffer = {0},
 	.tx_head = 0,
 	.tx_tail = 0,
 };
 
-//初始化接收缓冲区
+// 初始化接收缓冲区
 RX_Buffer_Struct Rx_Buffer_t ={
 	.rx_buffer = {0},
 	.rx_head = 0,
 	.rx_tail =0,
 };
 
+// 全局解析上下文
+static ParseContext ctx = {STATE_HEADER_0, {0}, 0, 0};
+
+void stm32_uart_gpio_init(void)
+{
+    // 启用GPIO时钟
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+
+        // 配置TX引脚
+    GPIO_InitStruct.Pin = GPIO_PIN_9;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF7_USART1;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+    
+    // 配置RX引脚
+    GPIO_InitStruct.Pin = GPIO_PIN_10;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_INPUT;
+    GPIO_InitStruct.Alternate = GPIO_AF7_USART1;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+}
+
 /*
-exmaple:uart_send("ABC", 3);
-
-发送流程：
-数据复制到缓冲区：tx_buffer[0]='A', tx_buffer[1]='B', tx_buffer[2]='C'
-tx_head 移动到 3（0 → 1 → 2 → 3）
-触发中断后，ISR 从 tx_tail=0 开始发送数据：
-发送 tx_buffer[0]='A'，tx_tail 移动到 1
-发送 tx_buffer[1]='B'，tx_tail 移动到 2
-发送 tx_buffer[2]='C'，tx_tail 移动到 3
-此时 tx_head = tx_tail = 3，缓冲区为空，ISR 关闭中断。
-
-缓冲区状态变化：
-初始：tx_head=0, tx_tail=0  →  缓冲区空
-写入后：tx_head=3, tx_tail=0  →  缓冲区有3个数据
-发送后：tx_head=3, tx_tail=3  →  缓冲区空
+* @brief  UART初始化函数
+* @param  baudrate: 波特率
 */
-// 非阻塞式UART发送（放入缓冲区，由中断发送）
-bool uart_send(uint8_t *data, uint32_t length) {
+void stm32_uart_init(uint32_t baudrate)
+{
+    // 启用UART时钟
+    __HAL_RCC_USART1_CLK_ENABLE();
+    
+    // 初始化UART句柄
+    huart.Instance = USARTx;  // 替换为实际的USART实例
+    huart.Init.BaudRate = baudrate;
+    huart.Init.WordLength = UART_WORDLENGTH_8B;
+    huart.Init.StopBits = UART_STOPBITS_1;
+    huart.Init.Parity = UART_PARITY_NONE;
+    huart.Init.Mode = UART_MODE_TX_RX;
+    huart.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+    huart.Init.OverSampling = UART_OVERSAMPLING_16;
+        
+    // 配置UART中断
+    HAL_NVIC_SetPriority(USART1_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(USART1_IRQn);
+}
+
+/*
+* @brief  非阻塞式UART发送（放入缓冲区，由中断发送）
+* @param  data: 要发送的数据
+* @param  length: 数据长度
+* @retval 是否成功
+*/
+bool stm32_uart_send(uint8_t *data, uint32_t length)
+{
     // 检查缓冲区是否有足够空间
     uint32_t space_num = (Tx_Buffer_t.tx_tail > Tx_Buffer_t.tx_head) ? 
                      (Tx_Buffer_t.tx_tail - Tx_Buffer_t.tx_head - 1) : 
                      (TX_BUFFER_SIZE - Tx_Buffer_t.tx_head + Tx_Buffer_t.tx_tail - 1);
     
     if (space_num < length) {
-		//printf("UART Error : Buffer full!\n");
-		return false; // 缓冲区已满
-	}
+        return false; // 缓冲区已满
+    }
+
+    // 关中断保护缓冲区操作
+    __HAL_UART_DISABLE_IT(&huart, UART_IT_TXE);
 
     // 将数据复制到发送缓冲区
     for (uint32_t i = 0; i < length; i++) {
@@ -57,50 +97,123 @@ bool uart_send(uint8_t *data, uint32_t length) {
         Tx_Buffer_t.tx_head = (Tx_Buffer_t.tx_head + 1) % TX_BUFFER_SIZE;
     }
     
-    // 使能发送中断（触发第一次发送）,开关为关闭
-	#if UART_SWITCH
-    UARTx->CR1 |= UART_CR1_TXEIE;
-	#endif
+    // 使能发送中断
+    __HAL_UART_ENABLE_IT(&huart, UART_IT_TXE);
 
     return true;
 }
 
 /*
-example：
-uart_receive(partial_valu,max_len);
-工作流程：
-UART硬件 → RDR寄存器 → 中断服务程序 → 环形缓冲区 → uart_receive() → 应用程序
+* @brief  阻塞式UART发送（直接发送，直到完成）
+* @param  data: 要发送的数据
+* @param  length: 数据长度
+* @retval HAL状态
 */
-// 非阻塞式UART接收（从缓冲区读取）
-uint32_t uart_receive(uint8_t *buffer, uint32_t max_length) {
+bool stm32_uart_send_blocking(uint8_t *data, uint32_t length)
+{
+    return HAL_UART_Transmit(&huart, data, length, HAL_MAX_DELAY);
+}
+
+/*
+* @brief  非阻塞式UART接收（从缓冲区读取）
+* @param  buffer: 接收缓冲区
+* @param  max_length: 最大接收长度
+* @retval 实际接收长度
+*/
+uint32_t stm32_uart_receive(uint8_t *buffer, uint32_t max_length) {
     uint32_t count = 0;
+    
+    // 关中断保护缓冲区操作
+    __HAL_UART_DISABLE_IT(&huart, UART_IT_RXNE);
+    
     // 从接收缓冲区读取数据
     while (Rx_Buffer_t.rx_head != Rx_Buffer_t.rx_tail && count < max_length) {
         buffer[count++] = Rx_Buffer_t.rx_buffer[Rx_Buffer_t.rx_tail];
         Rx_Buffer_t.rx_tail = (Rx_Buffer_t.rx_tail + 1) % RX_BUFFER_SIZE;
     }
+    
+    // 使能接收中断
+    __HAL_UART_ENABLE_IT(&huart, UART_IT_RXNE);
+    
     return count;
 }
 
-// UART接收中断处理函数
-void UARTx_RX_IRQHandler(void) {
-    //if (UARTx->SR & UART_SR_RXNE) 
-	{
+/*
+* @brief  阻塞式UART接收（等待接收完成）
+* @param  buffer: 接收缓冲区
+* @param  max_length: 最大接收长度
+* @param  timeout: 超时时间（毫秒）
+* @retval 实际接收长度
+*/
+uint32_t stm32_uart_receive_blocking(uint8_t *buffer, uint32_t max_length, uint32_t timeout) {
+    uint32_t received_length = 0;
+    hal_status_t status = HAL_UART_Receive(&huart, buffer, max_length, timeout);
+    
+    if (status == HAL_OK) {
+        received_length = max_length;
+    } else if (status == HAL_TIMEOUT) {
+        // 超时，但可能已接收部分数据
+        received_length = huart.RxXferSize - huart.RxXferCount;
+    }
+    
+    return received_length;
+}
+
+/*
+* @brief  UART中断处理函数
+* @retval 无
+*/
+void UARTx_IRQHandler(void) {
+    uint32_t isrflags = READ_REG(huart.Instance->SR);
+    uint32_t cr1its = READ_REG(huart.Instance->CR1);
+    uint32_t cr3its = READ_REG(huart.Instance->CR3);
+    uint32_t errorflags = 0x00U;
+    
+    // 处理接收中断
+    if (((isrflags & USART_SR_RXNE) != RESET) && ((cr1its & USART_CR1_RXNEIE) != RESET)) {
         // 读取接收到的数据
-        //uint8_t data = UARTx->DR;
+        uint8_t data = (uint8_t)(huart.Instance->DR & (uint8_t)0x00FF);
+        
         // 将数据存入接收缓冲区（注意处理溢出）
         uint32_t next_head = (Rx_Buffer_t.rx_head + 1) % RX_BUFFER_SIZE;
         if (next_head != Rx_Buffer_t.rx_tail) { // 缓冲区未满
-            //Rx_Buffer_t.rx_buffer[Rx_Buffer_t.rx_head] = data;
+            Rx_Buffer_t.rx_buffer[Rx_Buffer_t.rx_head] = data;
             Rx_Buffer_t.rx_head = next_head;
         } else {
-            // 缓冲区溢出处理（可记录错误或丢弃数据）
-			//printf("Error!\n");
+            // 缓冲区溢出处理
+            __HAL_UART_CLEAR_OREFLAG(&huart);
         }
+        
+        // 重新启用接收中断
+        HAL_UART_Receive_IT(&huart, &Rx_Buffer_t.rx_buffer[Rx_Buffer_t.rx_head], 1);
+    }
+    
+    // 处理发送中断
+    if (((isrflags & USART_SR_TXE) != RESET) && ((cr1its & USART_CR1_TXEIE) != RESET)) {
+        if (Tx_Buffer_t.tx_head != Tx_Buffer_t.tx_tail) {
+            // 发送缓冲区有数据
+            huart.Instance->DR = (uint8_t)Tx_Buffer_t.tx_buffer[Tx_Buffer_t.tx_tail];
+            Tx_Buffer_t.tx_tail = (Tx_Buffer_t.tx_tail + 1) % TX_BUFFER_SIZE;
+        } else {
+            // 发送缓冲区为空，关闭发送中断
+            __HAL_UART_DISABLE_IT(&huart, UART_IT_TXE);
+        }
+    }
+    
+    // 处理错误中断
+    errorflags = (isrflags & (uint32_t)(USART_SR_ORE | USART_SR_NE | USART_SR_FE | USART_SR_PE));
+    if (errorflags != RESET) {
+        // 清除错误标志
+        huart.Instance->SR = (uint16_t)~errorflags;
     }
 }
 
-// 校验和计算函数
+/*
+* @brief  校验和计算函数
+* @param  data: 数据指针
+* @param  length: 数据长度
+* @retval 校验和
+*/
 uint8_t calculate_checksum(uint8_t *data, uint32_t length) {
     uint8_t sum = 0;
     for (uint32_t i = 0; i < length; i++) {
@@ -110,7 +223,11 @@ uint8_t calculate_checksum(uint8_t *data, uint32_t length) {
     //或其他校验方式
 }
 
-// 数据解析函数
+/*
+* @brief  数据解析函数
+* @param  rece_data: 接收到的数据
+* @retval 无
+*/
 void uart_receive_unpackage(uint8_t *rece_data) {
     uint8_t ptr = 0;
     
@@ -181,10 +298,8 @@ void uart_receive_unpackage(uint8_t *rece_data) {
             break;
     }
 }
-/*               解包状态机                    */
-// 全局解析上下文
-static ParseContext ctx = {STATE_HEADER_0, {0}, 0, 0};
 
+/*               解包状态机                    */
 // 帧解析完成回调函数
 void frame_received_callback(uint8_t *data, uint8_t length) {
     // 在这里处理完整的帧数据
@@ -231,8 +346,13 @@ void frame_received_callback(uint8_t *data, uint8_t length) {
   }
 }
 
-// UART解析函数
-void uart_rece_unp(uint8_t *rece_d, uint8_t len) {
+/*
+* @brief  UART解析函数
+* @param  rece_d: 接收到的数据
+* @param  len: 数据长度
+* @retval 无
+*/
+void uart_reveive_state_machine(uint8_t *rece_d, uint8_t len) {
     for (uint8_t i = 0; i < len; i++) {
         uint8_t byte = rece_d[i];
         
@@ -288,3 +408,5 @@ void uart_rece_unp(uint8_t *rece_d, uint8_t len) {
         }
     }
 }
+
+

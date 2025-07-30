@@ -8,3 +8,10 @@ HAL_USB_Struct hal_usbstruct = {
     .usb_init = stm_usb_init,
 };
 #endif
+
+//对于硬件层，需要按照这种模式实现不同芯片平台的快速兼容
+
+
+
+
+
