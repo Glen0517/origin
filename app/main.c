@@ -2,6 +2,7 @@
 #include "delay.h"
 #include "usart.h"
 #include "usart_demo.h"
+#include "uart_dma_demo.h"
 #include "led.h"
 #include "FreeRTOS.h"
 #include "task.h"
@@ -59,6 +60,15 @@ void float_task(void *pvParameters);
 TaskHandle_t UARTDemoTask_Handler;
 //UART演示任务函数
 void uart_demo_task(void *pvParameters);
+
+//UART+DMA演示任务优先级
+#define UART_DMA_DEMO_TASK_PRIO		5
+//UART+DMA演示任务堆栈大小
+#define UART_DMA_DEMO_STK_SIZE 		128
+//UART+DMA演示任务句柄
+TaskHandle_t UARTDmaDemoTask_Handler;
+//UART+DMA演示任务函数
+void uart_dma_task(void *pvParameters);
 
 //���ڴ�����ʧ�ܹ��Ӻ���
 void vApplicationMallocFailedHook(void)
@@ -119,6 +129,14 @@ void start_task(void *pvParameters)
                 (void*          )NULL,    
                 (UBaseType_t    )UART_DEMO_TASK_PRIO,    
                 (TaskHandle_t*  )&UARTDemoTask_Handler);  
+
+    //创建UART+DMA演示任务
+    xTaskCreate((TaskFunction_t )uart_dma_task,     
+                (const char*    )"uart_dma_task",   
+                (uint16_t       )UART_DMA_DEMO_STK_SIZE, 
+                (void*          )NULL,    
+                (UBaseType_t    )UART_DMA_DEMO_TASK_PRIO,    
+                (TaskHandle_t*  )&UARTDmaDemoTask_Handler);  
                 
     vTaskDelete(NULL); //删除当前任务(启动任务)
     taskEXIT_CRITICAL();            //退出临界区
@@ -163,6 +181,13 @@ void uart_demo_task(void *pvParameters)
 {
     // 调用UART演示函数
     uart_demo();
+}
+
+//UART+DMA演示任务函数
+void uart_dma_task(void *pvParameters)
+{
+    // 调用UART+DMA演示函数
+    uart_dma_demo();
 }
 
 

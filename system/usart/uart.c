@@ -29,10 +29,12 @@ static ParseContext ctx = {STATE_HEADER_0, {0}, 0, 0};
 
 void stm32_uart_gpio_init(void)
 {
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    
     // 启用GPIO时钟
     __HAL_RCC_GPIOA_CLK_ENABLE();
 
-        // 配置TX引脚
+    // 配置TX引脚
     GPIO_InitStruct.Pin = GPIO_PIN_9;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
@@ -66,6 +68,13 @@ void stm32_uart_init(uint32_t baudrate)
     huart.Init.HwFlowCtl = UART_HWCONTROL_NONE;
     huart.Init.OverSampling = UART_OVERSAMPLING_16;
         
+    // 初始化UART
+    if (HAL_UART_Init(&huart) != HAL_OK)
+    {
+        // 初始化失败处理
+        while(1);
+    }
+    
     // 配置UART中断
     HAL_NVIC_SetPriority(USART1_IRQn, 0, 0);
     HAL_NVIC_EnableIRQ(USART1_IRQn);
@@ -80,9 +89,9 @@ void stm32_uart_init(uint32_t baudrate)
 bool stm32_uart_send(uint8_t *data, uint32_t length)
 {
     // 检查缓冲区是否有足够空间
-    uint32_t space_num = (Tx_Buffer_t.tx_tail > Tx_Buffer_t.tx_head) ? 
-                     (Tx_Buffer_t.tx_tail - Tx_Buffer_t.tx_head - 1) : 
-                     (TX_BUFFER_SIZE - Tx_Buffer_t.tx_head + Tx_Buffer_t.tx_tail - 1);
+    uint32_t space_num = (TX_BUFFER_SIZE - 1 - 
+        (Tx_Buffer_t.tx_head - Tx_Buffer_t.tx_tail +
+        TX_BUFFER_SIZE) % TX_BUFFER_SIZE);
     
     if (space_num < length) {
         return false; // 缓冲区已满
@@ -147,7 +156,7 @@ uint32_t stm32_uart_receive(uint8_t *buffer, uint32_t max_length) {
 */
 uint32_t stm32_uart_receive_blocking(uint8_t *buffer, uint32_t max_length, uint32_t timeout) {
     uint32_t received_length = 0;
-    hal_status_t status = HAL_UART_Receive(&huart, buffer, max_length, timeout);
+    HAL_StatusTypeDef status = HAL_UART_Receive(&huart, buffer, max_length, timeout);
     
     if (status == HAL_OK) {
         received_length = max_length;
@@ -184,8 +193,7 @@ void UARTx_IRQHandler(void) {
             __HAL_UART_CLEAR_OREFLAG(&huart);
         }
         
-        // 重新启用接收中断
-        HAL_UART_Receive_IT(&huart, &Rx_Buffer_t.rx_buffer[Rx_Buffer_t.rx_head], 1);
+        // 无需额外调用HAL_UART_Receive_IT，中断已启用
     }
     
     // 处理发送中断
@@ -255,8 +263,8 @@ void uart_receive_unpackage(uint8_t *rece_data) {
     // 获取校验和
     uint8_t checksum = rece_data[ptr];
     
-    // 验证校验和
-    if (calculate_checksum(&rece_data[2], ptr - 2) != checksum) {
+    // 验证校验和 (从命令码开始计算，长度为命令码+数据长度)
+    if (calculate_checksum(&rece_data[2], len + 1) != checksum) {
         return; // 校验和错误，丢弃
     }
     
@@ -287,7 +295,7 @@ void uart_receive_unpackage(uint8_t *rece_data) {
             //send_system_info();
             break;
             
-        case CMD_FIRMWARE_UPGRADE:
+        case CMD_UPDATE_FW:
             // 处理固件升级命令
             // data: 固件数据块
             //handle_firmware_upgrade(data, len);
@@ -352,7 +360,7 @@ void frame_received_callback(uint8_t *data, uint8_t length) {
 * @param  len: 数据长度
 * @retval 无
 */
-void uart_reveive_state_machine(uint8_t *rece_d, uint8_t len) {
+void uart_receive_state_machine(uint8_t *rece_d, uint8_t len) {
     for (uint8_t i = 0; i < len; i++) {
         uint8_t byte = rece_d[i];
         
@@ -376,7 +384,7 @@ void uart_reveive_state_machine(uint8_t *rece_d, uint8_t len) {
                 break;
                 
             case STATE_LENGTH:
-                if (byte <= UART_MAX_LENGTH - 3) { // 确保有足够空间
+                if (byte <= UART_MAX_LEN - 3) { // 确保有足够空间
                     ctx.length = byte;
                     ctx.buffer[ctx.index++] = byte;
                     ctx.state = STATE_DATA;

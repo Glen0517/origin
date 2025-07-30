@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": true,
-      "cwd": "d:/git_project/origin/system/USB",
-      "program": "d:/git_project/origin/system/USB/build/Debug/outDebug",
+      "cwd": "d:/git_project/origin/system/usart",
+      "program": "d:/git_project/origin/system/usart/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [
