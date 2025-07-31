@@ -4,6 +4,7 @@
 #include "usart_demo.h"
 #include "uart_dma_demo.h"
 #include "led.h"
+#include "system\flash\flash_demo.h"
 #include "FreeRTOS.h"
 #include "task.h"
 /************************************************
@@ -69,6 +70,15 @@ void uart_demo_task(void *pvParameters);
 TaskHandle_t UARTDmaDemoTask_Handler;
 //UART+DMA演示任务函数
 void uart_dma_task(void *pvParameters);
+
+//Flash演示任务优先级
+#define FLASH_DEMO_TASK_PRIO		6
+//Flash演示任务堆栈大小
+#define FLASH_DEMO_STK_SIZE 		128
+//Flash演示任务句柄
+TaskHandle_t FlashDemoTask_Handler;
+//Flash演示任务函数
+void flash_demo_task(void *pvParameters);
 
 //���ڴ�����ʧ�ܹ��Ӻ���
 void vApplicationMallocFailedHook(void)
@@ -137,6 +147,14 @@ void start_task(void *pvParameters)
                 (void*          )NULL,    
                 (UBaseType_t    )UART_DMA_DEMO_TASK_PRIO,    
                 (TaskHandle_t*  )&UARTDmaDemoTask_Handler);  
+
+    //创建Flash演示任务
+    xTaskCreate((TaskFunction_t )flash_demo_task,     
+                (const char*    )"flash_demo_task",   
+                (uint16_t       )FLASH_DEMO_STK_SIZE, 
+                (void*          )NULL,    
+                (UBaseType_t    )FLASH_DEMO_TASK_PRIO,    
+                (TaskHandle_t*  )&FlashDemoTask_Handler);  
                 
     vTaskDelete(NULL); //删除当前任务(启动任务)
     taskEXIT_CRITICAL();            //退出临界区
@@ -188,6 +206,13 @@ void uart_dma_task(void *pvParameters)
 {
     // 调用UART+DMA演示函数
     uart_dma_demo();
+}
+
+//Flash演示任务函数
+void flash_demo_task(void *pvParameters)
+{
+    // 调用Flash演示函数
+    Flash_Demo();
 }
 
 

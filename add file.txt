@@ -1,1 +1,7 @@
-project1：freertos
+#project1：freertos
+peripheral：
+UART+DMA:it can be used to massive data transfer.
+UART:it can be used to communicate between two chips.
+I2C+sensor:it can be used to sending and receiving from slave device as sensor.
+SPI+flash:it can be used to store data.
+

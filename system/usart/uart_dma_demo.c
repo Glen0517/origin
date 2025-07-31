@@ -6,29 +6,22 @@
  */
 
 #include "uart_dma_demo.h"
-//#include "stm32f4xx_hal.h"
+#include "stm32f4xx_hal.h"
 #include <stdbool.h>
 #include <stdio.h>
 
-UART_DMA_STRUCT UART_DMA_INSTANCE = {
-    //.huart = huart1,
-    //.hdma_rx = hdma1_rx,
-    //.hdma_tx = hdma1_tx,
-    .tx_buffer[UART_DMA_TX_BUFFER_SIZE] = {0},
-    .rx_buffer[UART_DMA_RX_BUFFER_SIZE] = {0},
-    .rx_data_len = 32,
-    .tx_complete = false,
-    .rx_complete = false,
-    .uart_dma_init = stm32_uart_gpio_init,
-    .uart_dma_send = stm32_uart_dma_send,
-    .uart_dma_receive = stm32_uart_dma_receive,
-    .uart_dma_error_callback = stm32_uart_dma_error_callback,
-    .uart_dma_rx_complete_callback = stm32_uart_dma_rx_complete_callback,
-    .uart_dma_tx_complete_callback = stm32_uart_dma_rx_complete_callback
-}; // 全局UART DMA句柄
+// UART句柄（假设使用USART1）
+extern UART_HandleTypeDef huart1;
 
-// UART DMA句柄
-UART_DMA_HandleTypeDef huart_dma;
+// 全局UART DMA句柄
+UART_DMA_STRUCT huart_dma = {
+    .huart = &huart1,
+    .tx_buffer = {0},
+    .rx_buffer = {0},
+    .rx_data_len = 0,
+    .tx_complete = true,
+    .rx_complete = true
+};
 
 // 测试数据
 uint8_t test_send_data[] = "Hello, UART+DMA! This is a test message.";
@@ -65,16 +58,23 @@ bool uart_dma_init_demo(void)
  */
 bool uart_dma_send_demo(void)
 {
-    if (UART_DMA_INSTANCE.uart_dma_send(&huart_dma, test_send_data, sizeof(test_send_data) - 1) != HAL_OK)
+    if (stm32_uart_dma_send(&huart_dma, test_send_data, sizeof(test_send_data) - 1) != HAL_OK)
     {
         printf("UART DMA send failed!\n");
         return false;
     }
 
     // 等待发送完成
+    uint32_t timeout = 5000;  // 5秒超时
+    uint32_t start_time = HAL_GetTick();
     while (!huart_dma.tx_complete)
     {
-        // 可以添加超时处理
+        if (HAL_GetTick() - start_time > timeout)
+        {
+            printf("UART DMA send timeout!\n");
+            stm32_uart_dma_error_callback(&huart_dma);
+            return false;
+        }
     }
 
     printf("UART DMA send completed! Data sent: %s\n", test_send_data);
@@ -90,7 +90,7 @@ bool uart_dma_receive_demo(void)
 {
     uint32_t receive_len = 20;  // 接收20个字节
 
-    if (UART_DMA_INSTANCE.uart_dma_receive(&huart_dma, receive_len) != HAL_OK)
+    if (stm32_uart_dma_receive(&huart_dma, receive_len) != HAL_OK)
     {
         printf("UART DMA receive failed!\n");
         return false;
@@ -105,7 +105,7 @@ bool uart_dma_receive_demo(void)
         if (HAL_GetTick() - start_time > timeout)
         {
             printf("UART DMA receive timeout!\n");
-            UART_DMA_INSTANCE.uart_dma_error_callback(&huart_dma);
+            stm32_uart_dma_error_callback(&huart_dma);
             return false;
         }
     }

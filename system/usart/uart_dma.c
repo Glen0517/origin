@@ -17,6 +17,8 @@ void stm32_uart_dma_init(UART_DMA_STRUCT *huart_dma, UART_HandleTypeDef *huart)
 {
     // 初始化句柄
     huart_dma->huart = huart;
+    // 将DMA句柄关联到UART句柄的私有数据字段
+    huart->pvData = (void *)huart_dma;
     huart_dma->tx_complete = true;
     huart_dma->rx_complete = true;
     huart_dma->rx_data_len = 0;
@@ -72,6 +74,11 @@ void stm32_uart_dma_init(UART_DMA_STRUCT *huart_dma, UART_HandleTypeDef *huart)
     HAL_NVIC_SetPriority(DMA2_Stream5_IRQn, 5, 1);  // RX DMA中断优先级
     HAL_NVIC_EnableIRQ(DMA2_Stream5_IRQn);
 
+    // 注册UART回调函数
+    HAL_UART_RegisterCallback(huart, HAL_UART_TX_COMPLETE_CB_ID, stm32_uart_dma_tx_complete);
+    HAL_UART_RegisterCallback(huart, HAL_UART_RX_COMPLETE_CB_ID, stm32_uart_dma_rx_complete);
+    HAL_UART_RegisterCallback(huart, HAL_UART_ERROR_CB_ID, stm32_uart_dma_error);
+
     //return HAL_OK;
 }
 
@@ -82,7 +89,7 @@ void stm32_uart_dma_init(UART_DMA_STRUCT *huart_dma, UART_HandleTypeDef *huart)
  * @param  len: 数据长度
  * @retval HAL状态
  */
-void stm32_uart_dma_send(UART_DMA_STRUCT *huart_dma, uint8_t *data, uint32_t len)
+HAL_StatusTypeDef stm32_uart_dma_send(UART_DMA_STRUCT *huart_dma, uint8_t *data, uint32_t len)
 {
     if (huart_dma == NULL || data == NULL || len == 0)
     {
@@ -123,7 +130,7 @@ void stm32_uart_dma_send(UART_DMA_STRUCT *huart_dma, uint8_t *data, uint32_t len
  * @param  len: 要接收的数据长度
  * @retval HAL状态
  */
-void stm32_uart_dma_receive(UART_DMA_STRUCT *huart_dma, uint32_t len)
+HAL_StatusTypeDef stm32_uart_dma_receive(UART_DMA_STRUCT *huart_dma, uint32_t len)
 {
     if (huart_dma == NULL || len == 0)
     {
@@ -206,18 +213,52 @@ void stm32_uart_dma_error_callback(UART_DMA_STRUCT *huart_dma)
     }
 }
 
-// DMA中断处理函数示例
-// 注意：实际应用中需要根据使用的DMA流和通道修改中断处理函数名
+// UART TX DMA完成回调函数
+void stm32_uart_dma_tx_complete(UART_HandleTypeDef *huart)
+{
+    // 获取关联的DMA句柄
+    UART_DMA_STRUCT *huart_dma = (UART_DMA_STRUCT *)huart->pvData;
+    if (huart_dma != NULL)
+    {
+        stm32_uart_dma_tx_complete_callback(huart_dma);
+    }
+}
+
+// UART RX DMA完成回调函数
+void stm32_uart_dma_rx_complete(UART_HandleTypeDef *huart)
+{
+    // 获取关联的DMA句柄
+    UART_DMA_STRUCT *huart_dma = (UART_DMA_STRUCT *)huart->pvData;
+    if (huart_dma != NULL)
+    {
+        stm32_uart_dma_rx_complete_callback(huart_dma);
+    }
+}
+
+// UART DMA错误回调函数
+void stm32_uart_dma_error(UART_HandleTypeDef *huart)
+{
+    // 获取关联的DMA句柄
+    UART_DMA_STRUCT *huart_dma = (UART_DMA_STRUCT *)huart->pvData;
+    if (huart_dma != NULL)
+    {
+        stm32_uart_dma_error_callback(huart_dma);
+    }
+}
+
+// DMA中断处理函数
 void stm32_DMA2_Stream7_IRQHandler(void)
 {
-    // 这里应该调用HAL库的DMA中断处理函数
-    // HAL_DMA_IRQHandler(&huart_dma->hdma_tx);
-    // 然后在HAL库的回调函数中调用我们的自定义回调
+    // 这里需要根据实际的UART DMA句柄调用HAL_DMA_IRQHandler
+    // 注意：在实际应用中，需要获取当前使用的UART DMA句柄
+    // 示例中假设使用全局变量huart_dma
+    // HAL_DMA_IRQHandler(&huart_dma.hdma_tx);
 }
 
 void stm32_DMA2_Stream5_IRQHandler(void)
 {
-    // 这里应该调用HAL库的DMA中断处理函数
-    // HAL_DMA_IRQHandler(&huart_dma->hdma_rx);
-    // 然后在HAL库的回调函数中调用我们的自定义回调
+    // 这里需要根据实际的UART DMA句柄调用HAL_DMA_IRQHandler
+    // 注意：在实际应用中，需要获取当前使用的UART DMA句柄
+    // 示例中假设使用全局变量huart_dma
+    // HAL_DMA_IRQHandler(&huart_dma.hdma_rx);
 }

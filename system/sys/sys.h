@@ -3,27 +3,27 @@
 #include "stm32f4xx.h"
 
 //////////////////////////////////////////////////////////////////////////////////	 
-//±¾³ÌÐòÖ»¹©Ñ§Ï°Ê¹ÓÃ£¬Î´¾­×÷ÕßÐí¿É£¬²»µÃÓÃÓÚÆäËüÈÎºÎÓÃÍ¾
-//ALIENTEK STM32F429¿ª·¢°å
-//ÏµÍ³Ê±ÖÓ³õÊ¼»¯	
-//°üÀ¨Ê±ÖÓÉèÖÃ/ÖÐ¶Ï¹ÜÀí/GPIOÉèÖÃµÈ
-//ÕýµãÔ­×Ó@ALIENTEK
-//¼¼ÊõÂÛÌ³:www.openedv.com
-//´´½¨ÈÕÆÚ:2015/6/10
-//°æ±¾£ºV1.0
-//°æÈ¨ËùÓÐ£¬µÁ°æ±Ø¾¿¡£
-//Copyright(C) ¹ãÖÝÊÐÐÇÒíµç×Ó¿Æ¼¼ÓÐÏÞ¹«Ë¾ 2014-2024
+//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö»ï¿½ï¿½Ñ§Ï°Ê¹ï¿½Ã£ï¿½Î´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Îºï¿½ï¿½ï¿½Í¾
+//ALIENTEK STM32F429ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+//ÏµÍ³Ê±ï¿½Ó³ï¿½Ê¼ï¿½ï¿½	
+//ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½/ï¿½Ð¶Ï¹ï¿½ï¿½ï¿½/GPIOï¿½ï¿½ï¿½Ãµï¿½
+//ï¿½ï¿½ï¿½ï¿½Ô­ï¿½ï¿½@ALIENTEK
+//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì³:www.openedv.com
+//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½:2015/6/10
+//ï¿½æ±¾ï¿½ï¿½V1.0
+//ï¿½ï¿½È¨ï¿½ï¿½ï¿½Ð£ï¿½ï¿½ï¿½ï¿½ï¿½Ø¾ï¿½ï¿½ï¿½
+//Copyright(C) ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¿Æ¼ï¿½ï¿½ï¿½ï¿½Þ¹ï¿½Ë¾ 2014-2024
 //All rights reserved
 //********************************************************************************
-//ÐÞ¸ÄËµÃ÷
-//ÎÞ
+//ï¿½Þ¸ï¿½Ëµï¿½ï¿½
+//ï¿½ï¿½
 //////////////////////////////////////////////////////////////////////////////////  
 
-//0,²»Ö§³Öos
-//1,Ö§³Öos
-#define SYSTEM_SUPPORT_OS		1		//¶¨ÒåÏµÍ³ÎÄ¼þ¼ÐÊÇ·ñÖ§³ÖOS
+//0,ï¿½ï¿½Ö§ï¿½ï¿½os
+//1,Ö§ï¿½ï¿½os
+#define SYSTEM_SUPPORT_OS		1		//ï¿½ï¿½ï¿½ï¿½ÏµÍ³ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½Ç·ï¿½Ö§ï¿½ï¿½OS
 ///////////////////////////////////////////////////////////////////////////////////
-//¶¨ÒåÒ»Ð©³£ÓÃµÄÊý¾ÝÀàÐÍ¶Ì¹Ø¼ü×Ö 
+//ï¿½ï¿½ï¿½ï¿½Ò»Ð©ï¿½ï¿½ï¿½Ãµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¶Ì¹Ø¼ï¿½ï¿½ï¿½ 
 typedef int32_t  s32;
 typedef int16_t s16;
 typedef int8_t  s8;
@@ -56,13 +56,13 @@ typedef __I uint32_t vuc32;
 typedef __I uint16_t vuc16; 
 typedef __I uint8_t vuc8;  
 	 
-//Î»´ø²Ù×÷,ÊµÏÖ51ÀàËÆµÄGPIO¿ØÖÆ¹¦ÄÜ
-//¾ßÌåÊµÏÖË¼Ïë,²Î¿¼<<CM3È¨ÍþÖ¸ÄÏ>>µÚÎåÕÂ(87Ò³~92Ò³).M4Í¬M3ÀàËÆ,Ö»ÊÇ¼Ä´æÆ÷µØÖ·±äÁË.
-//IO¿Ú²Ù×÷ºê¶¨Òå
+//Î»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½,Êµï¿½ï¿½51ï¿½ï¿½ï¿½Æµï¿½GPIOï¿½ï¿½ï¿½Æ¹ï¿½ï¿½ï¿½
+//ï¿½ï¿½ï¿½ï¿½Êµï¿½ï¿½Ë¼ï¿½ï¿½,ï¿½Î¿ï¿½<<CM3È¨ï¿½ï¿½Ö¸ï¿½ï¿½>>ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(87Ò³~92Ò³).M4Í¬M3ï¿½ï¿½ï¿½ï¿½,Ö»ï¿½Ç¼Ä´ï¿½ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½.
+//IOï¿½Ú²ï¿½ï¿½ï¿½ï¿½ê¶¨ï¿½ï¿½
 #define BITBAND(addr, bitnum) ((addr & 0xF0000000)+0x2000000+((addr &0xFFFFF)<<5)+(bitnum<<2)) 
 #define MEM_ADDR(addr)  *((volatile unsigned long  *)(addr)) 
 #define BIT_ADDR(addr, bitnum)   MEM_ADDR(BITBAND(addr, bitnum)) 
-//IO¿ÚµØÖ·Ó³Éä
+//IOï¿½Úµï¿½Ö·Ó³ï¿½ï¿½
 #define GPIOA_ODR_Addr    (GPIOA_BASE+20) //0x40020014
 #define GPIOB_ODR_Addr    (GPIOB_BASE+20) //0x40020414 
 #define GPIOC_ODR_Addr    (GPIOC_BASE+20) //0x40020814 
@@ -87,46 +87,47 @@ typedef __I uint8_t vuc8;
 #define GPIOJ_IDR_Addr    (GPIOJ_BASE+16) //0x40022410 
 #define GPIOK_IDR_Addr    (GPIOK_BASE+16) //0x40022810 
 
-//IO¿Ú²Ù×÷,Ö»¶Ôµ¥Ò»µÄIO¿Ú!
-//È·±£nµÄÖµÐ¡ÓÚ16!
-#define PAout(n)   BIT_ADDR(GPIOA_ODR_Addr,n)  //Êä³ö 
-#define PAin(n)    BIT_ADDR(GPIOA_IDR_Addr,n)  //ÊäÈë 
+//IOï¿½Ú²ï¿½ï¿½ï¿½,Ö»ï¿½Ôµï¿½Ò»ï¿½ï¿½IOï¿½ï¿½!
+//È·ï¿½ï¿½nï¿½ï¿½ÖµÐ¡ï¿½ï¿½16!
+#define PAout(n)   BIT_ADDR(GPIOA_ODR_Addr,n)  //ï¿½ï¿½ï¿½ 
+#define PAin(n)    BIT_ADDR(GPIOA_IDR_Addr,n)  //ï¿½ï¿½ï¿½ï¿½ 
 
-#define PBout(n)   BIT_ADDR(GPIOB_ODR_Addr,n)  //Êä³ö 
-#define PBin(n)    BIT_ADDR(GPIOB_IDR_Addr,n)  //ÊäÈë 
+#define PBout(n)   BIT_ADDR(GPIOB_ODR_Addr,n)  //ï¿½ï¿½ï¿½ 
+#define PBin(n)    BIT_ADDR(GPIOB_IDR_Addr,n)  //ï¿½ï¿½ï¿½ï¿½ 
 
-#define PCout(n)   BIT_ADDR(GPIOC_ODR_Addr,n)  //Êä³ö 
-#define PCin(n)    BIT_ADDR(GPIOC_IDR_Addr,n)  //ÊäÈë 
+#define PCout(n)   BIT_ADDR(GPIOC_ODR_Addr,n)  //ï¿½ï¿½ï¿½ 
+#define PCin(n)    BIT_ADDR(GPIOC_IDR_Addr,n)  //ï¿½ï¿½ï¿½ï¿½ 
 
-#define PDout(n)   BIT_ADDR(GPIOD_ODR_Addr,n)  //Êä³ö 
-#define PDin(n)    BIT_ADDR(GPIOD_IDR_Addr,n)  //ÊäÈë 
+#define PDout(n)   BIT_ADDR(GPIOD_ODR_Addr,n)  //ï¿½ï¿½ï¿½ 
+#define PDin(n)    BIT_ADDR(GPIOD_IDR_Addr,n)  //ï¿½ï¿½ï¿½ï¿½ 
 
-#define PEout(n)   BIT_ADDR(GPIOE_ODR_Addr,n)  //Êä³ö 
-#define PEin(n)    BIT_ADDR(GPIOE_IDR_Addr,n)  //ÊäÈë
+#define PEout(n)   BIT_ADDR(GPIOE_ODR_Addr,n)  //ï¿½ï¿½ï¿½ 
+#define PEin(n)    BIT_ADDR(GPIOE_IDR_Addr,n)  //ï¿½ï¿½ï¿½ï¿½
 
-#define PFout(n)   BIT_ADDR(GPIOF_ODR_Addr,n)  //Êä³ö 
-#define PFin(n)    BIT_ADDR(GPIOF_IDR_Addr,n)  //ÊäÈë
+#define PFout(n)   BIT_ADDR(GPIOF_ODR_Addr,n)  //ï¿½ï¿½ï¿½ 
+#define PFin(n)    BIT_ADDR(GPIOF_IDR_Addr,n)  //ï¿½ï¿½ï¿½ï¿½
 
-#define PGout(n)   BIT_ADDR(GPIOG_ODR_Addr,n)  //Êä³ö 
-#define PGin(n)    BIT_ADDR(GPIOG_IDR_Addr,n)  //ÊäÈë
+#define PGout(n)   BIT_ADDR(GPIOG_ODR_Addr,n)  //ï¿½ï¿½ï¿½ 
+#define PGin(n)    BIT_ADDR(GPIOG_IDR_Addr,n)  //ï¿½ï¿½ï¿½ï¿½
 
-#define PHout(n)   BIT_ADDR(GPIOH_ODR_Addr,n)  //Êä³ö 
-#define PHin(n)    BIT_ADDR(GPIOH_IDR_Addr,n)  //ÊäÈë
+#define PHout(n)   BIT_ADDR(GPIOH_ODR_Addr,n)  //ï¿½ï¿½ï¿½ 
+#define PHin(n)    BIT_ADDR(GPIOH_IDR_Addr,n)  //ï¿½ï¿½ï¿½ï¿½
 
-#define PIout(n)   BIT_ADDR(GPIOI_ODR_Addr,n)  //Êä³ö 
-#define PIin(n)    BIT_ADDR(GPIOI_IDR_Addr,n)  //ÊäÈë
+#define PIout(n)   BIT_ADDR(GPIOI_ODR_Addr,n)  //ï¿½ï¿½ï¿½ 
+#define PIin(n)    BIT_ADDR(GPIOI_IDR_Addr,n)  //ï¿½ï¿½ï¿½ï¿½
 
-#define PJout(n)   BIT_ADDR(GPIOJ_ODR_Addr,n)  //Êä³ö 
-#define PJin(n)    BIT_ADDR(GPIOJ_IDR_Addr,n)  //ÊäÈë
+#define PJout(n)   BIT_ADDR(GPIOJ_ODR_Addr,n)  //ï¿½ï¿½ï¿½ 
+#define PJin(n)    BIT_ADDR(GPIOJ_IDR_Addr,n)  //ï¿½ï¿½ï¿½ï¿½
 
-#define PKout(n)   BIT_ADDR(GPIOK_ODR_Addr,n)  //Êä³ö 
-#define PKin(n)    BIT_ADDR(GPIOK_IDR_Addr,n)  //ÊäÈë
+#define PKout(n)   BIT_ADDR(GPIOK_ODR_Addr,n)  //ï¿½ï¿½ï¿½ 
+#define PKin(n)    BIT_ADDR(GPIOK_IDR_Addr,n)  //ï¿½ï¿½ï¿½ï¿½
 
-void Stm32_Clock_Init(u32 plln,u32 pllm,u32 pllp,u32 pllq);//Ê±ÖÓÏµÍ³ÅäÖÃ
-//ÒÔÏÂÎª»ã±àº¯Êý
-void WFI_SET(void);		//Ö´ÐÐWFIÖ¸Áî
-void INTX_DISABLE(void);//¹Ø±ÕËùÓÐÖÐ¶Ï
-void INTX_ENABLE(void);	//¿ªÆôËùÓÐÖÐ¶Ï
-void MSR_MSP(u32 addr);	//ÉèÖÃ¶ÑÕ»µØÖ· 
+void Stm32_Clock_Init(u32 plln,u32 pllm,u32 pllp,u32 pllq);//Ê±ï¿½ï¿½ÏµÍ³ï¿½ï¿½ï¿½ï¿½
+void Error_Handler(void); // é”™è¯¯å¤„ç†å‡½æ•°
+//ï¿½ï¿½ï¿½ï¿½Îªï¿½ï¿½àº¯ï¿½ï¿½
+void WFI_SET(void);		//Ö´ï¿½ï¿½WFIÖ¸ï¿½ï¿½
+void INTX_DISABLE(void);//ï¿½Ø±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð¶ï¿½
+void INTX_ENABLE(void);	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð¶ï¿½
+void MSR_MSP(u32 addr);	//ï¿½ï¿½ï¿½Ã¶ï¿½Õ»ï¿½ï¿½Ö· 
 #endif
 

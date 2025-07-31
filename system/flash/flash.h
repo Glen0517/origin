@@ -5,11 +5,10 @@
 #include "spi.h"
 
 /* SPI Flash 硬件配置 */
-#define SPI_FLASH_BASE_ADDR    SPI1_BASE            /* SPI外设基地址 */
 #define SPI_FLASH_CS_PORT      GPIOA                 /* 片选端口 */
 #define SPI_FLASH_CS_PIN       GPIO_PIN_4            /* 片选引脚 */
-#define SPI_FLASH_SPEED        SPI_BAUD_PRESCALER_2  /* SPI波特率预分频器 */
-#define SPI_FLASH_MODE         SPI_MODE3             /* SPI模式(CPOL=1, CPHA=1) */
+#define SPI_FLASH_SPEED        SPI_BAUDRATEPRESCALER_2  /* SPI波特率预分频器 */
+#define SPI_FLASH_MODE         SPI_MODE_3             /* SPI模式(CPOL=1, CPHA=1) */
 
 /* SPI Flash 容量定义 */
 #define FLASH_BASE             0x00000000            /* Flash起始地址 */
@@ -73,8 +72,11 @@ uint32_t Flash_GetSectorEndAddress(uint32_t sector);
 uint32_t Flash_ReadID(void);
 void Flash_CS_Enable(void);
 void Flash_CS_Disable(void);
-void Flash_SPI_Init(void);
 void Flash_ErrorHandler(void);
+
+/* 内部函数声明 (不对外公开) */
+static uint8_t Flash_WaitBusy(uint32_t timeout);
+static void Flash_WriteEnable(void);
 
 /* 内部函数声明 (不对外公开) */
 static uint8_t Flash_WaitBusy(uint32_t timeout);

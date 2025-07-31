@@ -1,119 +1,196 @@
 /**
  * SPI库函数实现 - 支持配置和基本通信操作
- * 适用于嵌入式系统，使用寄存器操作方式
+ * 适用于嵌入式系统，使用STM32 HAL库
  */
-
 #include "spi.h"
 
-void SPI_Init(SPIConfig_Struct *config) {
-    SPIRegisters_Struct *spi = (SPIRegisters_Struct *)config->baseAddress;
-    
-    // 禁用SPI进行配置
-    spi->CR1 &= ~SPI_CR1_SPE;
-    
-    // 配置SPI模式(CPOL, CPHA)
-    if (config->mode == SPI_MODE0) {
-        spi->CR1 &= ~(SPI_CR1_CPOL | SPI_CR1_CPHA);
-    } else if (config->mode == SPI_MODE1) {
-        spi->CR1 &= ~SPI_CR1_CPOL;
-        spi->CR1 |= SPI_CR1_CPHA;
-    } else if (config->mode == SPI_MODE2) {
-        spi->CR1 |= SPI_CR1_CPOL;
-        spi->CR1 &= ~SPI_CR1_CPHA;
-    } else if (config->mode == SPI_MODE3) {
-        spi->CR1 |= SPI_CR1_CPOL | SPI_CR1_CPHA;
+/**
+ * 初始化SPI设备
+ * @param device SPI设备结构体指针
+ * @param hspi SPI句柄指针
+ * @param cs_port CS引脚端口
+ * @param cs_pin CS引脚编号
+ * @return HAL状态
+ */
+HAL_StatusTypeDef SPI_InitDevice(SPIDevice_Struct *device, SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_port, uint16_t cs_pin) {
+    if (device == NULL || hspi == NULL) {
+        return HAL_ERROR;
     }
     
-    // 配置主从模式
-    if (config->masterMode) {
-        spi->CR1 |= SPI_CR1_MSTR;
-        // 主模式需要软件管理NSS
-        spi->CR1 |= SPI_CR1_SSM | SPI_CR1_SSI;
-    } else {
-        spi->CR1 &= ~SPI_CR1_MSTR;
+    // 初始化设备结构体
+    device->hspi = hspi;
+    device->cs_port = cs_port;
+    device->cs_pin = cs_pin;
+    
+    // 配置CS引脚
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    GPIO_InitStruct.Pin = cs_pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    HAL_GPIO_Init(cs_port, &GPIO_InitStruct);
+    
+    // 初始状态为未选中
+    SPI_DeselectDevice(device);
+    
+    return HAL_OK;
+}
+
+/**
+ * 注销SPI设备
+ * @param device SPI设备结构体指针
+ * @return HAL状态
+ */
+HAL_StatusTypeDef SPI_DeInitDevice(SPIDevice_Struct *device) {
+    if (device == NULL) {
+        return HAL_ERROR;
     }
     
-    // 配置波特率预分频器
-    spi->CR1 = (spi->CR1 & ~SPI_CR1_BR_MASK) | 
-              (config->prescaler << SPI_CR1_BR_POS);
+    // 释放CS引脚
+    HAL_GPIO_DeInit(device->cs_port, device->cs_pin);
     
-    // 配置数据位宽
-    if (config->dataSize == SPI_DATA_16BIT) {
-        spi->CR1 |= SPI_CR1_DFF;
-    } else {
-        spi->CR1 &= ~SPI_CR1_DFF;
-    }
-    
-    // 配置LSB/MSB优先
-    if (config->lsbFirst) {
-        spi->CR1 |= SPI_CR1_LSBFIRST;
-    } else {
-        spi->CR1 &= ~SPI_CR1_LSBFIRST;
-    }
-    
-    // 其他配置(可以根据需要扩展)
+    // 注销SPI
+    return HAL_SPI_DeInit(device->hspi);
 }
 
-void SPI_Enable(uint32_t baseAddress) {
-    SPIRegisters_Struct *spi = (SPIRegisters_Struct *)baseAddress;
-    spi->CR1 |= SPI_CR1_SPE;
-}
-
-void SPI_Disable(uint32_t baseAddress) {
-    SPIRegisters_Struct *spi = (SPIRegisters_Struct *)baseAddress;
-    spi->CR1 &= ~SPI_CR1_SPE;
-}
-
-uint8_t SPI_TransferByte(uint32_t baseAddress, uint8_t data) {
-    SPIRegisters_Struct *spi = (SPIRegisters_Struct *)baseAddress;
-    
-    // 等待发送缓冲区为空
-    while (!(spi->SR & SPI_SR_TXE));
-    
-    // 发送数据
-    spi->DR = data;
-    
-    // 等待接收缓冲区非空
-    while (!(spi->SR & SPI_SR_RXNE));
-    
-    // 返回接收到的数据
-    return (uint8_t)spi->DR;
-}
-
-void SPI_Transfer(uint32_t baseAddress, uint8_t *txBuffer, uint8_t *rxBuffer, uint32_t length) {
-    SPIRegisters_Struct *spi = (SPIRegisters_Struct *)baseAddress;
-    uint32_t i;
-    
-    for (i = 0; i < length; i++) {
-        // 等待发送缓冲区为空
-        while (!(spi->SR & SPI_SR_TXE));
-        
-        // 发送数据
-        if (txBuffer != NULL) {
-            spi->DR = txBuffer[i];
-        } else {
-            spi->DR = 0xFF; // 发送默认值
-        }
-        
-        // 等待接收缓冲区非空
-        while (!(spi->SR & SPI_SR_RXNE));
-        
-        // 保存接收到的数据
-        if (rxBuffer != NULL) {
-            rxBuffer[i] = (uint8_t)spi->DR;
-        } else {
-            // 忽略接收到的数据
-            (void)spi->DR;
-        }
+/**
+ * 选择SPI设备
+ * @param device SPI设备结构体指针
+ */
+void SPI_SelectDevice(SPIDevice_Struct *device) {
+    if (device != NULL) {
+        HAL_GPIO_WritePin(device->cs_port, device->cs_pin, GPIO_PIN_RESET);
     }
 }
 
-uint8_t SPI_IsBusy(uint32_t baseAddress) {
-    SPIRegisters_Struct *spi = (SPIRegisters_Struct *)baseAddress;
-    return (spi->SR & SPI_SR_BSY) != 0;
+/**
+ * 取消选择SPI设备
+ * @param device SPI设备结构体指针
+ */
+void SPI_DeselectDevice(SPIDevice_Struct *device) {
+    if (device != NULL) {
+        HAL_GPIO_WritePin(device->cs_port, device->cs_pin, GPIO_PIN_SET);
+    }
 }
 
-//STM32库函数例程
+/**
+ * 通过SPI发送单个字节
+ * @param device SPI设备结构体指针
+ * @param data 要发送的数据
+ * @return HAL状态
+ */
+HAL_StatusTypeDef SPI_TransmitByte(SPIDevice_Struct *device, uint8_t data) {
+    if (device == NULL) {
+        return HAL_ERROR;
+    }
+    
+    SPI_SelectDevice(device);
+    HAL_StatusTypeDef status = HAL_SPI_Transmit(device->hspi, &data, 1, HAL_MAX_DELAY);
+    SPI_DeselectDevice(device);
+    
+    return status;
+}
+
+/**
+ * 通过SPI接收单个字节
+ * @param device SPI设备结构体指针
+ * @param data 接收数据的缓冲区
+ * @return HAL状态
+ */
+HAL_StatusTypeDef SPI_ReceiveByte(SPIDevice_Struct *device, uint8_t *data) {
+    if (device == NULL || data == NULL) {
+        return HAL_ERROR;
+    }
+    
+    SPI_SelectDevice(device);
+    HAL_StatusTypeDef status = HAL_SPI_Receive(device->hspi, data, 1, HAL_MAX_DELAY);
+    SPI_DeselectDevice(device);
+    
+    return status;
+}
+
+/**
+ * 通过SPI发送并接收单个字节
+ * @param device SPI设备结构体指针
+ * @param tx_data 要发送的数据
+ * @param rx_data 接收数据的缓冲区
+ * @return HAL状态
+ */
+HAL_StatusTypeDef SPI_TransmitReceiveByte(SPIDevice_Struct *device, uint8_t tx_data, uint8_t *rx_data) {
+    if (device == NULL || rx_data == NULL) {
+        return HAL_ERROR;
+    }
+    
+    SPI_SelectDevice(device);
+    HAL_StatusTypeDef status = HAL_SPI_TransmitReceive(device->hspi, &tx_data, rx_data, 1, HAL_MAX_DELAY);
+    SPI_DeselectDevice(device);
+    
+    return status;
+}
+
+/**
+ * 通过SPI发送多个字节
+ * @param device SPI设备结构体指针
+ * @param pData 发送数据的缓冲区
+ * @param Size 数据大小
+ * @param Timeout 超时时间
+ * @return HAL状态
+ */
+HAL_StatusTypeDef SPI_Transmit(SPIDevice_Struct *device, uint8_t *pData, uint16_t Size, uint32_t Timeout) {
+    if (device == NULL || pData == NULL) {
+        return HAL_ERROR;
+    }
+    
+    SPI_SelectDevice(device);
+    HAL_StatusTypeDef status = HAL_SPI_Transmit(device->hspi, pData, Size, Timeout);
+    SPI_DeselectDevice(device);
+    
+    return status;
+}
+
+/**
+ * 通过SPI接收多个字节
+ * @param device SPI设备结构体指针
+ * @param pData 接收数据的缓冲区
+ * @param Size 数据大小
+ * @param Timeout 超时时间
+ * @return HAL状态
+ */
+HAL_StatusTypeDef SPI_Receive(SPIDevice_Struct *device, uint8_t *pData, uint16_t Size, uint32_t Timeout) {
+    if (device == NULL || pData == NULL) {
+        return HAL_ERROR;
+    }
+    
+    SPI_SelectDevice(device);
+    HAL_StatusTypeDef status = HAL_SPI_Receive(device->hspi, pData, Size, Timeout);
+    SPI_DeselectDevice(device);
+    
+    return status;
+}
+
+/**
+ * 通过SPI发送并接收多个字节
+ * @param device SPI设备结构体指针
+ * @param pTxData 发送数据的缓冲区
+ * @param pRxData 接收数据的缓冲区
+ * @param Size 数据大小
+ * @param Timeout 超时时间
+ * @return HAL状态
+ */
+HAL_StatusTypeDef SPI_TransmitReceive(SPIDevice_Struct *device, uint8_t *pTxData, uint8_t *pRxData, uint16_t Size, uint32_t Timeout) {
+    if (device == NULL || pTxData == NULL || pRxData == NULL) {
+        return HAL_ERROR;
+    }
+    
+    SPI_SelectDevice(device);
+    HAL_StatusTypeDef status = HAL_SPI_TransmitReceive(device->hspi, pTxData, pRxData, Size, Timeout);
+    SPI_DeselectDevice(device);
+    
+    return status;
+}
+
+// 用户需要在应用程序中实现SPI初始化配置
+// 以下是一个示例配置函数
 #if 0
 /**
  * STM32 SPI通信示例 - 基于标准外设库

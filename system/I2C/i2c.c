@@ -1,12 +1,29 @@
 #include "i2c.h"
 #include <stdbool.h>
 
+I2CMANAGER_Struct I2CManagerSTRUCT = {
+    .i2c_manager_create = stm32_i2c_manager_create,
+    .i2c_manager_destroy = stm32_i2c_manager_destroy,
+    .device_count = 0,
+    .i2c_add_device = 0,
+    .devices = 0
+};
+
+I2CDevice_Struct I2CDeviceSTRUCT = {
+    .device_address = 0x35,
+    //.hi2c = 1,
+    .i2c_read_register = stm32_i2c_read_register,
+    .i2c_write_register = stm32_i2c_write_register,
+    .i2c_receive =stm32_i2c_receive,
+    .i2c_send = stm32_i2c_send
+};
+
 /**
  * 创建I2C管理器
  * @param hi2c I2C句柄指针
  * @return I2C管理器指针
  */
-I2CManager_Struct* i2c_manager_create(I2C_HandleTypeDef* hi2c) {
+I2CManager_Struct* stm32_i2c_manager_create(I2C_HandleTypeDef* hi2c) {
     I2CManager_Struct* manager = (I2CManager_Struct*)malloc(sizeof(I2CManager_Struct));
     if (!manager) {
         return NULL;
@@ -27,7 +44,7 @@ I2CManager_Struct* i2c_manager_create(I2C_HandleTypeDef* hi2c) {
  * 销毁I2C管理器
  * @param manager I2C管理器指针
  */
-void i2c_manager_destroy(I2CManager_Struct* manager) {
+void stm32_i2c_manager_destroy(I2CManager_Struct* manager) {
     if (manager) {
         free(manager);
     }
@@ -39,7 +56,7 @@ void i2c_manager_destroy(I2CManager_Struct* manager) {
  * @param address I2C设备7位地址
  * @return 设备索引，失败返回-1
  */
-int i2c_add_device(I2CManager_Struct* manager, uint8_t address) {
+int stm32_i2c_add_device(I2CManager_Struct* manager, uint8_t address) {
     if (!manager || manager->device_count >= MAX_I2C_DEVICES) {
         return -1;
     }
@@ -63,7 +80,7 @@ int i2c_add_device(I2CManager_Struct* manager, uint8_t address) {
  * @param device_index 设备索引
  * @param timeout 超时时间（毫秒）
  */
-void i2c_set_timeout(I2CManager_Struct* manager, int device_index, uint32_t timeout) {
+void stm32_i2c_set_timeout(I2CManager_Struct* manager, int device_index, uint32_t timeout) {
     if (manager && device_index >= 0 && device_index < manager->device_count) {
         manager->devices[device_index].timeout = timeout;
     }
@@ -77,7 +94,7 @@ void i2c_set_timeout(I2CManager_Struct* manager, int device_index, uint32_t time
  * @param Size 数据大小（字节）
  * @return HAL状态码
  */
-HAL_StatusTypeDef i2c_send(I2CManager_Struct* manager, int device_index, uint8_t* pData, uint16_t Size) {
+HAL_StatusTypeDef stm32_i2c_send(I2CManager_Struct* manager, int device_index, uint8_t* pData, uint16_t Size) {
     if (!manager || device_index < 0 || device_index >= manager->device_count) {
         return HAL_ERROR;
     }
@@ -94,7 +111,7 @@ HAL_StatusTypeDef i2c_send(I2CManager_Struct* manager, int device_index, uint8_t
  * @param Size 数据大小（字节）
  * @return HAL状态码
  */
-HAL_StatusTypeDef i2c_receive(I2CManager_Struct* manager, int device_index, uint8_t* pData, uint16_t Size) {
+HAL_StatusTypeDef stm32_i2c_receive(I2CManager_Struct* manager, int device_index, uint8_t* pData, uint16_t Size) {
     if (!manager || device_index < 0 || device_index >= manager->device_count) {
         return HAL_ERROR;
     }
@@ -112,7 +129,7 @@ HAL_StatusTypeDef i2c_receive(I2CManager_Struct* manager, int device_index, uint
  * @param Size 数据大小（字节）
  * @return HAL状态码
  */
-HAL_StatusTypeDef i2c_write_register(I2CManager_Struct* manager, int device_index, uint16_t RegisterAddress, uint8_t* pData, uint16_t Size) {
+HAL_StatusTypeDef stm32_i2c_write_register(I2CManager_Struct* manager, int device_index, uint16_t RegisterAddress, uint8_t* pData, uint16_t Size) {
     if (!manager || device_index < 0 || device_index >= manager->device_count) {
         return HAL_ERROR;
     }
@@ -142,7 +159,7 @@ HAL_StatusTypeDef i2c_write_register(I2CManager_Struct* manager, int device_inde
  * @param Size 数据大小（字节）
  * @return HAL状态码
  */
-HAL_StatusTypeDef i2c_read_register(I2CManager_Struct* manager, int device_index, uint16_t RegisterAddress, uint8_t* pData, uint16_t Size) {
+HAL_StatusTypeDef stm32_i2c_read_register(I2CManager_Struct* manager, int device_index, uint16_t RegisterAddress, uint8_t* pData, uint16_t Size) {
     if (!manager || device_index < 0 || device_index >= manager->device_count) {
         return HAL_ERROR;
     }
@@ -162,34 +179,34 @@ HAL_StatusTypeDef i2c_read_register(I2CManager_Struct* manager, int device_index
 /**
  * 示例：如何使用多地址I2C通信
  */
-void i2c_multiple_devices_example(I2C_HandleTypeDef* hi2c) {
+void stm32_i2c_multiple_devices_example(I2C_HandleTypeDef* hi2c) {
     // 创建I2C管理器
-    I2CManager* manager = i2c_manager_create(hi2c);
+    I2CManager* manager = I2CManager_Struct.i2c_manager_create(hi2c);
     
     // 添加两个设备（地址0x48和0x49）
-    int device1 = i2c_add_device(manager, 0x48);
-    int device2 = i2c_add_device(manager, 0x49);
+    int device1 = I2CDeviceSTRUCT.i2c_add_device(manager, 0x48);
+    int device2 = I2CDeviceSTRUCT.i2c_add_device(manager, 0x49);
     
     // 设置不同的超时时间
-    i2c_set_timeout(manager, device1, 500);  // 500ms超时
-    i2c_set_timeout(manager, device2, 1000); // 1000ms超时
+    I2CDeviceSTRUCT.i2c_set_timeout(manager, device1, 500);  // 500ms超时
+    I2CDeviceSTRUCT.i2c_set_timeout(manager, device2, 1000); // 1000ms超时
     
     // 向设备1的寄存器0x01写入数据
     uint8_t write_data = 0x55;
-    i2c_write_register(manager, device1, 0x01, &write_data, 1);
+    I2CDeviceSTRUCT.i2c_write_register(manager, device1, 0x01, &write_data, 1);
     
     // 从设备1的寄存器0x01读取数据
     uint8_t read_data;
-    i2c_read_register(manager, device1, 0x01, &read_data, 1);
+    I2CDeviceSTRUCT.i2c_read_register(manager, device1, 0x01, &read_data, 1);
     
     // 向设备2发送命令
     uint8_t command[] = {0x02, 0xAA};
-    i2c_send(manager, device2, command, sizeof(command));
+    I2CDeviceSTRUCT.i2c_send(manager, device2, command, sizeof(command));
     
     // 从设备2接收数据
     uint8_t response[2];
-    i2c_receive(manager, device2, response, sizeof(response));
+    I2CDeviceSTRUCT.i2c_receive(manager, device2, response, sizeof(response));
     
     // 销毁管理器
-    i2c_manager_destroy(manager);
+    I2CMANAGER_Struct.i2c_manager_destroy(manager);
 }

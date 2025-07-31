@@ -22,7 +22,8 @@ typedef long long           int64_t;    // 64位有符号
 typedef uint8_t             bool_t;     // 0=false, 非0=true
 
 typedef uint32_t I2C_HandleTypeDef ;
-typedef uint32_t I2CDevice;
+typedef struct I2CManager_Struct I2CManager;
+typedef struct I2CDevice_Struct I2CDevice;
 typedef bool_t HAL_StatusTypeDef;
 
 #define HAL_OK 0
@@ -33,12 +34,22 @@ typedef struct {
     I2C_HandleTypeDef* hi2c;    // I2C句柄
     uint16_t device_address;   // I2C设备地址（7位地址左移1位，包含读写位）
     uint32_t timeout;          // 超时时间（毫秒）
+
+    // 函数指针已移至I2CManager_Struct中定义
+    // 此处仅保留设备特定参数
+    I2C_HandleTypeDef* hi2c;    // I2C句柄
+    uint16_t device_address;   // I2C设备地址（7位地址左移1位，包含读写位）
+    uint32_t timeout;          // 超时时间（毫秒）
 } I2CDevice_Struct;
 
 /** I2C设备管理器 */
 typedef struct {
     I2CDevice devices[MAX_I2C_DEVICES]; // 设备数组
     int device_count;                   // 当前设备数量
+
+    I2CManager_Struct* (*i2c_manager_create)(I2C_HandleTypeDef* hi2c) ;
+    void (*i2c_manager_destroy)(I2CManager_Struct* manager) ;
+    int (*i2c_add_device)(I2CManager_Struct* manager, uint8_t address) ;
 } I2CManager_Struct;
 
 I2CManager_Struct* i2c_manager_create(I2C_HandleTypeDef* hi2c) ;
