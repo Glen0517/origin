@@ -1,0 +1,92 @@
+{
+  "stocks": [
+    {
+      "code": "600519",
+      "name": "贵州茅台",
+      "price": 1688.00,
+      "change": 12.50,
+      "changePercent": 0.75,
+      "volume": 8900,
+      "amount": 15.02,
+      "industry": "酿酒行业",
+      "marketCap": 21200
+    },
+    {
+      "code": "000858",
+      "name": "五粮液",
+      "price": 175.20,
+      "change": 3.10,
+      "changePercent": 1.80,
+      "volume": 125000,
+      "amount": 21.80,
+      "industry": "酿酒行业",
+      "marketCap": 6780
+    },
+    {
+      "code": "000333",
+      "name": "美的集团",
+      "price": 58.65,
+      "change": -0.85,
+      "changePercent": -1.43,
+      "volume": 45600,
+      "amount": 2.67,
+      "industry": "家电行业",
+      "marketCap": 3250
+    },
+    {
+      "code": "000651",
+      "name": "格力电器",
+      "price": 35.28,
+      "change": 0.18,
+      "changePercent": 0.51,
+      "volume": 28900,
+      "amount": 1.02,
+      "industry": "家电行业",
+      "marketCap": 1860
+    },
+    {
+      "code": "600036",
+      "name": "招商银行",
+      "price": 38.90,
+      "change": -0.35,
+      "changePercent": -0.90,
+      "volume": 56700,
+      "amount": 2.19,
+      "industry": "银行行业",
+      "marketCap": 11200
+    },
+    {
+      "code": "601318",
+      "name": "中国平安",
+      "price": 48.32,
+      "change": 0.22,
+      "changePercent": 0.46,
+      "volume": 42300,
+      "amount": 2.04,
+      "industry": "保险行业",
+      "marketCap": 8950
+    },
+    {
+      "code": "601899",
+      "name": "紫金矿业",
+      "price": 10.25,
+      "change": 0.45,
+      "changePercent": 4.62,
+      "volume": 234500,
+      "amount": 2.40,
+      "industry": "有色金属",
+      "marketCap": 2380
+    },
+    {
+      "code": "600900",
+      "name": "长江电力",
+      "price": 22.38,
+      "change": -0.12,
+      "changePercent": -0.53,
+      "volume": 18900,
+      "amount": 0.42,
+      "industry": "电力行业",
+      "marketCap": 4150
+    }
+  ]
+}

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>基金投资分析平台 - {% block title %}{% endblock %}</title>
+    <!-- 引入 Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <!-- 引入 Font Awesome 图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- 自定义样式 -->
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .navbar {
+            background-color: #343a40;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+        .card {
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            transition: transform 0.2s ease-in-out;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+        }
+        .stock-positive {
+            color: #e63946;
+        }
+        .stock-negative {
+            color: #1d3557;
+        }
+        .fund-positive {
+            color: #e63946;
+        }
+        .fund-negative {
+            color: #1d3557;
+        }
+        .market-index {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        .btn-primary {
+            background-color: #457b9d;
+            border-color: #457b9d;
+        }
+        .btn-primary:hover {
+            background-color: #1d3557;
+            border-color: #1d3557;
+        }
+        .search-form {
+            max-width: 300px;
+        }
+        .news-item {
+            transition: background-color 0.2s ease-in-out;
+        }
+        .news-item:hover {
+            background-color: #f8f9fa;
+        }
+        .chart-container {
+            height: 400px;
+        }
+        footer {
+            background-color: #343a40;
+            color: white;
+            padding: 20px 0;
+            margin-top: 40px;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="fas fa-chart-pie"></i> 基金投资分析平台
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}"><i class="fas fa-home"></i> 首页</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('news') }}"><i class="fas fa-newspaper"></i> 财经新闻</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('risk_profile') }}"><i class="fas fa-shield-alt"></i> 风险偏好</a>
+                    </li>
+                </ul>
+                
+                <!-- 搜索框 -->
+                <div class="position-relative me-4">
+                    <select id="searchType" class="form-select bg-dark text-white border-0 rounded-start">
+                        <option value="stock">股票</option>
+                        <option value="fund" selected>基金</option>
+                    </select>
+                    <form class="d-flex search-form position-absolute" action="javascript:void(0);" id="searchForm" style="left: 80px; right: 0;">
+                        <input class="form-control rounded-start-0" type="search" placeholder="搜索代码或名称" aria-label="Search" id="searchInput">
+                        <button class="btn btn-outline-light" type="submit"><i class="fas fa-search"></i></button>
+                    </form>
+                </div>
+                
+                <!-- 用户菜单 -->
+                {% if username %}
+                <div class="dropdown">
+                    <button class="btn btn-outline-light dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown">
+                        <i class="fas fa-user"></i> {{ username }}
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="{{ url_for('index') }}"><i class="fas fa-list-alt"></i> 我的自选</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> 退出登录</a></li>
+                    </ul>
+                </div>
+                {% else %}
+                <a href="{{ url_for('login') }}" class="btn btn-outline-light me-2">登录</a>
+                <a href="{{ url_for('register') }}" class="btn btn-outline-light">注册</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主内容区域 -->
+    <div class="container mt-4">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- 页脚 -->
+    <footer>
+        <div class="container text-center">
+            <p>&copy; 2023 基金投资分析平台 - 仅供学习和研究使用</p>
+            <p class="text-muted">免责声明：本站数据仅供参考，不构成投资建议</p>
+        </div>
+    </footer>
+
+    <!-- 引入 Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- 引入 jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- 搜索功能 -->
+    <script>
+        $(document).ready(function() {
+            $('#searchForm').submit(function(e) {
+                e.preventDefault(); // 阻止表单默认提交行为
+                const searchType = $('#searchType').val();
+                const query = $('#searchInput').val().trim();
+                
+                if (query) {
+                    let apiUrl = '/api/search_' + searchType + '?query=' + encodeURIComponent(query);
+                    
+                    $.get(apiUrl, function(data) {
+                        if (data && data.length > 0) {
+                            // 如果只有一个结果，直接跳转到详情页
+                            if (data.length === 1) {
+                                if (searchType === 'stock') {
+                                    window.location.href = '{{ url_for('stock_detail', stock_code='') }}' + data[0].code;
+                                } else {
+                                    window.location.href = '{{ url_for('fund_detail', fund_code='') }}' + data[0].code;
+                                }
+                            } else {
+                                // 显示搜索结果下拉菜单
+                                let resultsHtml = '<div class="dropdown-menu show position-absolute bg-white border shadow-lg" style="width: 300px; z-index: 1000; left: 80px; top: 100%; margin-top: 2px;">';
+                                
+                                data.forEach(function(item) {
+                                    if (searchType === 'stock') {
+                                        resultsHtml += '<a class="dropdown-item" href="{{ url_for('stock_detail', stock_code='') }}' + item.code + '">' + 
+                                                      '<i class="fas fa-chart-line text-info me-2"></i>' + item.code + ' - ' + item.name + '</a>';
+                                    } else {
+                                        resultsHtml += '<a class="dropdown-item" href="{{ url_for('fund_detail', fund_code='') }}' + item.code + '">' + 
+                                                      '<i class="fas fa-chart-pie text-success me-2"></i>' + item.code + ' - ' + item.name + '</a>';
+                                    }
+                                });
+                                resultsHtml += '</div>';
+                                
+                                // 移除之前的搜索结果
+                                $('.search-results').remove();
+                                // 添加新的搜索结果
+                                $('#searchForm').after('<div class="search-results">' + resultsHtml + '</div>');
+                            }
+                        } else {
+                            // 搜索无结果时显示提示
+                            $('.search-results').remove();
+                            $('#searchForm').after('<div class="search-results"><div class="dropdown-menu show position-absolute bg-white border shadow-lg" style="width: 300px; z-index: 1000; left: 80px;">' +
+                                                '<div class="dropdown-item text-muted">未找到相关结果</div></div></div>');
+                        }
+                    }).fail(function() {
+                        // 处理请求失败情况
+                        $('.search-results').remove();
+                        $('#searchForm').after('<div class="search-results"><div class="dropdown-menu show position-absolute bg-white border shadow-lg" style="width: 300px; z-index: 1000; left: 80px;">' +
+                                            '<div class="dropdown-item text-danger">搜索出错，请稍后再试</div></div></div>');
+                    });
+                } else {
+                    // 如果搜索框为空，移除搜索结果
+                    $('.search-results').remove();
+                }
+                return false;
+            });
+            
+            // 点击页面其他地方关闭搜索结果
+            $(document).click(function(event) {
+                if (!$(event.target).closest('#searchForm, .search-results').length) {
+                    $('.search-results').remove();
+                }
+            });
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

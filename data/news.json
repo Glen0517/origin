@@ -1,0 +1,52 @@
+{
+  "news": [
+    {
+      "id": 1,
+      "title": "央行下调MLF利率10个基点，释放流动性8000亿",
+      "source": "中国证券报",
+      "publishTime": "2024-09-15 09:30",
+      "category": "宏观经济",
+      "url": "news_detail.html?id=1"
+    },
+    {
+      "id": 2,
+      "title": "新能源汽车补贴政策再延长，产业链迎来利好",
+      "source": "上海证券报",
+      "publishTime": "2024-09-15 10:15",
+      "category": "行业新闻",
+      "url": "news_detail.html?id=2"
+    },
+    {
+      "id": 3,
+      "title": "贵州茅台公布半年报，净利润增长15.2%超预期",
+      "source": "证券时报",
+      "publishTime": "2024-09-14 16:30",
+      "category": "公司新闻",
+      "url": "news_detail.html?id=3"
+    },
+    {
+      "id": 4,
+      "title": "新能源汽车销量持续增长，产业链公司业绩亮眼",
+      "source": "第一财经",
+      "publishTime": "2024-09-14 15:10",
+      "category": "行业新闻",
+      "url": "news_detail.html?id=4"
+    },
+    {
+      "id": 5,
+      "title": "统计局：8月CPI同比上涨0.2%，PPI同比下降1.3%",
+      "source": "经济参考报",
+      "publishTime": "2024-09-14 09:00",
+      "category": "宏观经济",
+      "url": "news_detail.html?id=5"
+    },
+    {
+      "id": 6,
+      "title": "证监会：进一步推动资本市场高质量发展",
+      "source": "中国金融时报",
+      "publishTime": "2024-09-13 14:20",
+      "category": "政策法规",
+      "url": "news_detail.html?id=6"
+    }
+  ]
+}

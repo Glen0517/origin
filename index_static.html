@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>股票和市场信息 - 首页</title>
+    <!-- 引入 Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- 引入 Font Awesome 图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- 引入 Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    
+    <style>
+        /* 自定义样式 */
+        body {
+            background-color: #f8f9fa;
+        }
+        .navbar {
+            background-color: #1a202c;
+        }
+        .nav-link {
+            color: white !important;
+        }
+        .nav-link:hover {
+            color: #cbd5e0 !important;
+        }
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .stock-price {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .price-up {
+            color: #dc3545;
+        }
+        .price-down {
+            color: #28a745;
+        }
+        .news-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .news-item:last-child {
+            border-bottom: none;
+        }
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+        .search-result-item {
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        .search-result-item:hover {
+            background-color: #f8f9fa;
+        }
+        .market-index {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 20px 0;
+        }
+        .custom-btn {
+            border-radius: 20px;
+            padding: 8px 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-chart-line me-2"></i>股票行情中心
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">首页</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="news.html">财经新闻</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#watchlist">我的自选</a>
+                    </li>
+                </ul>
+                
+                <!-- 搜索框 -->
+                <div class="relative me-3" style="width: 250px;">
+                    <input type="text" id="search-input" class="form-control rounded-pill pl-10" placeholder="搜索股票代码/名称">
+                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    <div id="search-results" class="search-results hidden"></div>
+                </div>
+                
+                <!-- 用户菜单 -->
+                <div class="dropdown">
+                    <button class="btn btn-outline-light rounded-pill custom-btn dropdown-toggle" type="button" id="userMenuButton" data-bs-toggle="dropdown">
+                        <i class="fas fa-user-circle mr-2"></i>游客
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="login.html">登录</a></li>
+                        <li><a class="dropdown-item" href="register.html">注册</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主要内容 -->
+    <div class="container mt-5">
+        <!-- 欢迎信息 -->
+        <div class="mb-4">
+            <h2>欢迎来到股票行情中心</h2>
+            <p class="text-gray-600">实时掌握市场动态，洞察投资机会</p>
+        </div>
+
+        <!-- 日期显示 -->
+        <div class="text-right mb-4">
+            <span class="text-gray-600"><i class="far fa-calendar-alt mr-1"></i>2023-09-15</span>
+        </div>
+
+        <!-- 市场指数 -->
+        <div class="mb-6">
+            <h3 class="border-bottom pb-2 mb-3">
+                <i class="fas fa-chart-pie mr-2"></i>市场指数
+            </h3>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card bg-white p-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h4>上证指数</h4>
+                                <p class="market-index price-up">3,230.25</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="price-up">+15.35</p>
+                                <p class="price-up">+0.48%</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-white p-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h4>深证成指</h4>
+                                <p class="market-index price-down">10,986.88</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="price-down">-45.22</p>
+                                <p class="price-down">-0.41%</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-white p-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h4>创业板指</h4>
+                                <p class="market-index price-down">2,245.36</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="price-down">-18.75</p>
+                                <p class="price-down">-0.83%</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 指数走势图 -->
+        <div class="mb-6">
+            <div class="card bg-white p-4">
+                <h3 class="border-bottom pb-2 mb-3">
+                    <i class="fas fa-chart-line mr-2"></i>指数走势
+                </h3>
+                <div class="chart-container">
+                    <canvas id="indexChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 热门股票 -->
+        <div class="mb-6">
+            <h3 class="border-bottom pb-2 mb-3">
+                <i class="fas fa-fire mr-2"></i>热门股票
+            </h3>
+            <div class="card bg-white">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>代码</th>
+                                <th>名称</th>
+                                <th>最新价</th>
+                                <th>涨跌额</th>
+                                <th>涨跌幅</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>601899</td>
+                                <td>紫金矿业</td>
+                                <td>9.85</td>
+                                <td class="price-up">+0.25</td>
+                                <td class="price-up">+2.60%</td>
+                                <td>
+                                    <a href="stock_detail.html?code=601899" class="btn btn-primary btn-sm">查看</a>
+                                    <button class="btn btn-success btn-sm ml-1">添加</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>000333</td>
+                                <td>美的集团</td>
+                                <td>56.20</td>
+                                <td class="price-up">+0.85</td>
+                                <td class="price-up">+1.54%</td>
+                                <td>
+                                    <a href="stock_detail.html?code=000333" class="btn btn-primary btn-sm">查看</a>
+                                    <button class="btn btn-success btn-sm ml-1">添加</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>600519</td>
+                                <td>贵州茅台</td>
+                                <td>1,680.00</td>
+                                <td class="price-up">+20.50</td>
+                                <td class="price-up">+1.23%</td>
+                                <td>
+                                    <a href="stock_detail.html?code=600519" class="btn btn-primary btn-sm">查看</a>
+                                    <button class="btn btn-success btn-sm ml-1">添加</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>600036</td>
+                                <td>招商银行</td>
+                                <td>38.20</td>
+                                <td class="price-up">+0.65</td>
+                                <td class="price-up">+1.73%</td>
+                                <td>
+                                    <a href="stock_detail.html?code=600036" class="btn btn-primary btn-sm">查看</a>
+                                    <button class="btn btn-success btn-sm ml-1">添加</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>600900</td>
+                                <td>长江电力</td>
+                                <td>21.35</td>
+                                <td class="price-up">+0.15</td>
+                                <td class="price-up">+0.71%</td>
+                                <td>
+                                    <a href="stock_detail.html?code=600900" class="btn btn-primary btn-sm">查看</a>
+                                    <button class="btn btn-success btn-sm ml-1">添加</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 财经新闻 -->
+        <div class="mb-6">
+            <h3 class="border-bottom pb-2 mb-3">
+                <i class="fas fa-newspaper mr-2"></i>财经新闻
+            </h3>
+            <div class="card bg-white p-4">
+                <div class="news-item">
+                    <a href="news.html?id=1" class="text-dark hover:text-primary">央行下调MLF利率10个基点，释放流动性8000亿</a>
+                    <div class="text-sm text-gray-500 mt-1">中国证券报 · 2023-09-15 09:30</div>
+                </div>
+                <div class="news-item">
+                    <a href="news.html?id=2" class="text-dark hover:text-primary">国务院发布重磅文件，支持科技创新企业发展</a>
+                    <div class="text-sm text-gray-500 mt-1">上海证券报 · 2023-09-15 08:45</div>
+                </div>
+                <div class="news-item">
+                    <a href="news.html?id=3" class="text-dark hover:text-primary">贵州茅台公布半年报，净利润增长15.2%</a>
+                    <div class="text-sm text-gray-500 mt-1">证券时报 · 2023-09-14 16:30</div>
+                </div>
+                <div class="news-item">
+                    <a href="news.html?id=4" class="text-dark hover:text-primary">新能源汽车销量持续增长，产业链公司业绩亮眼</a>
+                    <div class="text-sm text-gray-500 mt-1">第一财经 · 2023-09-14 15:10</div>
+                </div>
+                <div class="text-center mt-4">
+                    <a href="news.html" class="btn btn-primary rounded-pill custom-btn">查看更多</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="bg-dark text-white py-6 mt-6">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-4">
+                    <h4>股票行情中心</h4>
+                    <p>提供实时股票行情、财经新闻和数据分析，助力投资者做出明智决策。</p>
+                </div>
+                <div class="col-md-4">
+                    <h4>快速链接</h4>
+                    <ul class="list-unstyled">
+                        <li><a href="#" class="text-gray-300 hover:text-white">首页</a></li>
+                        <li><a href="news.html" class="text-gray-300 hover:text-white">财经新闻</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-white">关于我们</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-white">联系方式</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-4">
+                    <h4>免责声明</h4>
+                    <p>本站数据仅供参考，不构成投资建议。投资者应根据自身情况自行决策，风险自担。</p>
+                </div>
+            </div>
+            <div class="border-top border-gray-700 mt-4 pt-4 text-center text-gray-400">
+                © 2023 股票行情中心 版权所有
+            </div>
+        </div>
+    </footer>
+
+    <!-- 引入 Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // 示例股票数据
+        const sampleStocks = [
+            {code: '600519', name: '贵州茅台'},
+            {code: '000858', name: '五粮液'},
+            {code: '000333', name: '美的集团'},
+            {code: '000651', name: '格力电器'},
+            {code: '600036', name: '招商银行'},
+            {code: '601318', name: '中国平安'},
+            {code: '601899', name: '紫金矿业'},
+            {code: '600900', name: '长江电力'}
+        ];
+        
+        function initSearchFunction() {
+        const searchInput = document.getElementById('search-input');
+        const searchResults = document.getElementById('search-results');
+        
+        searchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase();
+            if (query.length < 1) {
+                searchResults.classList.add('hidden');
+                return;
+            }
+            
+            const results = sampleStocks.filter(stock => 
+                stock.code.toLowerCase().includes(query) || 
+                stock.name.toLowerCase().includes(query)
+            );
+            
+            if (results.length > 0) {
+                searchResults.innerHTML = '';
+                results.forEach(stock => {
+                    const item = document.createElement('div');
+                    item.className = 'search-result-item';
+                    item.textContent = `${stock.code} - ${stock.name}`;
+                    item.addEventListener('click', () => {
+                        window.location.href = `stock_detail.html?code=${stock.code}`;
+                    });
+                    searchResults.appendChild(item);
+                });
+                searchResults.classList.remove('hidden');
+            } else {
+                searchResults.classList.add('hidden');
+            }
+        });
+        
+        // 点击页面其他地方关闭搜索结果
+        document.addEventListener('click', function(event) {
+            if (!searchInput.contains(event.target) && !searchResults.contains(event.target)) {
+                searchResults.classList.add('hidden');
+            }
+        });
+        
+        // 更新热门股票表格
+        function updateHotStocksTable() {
+            const tbody = document.querySelector('#hot-stocks-table tbody');
+            if (!tbody) return;
+            
+            tbody.innerHTML = '';
+            
+            // 按照涨跌幅排序，取前6只股票
+            const sortedStocks = [...allStocks].sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent)).slice(0, 6);
+            
+            sortedStocks.forEach(stock => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50';
+                
+                const isPositive = stock.changePercent > 0;
+                const changeClass = isPositive ? 'text-red-500' : 'text-green-500';
+                const changeIcon = isPositive ? '↑' : '↓';
+                
+                row.innerHTML = `
+                    <td><a href="stock_detail.html?code=${stock.code}" class="text-primary hover:underline">${stock.code}</a></td>
+                    <td><a href="stock_detail.html?code=${stock.code}" class="hover:text-primary">${stock.name}</a></td>
+                    <td class="text-right">${stock.price.toFixed(2)}</td>
+                    <td class="text-right ${changeClass}">${changeIcon} ${Math.abs(stock.change).toFixed(2)}</td>
+                    <td class="text-right ${changeClass}">${changeIcon} ${Math.abs(stock.changePercent).toFixed(2)}%</td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+        
+        // 更新市场指数
+        function updateMarketIndexes() {
+            const indexContainer = document.querySelector('#market-indexes');
+            if (!indexContainer) return;
+            
+            indexContainer.innerHTML = '';
+            
+            marketIndexes.forEach(index => {
+                const isPositive = index.changePercent > 0;
+                const changeClass = isPositive ? 'text-red-500' : 'text-green-500';
+                const changeIcon = isPositive ? '↑' : '↓';
+                
+                const indexCard = document.createElement('div');
+                indexCard.className = 'col-md-4 mb-4';
+                indexCard.innerHTML = `
+                    <div class="bg-white rounded-lg shadow-md p-4 border-l-4 ${isPositive ? 'border-red-500' : 'border-green-500'}">
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="text-lg font-semibold">${index.name}</h3>
+                            <span class="text-sm text-gray-500">${index.code}</span>
+                        </div>
+                        <div class="flex justify-between items-baseline">
+                            <div class="text-2xl font-bold">${index.value.toFixed(2)}</div>
+                            <div class="${changeClass}">
+                                <span>${changeIcon} ${Math.abs(index.change).toFixed(2)}</span>
+                                <span class="ml-2">${changeIcon} ${Math.abs(index.changePercent).toFixed(2)}%</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                indexContainer.appendChild(indexCard);
+            });
+        }
+        
+        // 更新新闻列表
+        function updateNewsList() {
+            const newsList = document.querySelector('#news-list');
+            if (!newsList) return;
+            
+            newsList.innerHTML = '';
+            
+            // 取前4条新闻
+            const topNews = financialNews.slice(0, 4);
+            
+            topNews.forEach(news => {
+                const newsItem = document.createElement('div');
+                newsItem.className = 'news-item mb-4 pb-4 border-b border-gray-100 last:border-0 last:mb-0 last:pb-0';
+                newsItem.innerHTML = `
+                    <a href="${news.url}" class="text-dark hover:text-primary">${news.title}</a>
+                    <div class="text-sm text-gray-500 mt-1">${news.source} · ${news.publishTime}</div>
+                `;
+                
+                newsList.appendChild(newsItem);
+            });
+        }
+        
+        // 初始化指数走势图
+        function initIndexChart() {
+            const ctx = document.getElementById('indexChart').getContext('2d');
+            if (!ctx) return;
+            
+            // 生成模拟的历史数据
+            const dates = [];
+            const shData = [];
+            const szData = [];
+            const cybData = [];
+            
+            // 使用当前指数值作为基准
+            const baseSh = marketIndexes.find(idx => idx.code === 'sh000001')?.value || 3150;
+            const baseSz = marketIndexes.find(idx => idx.code === 'sz399001')?.value || 10200;
+            const baseCyb = marketIndexes.find(idx => idx.code === 'sz399006')?.value || 2060;
+            
+            for (let i = 0; i < 30; i++) {
+                const date = new Date();
+                date.setDate(date.getDate() - (30 - i));
+                dates.push(date.toLocaleDateString('zh-CN', {month: 'short', day: 'numeric'}));
+                
+                // 生成随机波动，有一定的趋势性
+                const trend = Math.sin(i / 10) * 10;
+                const random = Math.random() * 20 - 10;
+                
+                shData.push(baseSh + trend + random);
+                szData.push(baseSz + trend * 3 + random * 2);
+                cybData.push(baseCyb + trend * 2 + random * 1.5);
+            }
+            
+            // 创建图表
+            const indexChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [
+                        {
+                            label: '上证指数',
+                            data: shData,
+                            borderColor: '#dc3545',
+                            backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                            tension: 0.4,
+                            fill: false
+                        },
+                        {
+                            label: '深证成指',
+                            data: szData,
+                            borderColor: '#007bff',
+                            backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                            tension: 0.4,
+                            fill: false
+                        },
+                        {
+                            label: '创业板指',
+                            data: cybData,
+                            borderColor: '#28a745',
+                            backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                            tension: 0.4,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    }
+                }
+            }
+        }
+        
+        // 全局变量存储数据
+        let allStocks = [];
+        let marketIndexes = [];
+        let financialNews = [];
+        let searchResults = null;
+        
+        // 加载数据函数
+        async function loadData() {
+            try {
+                // 加载股票数据
+                const stocksResponse = await fetch('data/stocks.json');
+                const stocksData = await stocksResponse.json();
+                allStocks = stocksData.stocks;
+                
+                // 加载指数数据
+                const indexesResponse = await fetch('data/indexes.json');
+                const indexesData = await indexesResponse.json();
+                marketIndexes = indexesData.indexes;
+                
+                // 加载新闻数据
+                const newsResponse = await fetch('data/news.json');
+                const newsData = await newsResponse.json();
+                financialNews = newsData.news;
+                
+                return true;
+            } catch (error) {
+                console.error('加载数据失败:', error);
+                return false;
+            }
+        }
+        
+        // 初始化搜索功能
+        function initSearchFunction() {
+            const searchInput = document.getElementById('search-input');
+            searchResults = document.getElementById('search-results');
+            
+            if (!searchInput || !searchResults) return;
+            
+            searchInput.addEventListener('input', function() {
+                const query = this.value.toLowerCase();
+                if (query.length < 1) {
+                    searchResults.classList.add('hidden');
+                    return;
+                }
+                
+                const results = allStocks.filter(stock => 
+                    stock.code.toLowerCase().includes(query) || 
+                    stock.name.toLowerCase().includes(query)
+                );
+                
+                if (results.length > 0) {
+                    searchResults.innerHTML = '';
+                    results.forEach(stock => {
+                        const item = document.createElement('div');
+                        item.className = 'search-result-item';
+                        item.textContent = `${stock.code} - ${stock.name}`;
+                        item.addEventListener('click', () => {
+                            window.location.href = `stock_detail.html?code=${stock.code}`;
+                        });
+                        searchResults.appendChild(item);
+                    });
+                    searchResults.classList.remove('hidden');
+                } else {
+                    searchResults.classList.add('hidden');
+                }
+            });
+            
+            // 点击页面其他地方关闭搜索结果
+            document.addEventListener('click', function(event) {
+                if (!searchInput.contains(event.target) && !searchResults.contains(event.target)) {
+                    searchResults.classList.add('hidden');
+                }
+            });
+        }
+        
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 显示加载指示器
+            const loadingIndicator = document.createElement('div');
+            loadingIndicator.className = 'fixed inset-0 flex items-center justify-center bg-white bg-opacity-80 z-50';
+            loadingIndicator.innerHTML = `
+                <div class="text-center">
+                    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
+                    <div class="mt-3 text-lg font-medium">加载数据中...</div>
+                </div>
+            `;
+            document.body.appendChild(loadingIndicator);
+            
+            // 加载数据
+            const dataLoaded = await loadData();
+            
+            // 移除加载指示器
+            document.body.removeChild(loadingIndicator);
+            
+            if (dataLoaded) {
+                // 初始化搜索功能
+                initSearchFunction();
+                
+                // 更新热门股票表格
+                updateHotStocksTable();
+                
+                // 更新市场指数
+                updateMarketIndexes();
+                
+                // 更新新闻列表
+                updateNewsList();
+                
+                // 初始化指数走势图
+                initIndexChart();
+                
+                // 更新当前日期
+                const dateElement = document.querySelector('#current-date');
+                if (dateElement) {
+                    const now = new Date();
+                    dateElement.textContent = now.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+                }
+            } else {
+                // 数据加载失败时显示错误信息
+                const errorAlert = document.createElement('div');
+                errorAlert.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+                errorAlert.textContent = '数据加载失败，请刷新页面重试';
+                document.body.appendChild(errorAlert);
+                
+                // 3秒后自动消失
+                setTimeout(() => {
+                    errorAlert.classList.add('fade-out');
+                    setTimeout(() => {
+                        document.body.removeChild(errorAlert);
+                    }, 500);
+                }, 3000);
+            }
+        });
+    </script>
+</body>
+</html>

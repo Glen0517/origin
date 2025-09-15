@@ -1,0 +1,28 @@
+{
+  "indexes": [
+    {
+      "code": "sh000001",
+      "name": "上证指数",
+      "value": 3156.32,
+      "change": 12.45,
+      "changePercent": 0.40,
+      "volume": 28500000
+    },
+    {
+      "code": "sz399001",
+      "name": "深证成指",
+      "value": 10245.68,
+      "change": 45.23,
+      "changePercent": 0.44,
+      "volume": 32800000
+    },
+    {
+      "code": "sz399006",
+      "name": "创业板指",
+      "value": 2068.45,
+      "change": 15.87,
+      "changePercent": 0.77,
+      "volume": 15600000
+    }
+  ]
+}

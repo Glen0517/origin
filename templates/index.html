@@ -1,0 +1,147 @@
+{% extends "layout.html" %}
+{% block title %}基金投资分析平台首页{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h1 class="text-center">欢迎回来，{{ username }}！</h1>
+    <p class="text-center text-muted">今天是 {{ now.strftime('%Y-%m-%d') }}，祝您投资顺利！</p>
+</div>
+
+<!-- 市场指数部分 -->
+<div class="mb-6">
+    <h2 class="text-center mb-4"><i class="fas fa-chart-pie"></i> 市场指数</h2>
+    <div class="row justify-content-center">
+        {% for index in indices %}
+        <div class="col-md-3 mb-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3>{{ index.name }}</h3>
+                    <p class="market-index">
+                        {{ index.value }}
+                    </p>
+                    <p class="{% if index.change_percent > 0 %}stock-positive{% else %}stock-negative{% endif %}">
+                        {{ index.change }} ({{ index.change_percent }}%)
+                    </p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- 用户自选基金部分 -->
+{% if watchlist %}
+<div class="mb-6">
+    <h2 class="text-center mb-4"><i class="fas fa-star"></i> 我的自选基金</h2>
+    <div class="card">
+        <div class="card-body">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>基金代码</th>
+                        <th>基金名称</th>
+                        <th>最新净值</th>
+                        <th>日增长率</th>
+                        <th>风险等级</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fund in watchlist %}
+                    <tr>
+                        <td><a href="{{ url_for('fund_detail', fund_code=fund.fund_code) }}">{{ fund.fund_code }}</a></td>
+                        <td>{{ fund.fund_name }}</td>
+                        <td>{{ fund.net_value }}</td>
+                        <td class="{% if fund.daily_growth > 0 %}fund-positive{% else %}fund-negative{% endif %}">{{ fund.daily_growth }}%</td>
+                        <td><span class="badge bg-primary">{{ fund.risk_level }}</span></td>
+                        <td>
+                            <a href="{{ url_for('remove_fund_from_watchlist', fund_code=fund.fund_code) }}" class="btn btn-danger btn-sm" onclick="return confirm('确定要从自选基金中移除吗？')">
+                                <i class="fas fa-trash-alt"></i> 移除
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 热门基金部分 -->
+<div class="mb-6">
+    <h2 class="text-center mb-4"><i class="fas fa-fire"></i> 热门基金</h2>
+    <div class="row">
+        {% for fund in hot_funds %}
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h4><a href="{{ url_for('fund_detail', fund_code=fund.code) }}">{{ fund.code }}</a></h4>
+                            <p>{{ fund.name }}</p>
+                            <p class="text-sm text-muted">{{ fund.type }}</p>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <p class="fs-5 font-bold">{{ fund.net_value }}</p>
+                            <p class="{% if fund.daily_growth > 0 %}fund-positive{% else %}fund-negative{% endif %}">
+                                {{ fund.daily_growth }}%
+                            </p>
+                            <p class="text-sm"><span class="badge bg-{{ 'danger' if fund.risk_level == '高' else 'warning' if fund.risk_level == '中' else 'success' }}">{{ fund.risk_level }}风险</span></p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            {% set in_watchlist = false %}
+                            {% if watchlist %}
+                                {% for f in watchlist %}
+                                    {% if f['fund_code'] == fund.code %}
+                                        {% set in_watchlist = true %}
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                            {% if not in_watchlist %}
+                            <a href="{{ url_for('add_fund_to_watchlist', fund_code=fund.code) }}" class="btn btn-primary btn-sm">
+                                <i class="fas fa-plus"></i> 添加到自选
+                            </a>
+                            {% else %}
+                            <span class="badge bg-success">已在自选</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- 最新财经新闻部分 -->
+<div class="mb-6">
+    <h2 class="text-center mb-4"><i class="fas fa-newspaper"></i> 最新财经新闻</h2>
+    <div class="card">
+        <div class="card-body">
+            <div class="list-group">
+                {% for news_item in latest_news %}
+                <a href="{{ url_for('news') }}" class="list-group-item list-group-item-action news-item">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h5 class="mb-1">{{ news_item.title }}</h5>
+                        <small>{{ news_item.time }}</small>
+                    </div>
+                    <p class="text-muted mb-0">来源: {{ news_item.source }}</p>
+                </a>
+                {% endfor %}
+            </div>
+            <div class="mt-4 text-center">
+                <a href="{{ url_for('news') }}" class="btn btn-primary">查看更多新闻</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // 可以在这里添加主页特定的JavaScript代码
+    });
+</script>
+{% endblock %}

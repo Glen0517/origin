@@ -1,0 +1,148 @@
+{% extends "layout.html" %}
+{% block title %}{{ fund.name }}({{ fund.code }}) - 基金详情{% endblock %}
+
+{% block extra_css %}
+<style>
+    .fund-info {
+        font-size: 1.2rem;
+    }
+    .chart-container {
+        height: 400px;
+        margin: 20px 0;
+    }
+    .price-up {
+        color: #e63946;
+    }
+    .price-down {
+        color: #1d3557;
+    }
+    .nav-chart {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+    }
+    .investment-recommendation {
+        background-color: #e9f7fe;
+        padding: 15px;
+        border-radius: 8px;
+        border-left: 4px solid #2196f3;
+    }
+    .risk-level {
+        display: inline-block;
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-size: 0.9rem;
+    }
+    .risk-level-low { background-color: #4caf50; color: white; }
+    .risk-level-medium { background-color: #ff9800; color: white; }
+    .risk-level-high { background-color: #f44336; color: white; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <!-- 基金基本信息 -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h2>{{ fund.name }} <span class="text-muted">({{ fund.code }})</span></h2>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="fund-info mb-2"><strong>基金类型：</strong>{{ fund.type if fund.type else '未知' }}</p>
+                    <p class="fund-info mb-2"><strong>最新净值：</strong><span class="font-weight-bold">{{ fund.net_value }}</span></p>
+                    <p class="fund-info mb-2"><strong>日增长率：</strong><span class="{% if fund.daily_growth > 0 %}price-up{% else %}price-down{% endif %}">{{ fund.daily_growth }}%</span></p>
+                    <p class="fund-info mb-2"><strong>成立日期：</strong>{{ fund.establish_date }}</p>
+                </div>
+                <div class="col-md-6 text-right">
+                    <p class="fund-info mb-2"><strong>基金经理：</strong>{{ fund.manager }}</p>
+                    <p class="fund-info mb-2"><strong>基金公司：</strong>{{ fund.company }}</p>
+                    <p class="fund-info mb-2"><strong>风险等级：</strong><span class="risk-level risk-level-{{ fund.risk_level.lower() if fund.risk_level else 'medium' }}">{{ fund.risk_level if fund.risk_level else '中等' }}</span></p>
+                    <p class="fund-info mb-2"><strong>规模：</strong>{{ fund.scale }}亿元</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 自选基金操作 -->
+    <div class="text-center mb-4">
+        {% if session.username %}
+            {% if is_in_watchlist %}
+                <a href="{{ url_for('remove_fund_from_watchlist', fund_code=fund.code) }}" class="btn btn-danger">
+                    <i class="fas fa-star"></i> 移除自选
+                </a>
+            {% else %}
+                <a href="{{ url_for('add_fund_to_watchlist', fund_code=fund.code) }}" class="btn btn-primary">
+                    <i class="far fa-star"></i> 添加自选
+                </a>
+            {% endif %}
+        {% else %}
+            <a href="{{ url_for('login') }}" class="btn btn-primary">
+                登录后添加自选
+            </a>
+        {% endif %}
+    </div>
+    
+    <!-- 投资推荐 -->
+    {% if investment_recommendation %}
+    <div class="card mb-4 investment-recommendation">
+        <div class="card-body">
+            <h3><i class="fas fa-chart-line"></i> 投资推荐</h3>
+            <p><strong>推荐等级：</strong>{{ investment_recommendation.level }}</p>
+            <p><strong>推荐理由：</strong>{{ investment_recommendation.reason }}</p>
+            {% if user_risk_profile %}
+            <p><strong>与您的风险偏好匹配度：</strong>{{ investment_recommendation.match_rate }}%</p>
+            {% endif %}
+            <p><strong>投资建议：</strong>{{ investment_recommendation.suggestion }}</p>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- 基金净值走势图 -->
+    {% if chart_path %}
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h3>净值走势图</h3>
+        </div>
+        <div class="card-body nav-chart">
+            <div class="chart-container">
+                <img src="{{ url_for('static', filename=chart_path) }}" class="img-fluid" alt="{{ fund.name }} 净值走势图">
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- 基金历史净值数据 -->
+    {% if nav_data is not none %}
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h3>历史净值数据</h3>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>日期</th>
+                            <th>单位净值</th>
+                            <th>日增长率(%)</th>
+                            <th>累计净值</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for data in nav_data %}
+                        <tr>
+                            <td>{{ data.date }}</td>
+                            <td>{{ data.net_value }}</td>
+                            <td class="{% if data.daily_growth > 0 %}price-up{% else %}price-down{% endif %}">{{ data.daily_growth }}</td>
+                            <td>{{ data.cumulative_net_value }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

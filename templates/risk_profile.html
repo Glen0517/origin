@@ -1,0 +1,169 @@
+{% extends "layout.html" %}
+{% block title %}风险偏好设置{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white text-center">
+                <h2><i class="fas fa-chart-line"></i> 个人风险偏好设置</h2>
+            </div>
+            <div class="card-body">
+                {% if error %}
+                <div class="alert alert-danger" role="alert">
+                    {{ error }}
+                </div>
+                {% endif %}
+                {% if success %}
+                <div class="alert alert-success" role="alert">
+                    风险偏好设置已成功更新！
+                </div>
+                {% endif %}
+                
+                <form method="POST" action="{{ url_for('risk_profile') }}">
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">请选择您的风险承受能力：</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="risk_level" id="risk_low" value="1"
+                                {% if current_risk_level == 1 %}checked{% endif %} required>
+                            <label class="form-check-label" for="risk_low">
+                                <i class="fas fa-shield-alt text-success"></i> 保守型
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="risk_level" id="risk_medium_low" value="2"
+                                {% if current_risk_level == 2 %}checked{% endif %} required>
+                            <label class="form-check-label" for="risk_medium_low">
+                                <i class="fas fa-shield-alt text-info"></i> 稳健型
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="risk_level" id="risk_medium" value="3"
+                                {% if current_risk_level == 3 %}checked{% endif %} required>
+                            <label class="form-check-label" for="risk_medium">
+                                <i class="fas fa-balance-scale text-warning"></i> 平衡型
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="risk_level" id="risk_medium_high" value="4"
+                                {% if current_risk_level == 4 %}checked{% endif %} required>
+                            <label class="form-check-label" for="risk_medium_high">
+                                <i class="fas fa-chart-pie text-orange"></i> 成长型
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="risk_level" id="risk_high" value="5"
+                                {% if current_risk_level == 5 %}checked{% endif %} required>
+                            <label class="form-check-label" for="risk_high">
+                                <i class="fas fa-rocket text-danger"></i> 进取型
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="investment_horizon" class="form-label">投资期限：</label>
+                        <select class="form-control" id="investment_horizon" name="investment_horizon" required>
+                            <option value="1" {% if investment_horizon == 1 %}selected{% endif %}>短期（少于1年）</option>
+                            <option value="2" {% if investment_horizon == 2 %}selected{% endif %}>中期（1-3年）</option>
+                            <option value="3" {% if investment_horizon == 3 %}selected{% endif %}>长期（3-5年）</option>
+                            <option value="4" {% if investment_horizon == 4 %}selected{% endif %}>超长期（5年以上）</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="investment_experience" class="form-label">投资经验：</label>
+                        <select class="form-control" id="investment_experience" name="investment_experience" required>
+                            <option value="1" {% if investment_experience == 1 %}selected{% endif %}>无经验</option>
+                            <option value="2" {% if investment_experience == 2 %}selected{% endif %}>1-3年</option>
+                            <option value="3" {% if investment_experience == 3 %}selected{% endif %}>3-5年</option>
+                            <option value="4" {% if investment_experience == 4 %}selected{% endif %}>5年以上</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="investment_objective" class="form-label">投资目标：</label>
+                        <select class="form-control" id="investment_objective" name="investment_objective" required>
+                            <option value="1" {% if investment_objective == 1 %}selected{% endif %}>保本为主</option>
+                            <option value="2" {% if investment_objective == 2 %}selected{% endif %}>稳健增值</option>
+                            <option value="3" {% if investment_objective == 3 %}selected{% endif %}>平衡增长</option>
+                            <option value="4" {% if investment_objective == 4 %}selected{% endif %}>追求高收益</option>
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100">保存设置</button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header bg-info text-white">
+                <h3><i class="fas fa-info-circle"></i> 风险偏好说明</h3>
+            </div>
+            <div class="card-body">
+                <div class="accordion" id="riskLevelAccordion">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingOne">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                                <i class="fas fa-shield-alt text-success"></i> 保守型投资者
+                            </button>
+                        </h2>
+                        <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#riskLevelAccordion">
+                            <div class="accordion-body">
+                                追求本金安全，接受极低风险，投资组合以低风险产品为主，如货币基金、短期理财等。
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingTwo">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                                <i class="fas fa-shield-alt text-info"></i> 稳健型投资者
+                            </button>
+                        </h2>
+                        <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#riskLevelAccordion">
+                            <div class="accordion-body">
+                                愿意承担适度风险以获取稳健收益，投资组合中债券类产品占比较高，辅以少量股票类资产。
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingThree">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                                <i class="fas fa-balance-scale text-warning"></i> 平衡型投资者
+                            </button>
+                        </h2>
+                        <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#riskLevelAccordion">
+                            <div class="accordion-body">
+                                追求风险与收益的平衡，能够接受市场波动，投资组合中股票和债券类资产配置较为均衡。
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingFour">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
+                                <i class="fas fa-chart-pie text-orange"></i> 成长型投资者
+                            </button>
+                        </h2>
+                        <div id="collapseFour" class="accordion-collapse collapse" aria-labelledby="headingFour" data-bs-parent="#riskLevelAccordion">
+                            <div class="accordion-body">
+                                追求资产增值，能够接受较大市场波动，投资组合以股票类资产为主，债券类资产为辅。
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingFive">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFive" aria-expanded="false" aria-controls="collapseFive">
+                                <i class="fas fa-rocket text-danger"></i> 进取型投资者
+                            </button>
+                        </h2>
+                        <div id="collapseFive" class="accordion-collapse collapse" aria-labelledby="headingFive" data-bs-parent="#riskLevelAccordion">
+                            <div class="accordion-body">
+                                追求高收益，能够承受高风险，投资组合以高风险高收益资产为主，如股票、高收益债券等。
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

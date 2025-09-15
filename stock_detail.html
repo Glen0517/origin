@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>贵州茅台 - 股票详情</title>
+    <!-- 引入 Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- 引入 Font Awesome 图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- 引入 Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    
+    <style>
+        /* 自定义样式 */
+        body {
+            background-color: #f8f9fa;
+        }
+        .navbar {
+            background-color: #1a202c;
+        }
+        .nav-link {
+            color: white !important;
+        }
+        .nav-link:hover {
+            color: #cbd5e0 !important;
+        }
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .stock-price {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        .price-up {
+            color: #dc3545;
+        }
+        .price-down {
+            color: #28a745;
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 20px 0;
+        }
+        .custom-btn {
+            border-radius: 20px;
+            padding: 8px 20px;
+        }
+        .stock-info {
+            padding: 15px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .stock-info:last-child {
+            border-bottom: none;
+        }
+        .chart-options {
+            margin-bottom: 15px;
+        }
+        .chart-options button {
+            margin-right: 10px;
+            padding: 5px 15px;
+            border-radius: 20px;
+        }
+        .chart-options button.active {
+            background-color: #007bff;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="index_static.html">
+                <i class="fas fa-chart-line me-2"></i>股票行情中心
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index_static.html">首页</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="news.html">财经新闻</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#watchlist">我的自选</a>
+                    </li>
+                </ul>
+                
+                <!-- 搜索框 -->
+                <div class="relative me-3" style="width: 250px;">
+                    <input type="text" id="search-input" class="form-control rounded-pill pl-10" placeholder="搜索股票代码/名称">
+                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    <div id="search-results" class="search-results hidden"></div>
+                </div>
+                
+                <!-- 用户菜单 -->
+                <div class="dropdown">
+                    <button class="btn btn-outline-light rounded-pill custom-btn dropdown-toggle" type="button" id="userMenuButton" data-bs-toggle="dropdown">
+                        <i class="fas fa-user-circle mr-2"></i>游客
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="login.html">登录</a></li>
+                        <li><a class="dropdown-item" href="register.html">注册</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主要内容 -->
+    <div class="container mt-5">
+        <!-- 股票基本信息 -->
+        <div class="mb-6">
+            <div class="card bg-white p-4">
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+                    <div>
+                        <h2>贵州茅台 <span class="text-muted">(600519)</span></h2>
+                        <p>白酒行业 · 沪市主板</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="stock-price price-up">1,680.00</p>
+                        <div class="d-flex justify-content-end">
+                            <p class="price-up mr-3">+20.50</p>
+                            <p class="price-up">+1.23%</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row text-center mb-4">
+                    <div class="col-md-3 stock-info">
+                        <p class="text-gray-600">今开</p>
+                        <p>1,655.00</p>
+                    </div>
+                    <div class="col-md-3 stock-info">
+                        <p class="text-gray-600">昨收</p>
+                        <p>1,659.50</p>
+                    </div>
+                    <div class="col-md-3 stock-info">
+                        <p class="text-gray-600">最高</p>
+                        <p class="price-up">1,685.00</p>
+                    </div>
+                    <div class="col-md-3 stock-info">
+                        <p class="text-gray-600">最低</p>
+                        <p class="price-down">1,650.00</p>
+                    </div>
+                </div>
+                
+                <div class="row text-center">
+                    <div class="col-md-3 stock-info">
+                        <p class="text-gray-600">成交量(万手)</p>
+                        <p>10.25</p>
+                    </div>
+                    <div class="col-md-3 stock-info">
+                        <p class="text-gray-600">成交额(亿)</p>
+                        <p>17.23</p>
+                    </div>
+                    <div class="col-md-3 stock-info">
+                        <p class="text-gray-600">换手率</p>
+                        <p>0.25%</p>
+                    </div>
+                    <div class="col-md-3 stock-info">
+                        <p class="text-gray-600">市盈率(TTM)</p>
+                        <p>28.56</p>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-4">
+                    <button class="btn btn-success rounded-pill custom-btn">
+                        <i class="fas fa-star mr-2"></i>添加到自选
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 股票K线图 -->
+        <div class="mb-6">
+            <div class="card bg-white p-4">
+                <h3 class="border-bottom pb-2 mb-3">
+                    <i class="fas fa-chart-line mr-2"></i>K线走势
+                </h3>
+                
+                <!-- K线图周期选择 -->
+                <div class="chart-options">
+                    <button class="btn btn-outline-secondary active" data-period="day">日K</button>
+                    <button class="btn btn-outline-secondary" data-period="week">周K</button>
+                    <button class="btn btn-outline-secondary" data-period="month">月K</button>
+                    <button class="btn btn-outline-secondary" data-period="year">年K</button>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="stockChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 股票详情信息 -->
+        <div class="mb-6">
+            <div class="card bg-white p-4">
+                <h3 class="border-bottom pb-2 mb-3">
+                    <i class="fas fa-info-circle mr-2"></i>公司简介
+                </h3>
+                
+                <div class="mb-4">
+                    <p>贵州茅台酒股份有限公司是中国白酒行业的龙头企业，主要生产销售茅台酒系列产品。公司位于贵州省仁怀市茅台镇，拥有悠久的酿酒历史和独特的酿造工艺。茅台酒是中国酱香型白酒的典型代表，被誉为"国酒"，具有较高的品牌价值和市场影响力。</p>
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h4>基本信息</h4>
+                        <table class="table">
+                            <tr>
+                                <td class="text-gray-600">公司名称</td>
+                                <td>贵州茅台酒股份有限公司</td>
+                            </tr>
+                            <tr>
+                                <td class="text-gray-600">股票代码</td>
+                                <td>600519</td>
+                            </tr>
+                            <tr>
+                                <td class="text-gray-600">上市日期</td>
+                                <td>2001-08-27</td>
+                            </tr>
+                            <tr>
+                                <td class="text-gray-600">所属行业</td>
+                                <td>酿酒行业</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h4>财务数据(2023年中报)</h4>
+                        <table class="table">
+                            <tr>
+                                <td class="text-gray-600">营业收入</td>
+                                <td>528.69亿元</td>
+                            </tr>
+                            <tr>
+                                <td class="text-gray-600">净利润</td>
+                                <td>266.83亿元</td>
+                            </tr>
+                            <tr>
+                                <td class="text-gray-600">毛利率</td>
+                                <td>91.37%</td>
+                            </tr>
+                            <tr>
+                                <td class="text-gray-600">净利率</td>
+                                <td>50.47%</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 相关新闻 -->
+        <div class="mb-6">
+            <div class="card bg-white p-4">
+                <h3 class="border-bottom pb-2 mb-3">
+                    <i class="fas fa-newspaper mr-2"></i>相关新闻
+                </h3>
+                
+                <div class="news-item">
+                    <a href="news.html?id=3" class="text-dark hover:text-primary">贵州茅台公布半年报，净利润增长15.2%</a>
+                    <div class="text-sm text-gray-500 mt-1">证券时报 · 2023-09-14 16:30</div>
+                </div>
+                <div class="news-item">
+                    <a href="news.html?id=5" class="text-dark hover:text-primary">茅台酒价格持续上涨，市场供不应求</a>
+                    <div class="text-sm text-gray-500 mt-1">中国证券报 · 2023-09-13 09:15</div>
+                </div>
+                <div class="news-item">
+                    <a href="news.html?id=6" class="text-dark hover:text-primary">贵州茅台：计划扩大产能，应对市场需求</a>
+                    <div class="text-sm text-gray-500 mt-1">上海证券报 · 2023-09-10 14:40</div>
+                </div>
+                <div class="text-center mt-4">
+                    <a href="news.html" class="btn btn-primary rounded-pill custom-btn">查看更多</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="bg-dark text-white py-6 mt-6">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-4">
+                    <h4>股票行情中心</h4>
+                    <p>提供实时股票行情、财经新闻和数据分析，助力投资者做出明智决策。</p>
+                </div>
+                <div class="col-md-4">
+                    <h4>快速链接</h4>
+                    <ul class="list-unstyled">
+                        <li><a href="index_static.html" class="text-gray-300 hover:text-white">首页</a></li>
+                        <li><a href="news.html" class="text-gray-300 hover:text-white">财经新闻</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-white">关于我们</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-white">联系方式</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-4">
+                    <h4>免责声明</h4>
+                    <p>本站数据仅供参考，不构成投资建议。投资者应根据自身情况自行决策，风险自担。</p>
+                </div>
+            </div>
+            <div class="border-top border-gray-700 mt-4 pt-4 text-center text-gray-400">
+                © 2023 股票行情中心 版权所有
+            </div>
+        </div>
+    </footer>
+
+    <!-- 引入 Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // 示例股票数据
+        const sampleStocks = [
+            {code: '600519', name: '贵州茅台'},
+            {code: '000858', name: '五粮液'},
+            {code: '000333', name: '美的集团'},
+            {code: '000651', name: '格力电器'},
+            {code: '600036', name: '招商银行'},
+            {code: '601318', name: '中国平安'},
+            {code: '601899', name: '紫金矿业'},
+            {code: '600900', name: '长江电力'}
+        ];
+        
+        function initSearchFunction() {
+        const searchInput = document.getElementById('search-input');
+        const searchResults = document.getElementById('search-results');
+        
+        searchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase();
+            if (query.length < 1) {
+                searchResults.classList.add('hidden');
+                return;
+            }
+            
+            const results = sampleStocks.filter(stock => 
+                stock.code.toLowerCase().includes(query) || 
+                stock.name.toLowerCase().includes(query)
+            );
+            
+            if (results.length > 0) {
+                searchResults.innerHTML = '';
+                results.forEach(stock => {
+                    const item = document.createElement('div');
+                    item.className = 'search-result-item';
+                    item.textContent = `${stock.code} - ${stock.name}`;
+                    item.addEventListener('click', () => {
+                        window.location.href = `stock_detail.html?code=${stock.code}`;
+                    });
+                    searchResults.appendChild(item);
+                });
+                searchResults.classList.remove('hidden');
+            } else {
+                searchResults.classList.add('hidden');
+            }
+        });
+        
+        // 点击页面其他地方关闭搜索结果
+        document.addEventListener('click', function(event) {
+            if (!searchInput.contains(event.target) && !searchResults.contains(event.target)) {
+                searchResults.classList.add('hidden');
+            }
+        });
+        
+        // 全局变量存储数据
+        let stockData = null;
+        let allStocks = [];
+        
+        // 获取URL中的股票代码
+        function getStockCodeFromUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('code') || '600519'; // 默认贵州茅台
+        }
+        
+        // 加载数据函数
+        async function loadData() {
+            try {
+                // 获取当前股票代码
+                const stockCode = getStockCodeFromUrl();
+                
+                // 加载所有股票数据
+                let stocksResponse;
+                try {
+                    stocksResponse = await fetch('data/stocks.json');
+                    if (!stocksResponse.ok) {
+                        throw new Error('stocks.json 文件加载失败');
+                    }
+                    const stocksData = await stocksResponse.json();
+                    allStocks = stocksData.stocks || [];
+                } catch (error) {
+                    console.error('加载股票数据失败，使用模拟数据:', error);
+                    // 如果加载失败，使用默认的模拟数据
+                    allStocks = [
+                        {code: '600519', name: '贵州茅台', price: 1688.00, industry: '酿酒行业'},
+                        {code: '000858', name: '五粮液', price: 175.20, industry: '酿酒行业'}
+                    ];
+                }
+                
+                // 找到当前股票数据
+                stockData = allStocks.find(stock => stock.code === stockCode);
+                
+                // 如果找到了股票数据，尝试加载历史K线数据
+                if (stockData) {
+                    try {
+                        const historyResponse = await fetch(`data/${stockCode}_history.json`);
+                        if (historyResponse.ok) {
+                            const historyData = await historyResponse.json();
+                            // 检查历史数据是否足够
+                            if (historyData.data && historyData.data.length > 1) {
+                                stockData.history = historyData.data;
+                            } else {
+                                console.log('历史数据不足，使用模拟数据');
+                                generateMockHistoryData();
+                            }
+                        } else {
+                            throw new Error('历史数据文件加载失败');
+                        }
+                    } catch (error) {
+                        console.log('没有找到或加载历史数据失败，使用模拟数据:', error);
+                        // 生成模拟的历史数据
+                        generateMockHistoryData();
+                    }
+                } else {
+                    // 如果没有找到股票数据，使用贵州茅台作为默认数据
+                    console.log('没有找到股票数据，使用贵州茅台作为默认');
+                    stockData = allStocks.find(stock => stock.code === '600519') || {
+                        code: '600519',
+                        name: '贵州茅台',
+                        price: 1688.00,
+                        industry: '酿酒行业'
+                    };
+                    generateMockHistoryData();
+                }
+                
+                return true;
+            } catch (error) {
+                console.error('加载数据失败:', error);
+                // 即使出错，也创建基础的stockData对象并生成模拟数据
+                stockData = {
+                    code: '600519',
+                    name: '贵州茅台',
+                    price: 1688.00,
+                    industry: '酿酒行业'
+                };
+                generateMockHistoryData();
+                return true; // 即使出现错误，也返回true以尝试显示K线图
+            }
+        }
+        
+        // 生成模拟的历史数据
+        function generateMockHistoryData() {
+            if (!stockData) return;
+            
+            const mockHistory = [];
+            const basePrice = stockData.price || 1688.00; // 默认价格
+            
+            // 生成最近60天的数据
+            for (let i = 0; i < 60; i++) {
+                const date = new Date();
+                date.setDate(date.getDate() - (60 - i));
+                
+                // 生成随机波动，有一定的趋势性
+                const trend = Math.sin(i / 10) * 20;
+                const random = Math.random() * 30 - 15;
+                const close = basePrice + trend + random;
+                const open = close + (Math.random() * 10 - 5);
+                const high = Math.max(open, close) + Math.random() * 5;
+                const low = Math.min(open, close) - Math.random() * 5;
+                const volume = 8000 + Math.random() * 12000;
+                
+                mockHistory.push({
+                    date: date.toISOString().split('T')[0],
+                    open: Math.round(open * 100) / 100, // 保留两位小数
+                    close: Math.round(close * 100) / 100,
+                    high: Math.round(high * 100) / 100,
+                    low: Math.round(low * 100) / 100,
+                    volume: Math.round(volume)
+                });
+            }
+            
+            stockData.history = mockHistory;
+        }
+        
+        // 更新股票基本信息
+        function updateStockInfo() {
+            if (!stockData) return;
+            
+            // 更新页面标题
+            document.title = `${stockData.name}(${stockData.code}) - 股票详情 - 股票行情中心`;
+            
+            // 更新股票名称和代码
+            const nameElement = document.querySelector('h2');
+            if (nameElement) {
+                const match = nameElement.textContent.match(/(.+)\s+\((.+)\)/);
+                if (match) {
+                    nameElement.innerHTML = `${stockData.name} <span class="text-muted">(${stockData.code})</span>`;
+                }
+            }
+            
+            // 更新行业信息
+            const industryElement = document.querySelector('h2 + p');
+            if (industryElement) {
+                industryElement.textContent = `${stockData.industry} · 沪市主板`;
+            }
+            
+            // 更新股票价格信息
+            const priceElement = document.querySelector('.stock-price');
+            const priceChangeElements = document.querySelectorAll('.price-up');
+            
+            if (priceElement && priceChangeElements.length >= 2) {
+                const isPositive = true; // 默认上涨，可根据实际数据调整
+                const priceChange = 20.50; // 示例数据
+                const priceChangePercent = 1.23; // 示例数据
+                
+                priceElement.textContent = stockData.price ? stockData.price.toFixed(2) : '1,680.00';
+                priceChangeElements[0].textContent = `+${priceChange.toFixed(2)}`;
+                priceChangeElements[1].textContent = `+${priceChangePercent.toFixed(2)}%`;
+            }
+            
+            // 更新其他信息 (使用实际的示例数据)
+            const infoValues = document.querySelectorAll('.stock-info p:not(.text-gray-600)');
+            if (infoValues.length >= 8) {
+                infoValues[0].textContent = '1,655.00'; // 今开
+                infoValues[1].textContent = '1,659.50'; // 昨收
+                infoValues[2].textContent = '1,685.00'; // 最高
+                infoValues[3].textContent = '1,650.00'; // 最低
+                infoValues[4].textContent = '10.25'; // 成交量(万手)
+                infoValues[5].textContent = '17.23'; // 成交额(亿)
+                infoValues[6].textContent = '0.25%'; // 换手率
+                infoValues[7].textContent = '28.56'; // 市盈率(TTM)
+            }
+        }
+        
+        // 初始化搜索功能
+        function initSearchFunction() {
+            const searchInput = document.getElementById('search-input');
+            searchResults = document.getElementById('search-results');
+            
+            if (!searchInput || !searchResults) return;
+            
+            searchInput.addEventListener('input', function() {
+                const query = this.value.toLowerCase();
+                if (query.length < 1) {
+                    searchResults.classList.add('hidden');
+                    return;
+                }
+                
+                const results = allStocks.filter(stock => 
+                    stock.code.toLowerCase().includes(query) || 
+                    stock.name.toLowerCase().includes(query)
+                );
+                
+                if (results.length > 0) {
+                    searchResults.innerHTML = '';
+                    results.forEach(stock => {
+                        const item = document.createElement('div');
+                        item.className = 'search-result-item';
+                        item.textContent = `${stock.code} - ${stock.name}`;
+                        item.addEventListener('click', () => {
+                            window.location.href = `stock_detail.html?code=${stock.code}`;
+                        });
+                        searchResults.appendChild(item);
+                    });
+                    searchResults.classList.remove('hidden');
+                } else {
+                    searchResults.classList.add('hidden');
+                }
+            });
+            
+            // 点击页面其他地方关闭搜索结果
+            document.addEventListener('click', function(event) {
+                if (!searchInput.contains(event.target) && !searchResults.contains(event.target)) {
+                    searchResults.classList.add('hidden');
+                }
+            });
+        }
+        
+        // 初始化股票K线图
+        function initStockChart() {
+            if (!stockData || !stockData.history) return;
+            
+            const ctx = document.getElementById('stockChart').getContext('2d');
+            if (!ctx) return;
+            
+            // 准备图表数据
+            const dates = stockData.history.map(item => {
+                const date = new Date(item.date);
+                return date.toLocaleDateString('zh-CN', {month: 'short', day: 'numeric'});
+            });
+            const prices = stockData.history.map(item => item.close);
+            const volumes = stockData.history.map(item => item.volume / 10000); // 转换为万手
+        
+            
+            // 创建图表
+            const stockChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [
+                        {
+                            label: '贵州茅台股价',
+                            data: prices,
+                            borderColor: '#dc3545',
+                            backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                            tension: 0.4,
+                            fill: false,
+                            borderWidth: 2,
+                            pointRadius: 1,
+                            pointHoverRadius: 5,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: '成交量(万手)',
+                            data: volumes,
+                            borderColor: '#007bff',
+                            backgroundColor: 'rgba(0, 123, 255, 0.2)',
+                            type: 'bar',
+                            yAxisID: 'y1',
+                            borderWidth: 0,
+                            barPercentage: 0.5
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: '股价(元)'
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: '成交量(万手)'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                        },
+                    },
+                    animation: {
+                        duration: 1000,
+                        easing: 'easeOutQuart'
+                    }
+                }
+            });
+            
+            // K线周期切换
+            const periodButtons = document.querySelectorAll('.chart-options button');
+            periodButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    // 移除所有按钮的active状态
+                    periodButtons.forEach(btn => btn.classList.remove('active'));
+                    // 为当前点击的按钮添加active状态
+                    this.classList.add('active');
+                    
+                    // 根据选择的周期更新图表数据
+                    const period = this.getAttribute('data-period');
+                    updateChartData(period, stockChart, dates, stockData.price);
+                });
+            });
+        }
+        
+        // 更新图表数据函数
+        function updateChartData(period, chart, originalDates, basePrice) {
+            let newDates = [];
+            let newPrices = [];
+            let newVolumes = [];
+            
+            // 根据不同周期生成不同的数据
+            switch(period) {
+                case 'day':
+                    // 日线图 - 使用全部60天数据
+                    newDates = originalDates;
+                    for (let i = 0; i < 60; i++) {
+                        const trend = Math.sin(i / 10) * 20;
+                        const random = Math.random() * 30 - 15;
+                        newPrices.push(basePrice + trend + random);
+                        newVolumes.push(8 + Math.random() * 12);
+                    }
+                    break;
+                case 'week':
+                    // 周线图 - 使用最近20周数据
+                    for (let i = 0; i < 20; i++) {
+                        const date = new Date();
+                        date.setDate(date.getDate() - (20 - i) * 7);
+                        newDates.push(date.toLocaleDateString('zh-CN', {month: 'short', day: 'numeric'}));
+                        
+                        const trend = Math.sin(i / 5) * 40;
+                        const random = Math.random() * 40 - 20;
+                        newPrices.push(basePrice + trend + random);
+                        newVolumes.push(40 + Math.random() * 30);
+                    }
+                    break;
+                case 'month':
+                    // 月线图 - 使用最近12个月数据
+                    for (let i = 0; i < 12; i++) {
+                        const date = new Date();
+                        date.setMonth(date.getMonth() - (12 - i));
+                        newDates.push(date.toLocaleDateString('zh-CN', {year: '2-digit', month: 'short'}));
+                        
+                        const trend = Math.sin(i / 3) * 80;
+                        const random = Math.random() * 60 - 30;
+                        newPrices.push(basePrice + trend + random);
+                        newVolumes.push(150 + Math.random() * 100);
+                    }
+                    break;
+                case 'year':
+                    // 年线图 - 使用最近5年数据
+                    for (let i = 0; i < 5; i++) {
+                        const date = new Date();
+                        date.setFullYear(date.getFullYear() - (5 - i));
+                        newDates.push(date.toLocaleDateString('zh-CN', {year: 'numeric'}));
+                        
+                        const trend = i * 300;
+                        const random = Math.random() * 100 - 50;
+                        newPrices.push(basePrice - 1000 + trend + random);
+                        newVolumes.push(500 + Math.random() * 200);
+                    }
+                    break;
+            }
+            
+            // 更新图表数据
+            chart.data.labels = newDates;
+            chart.data.datasets[0].data = newPrices;
+            chart.data.datasets[1].data = newVolumes;
+            chart.update();
+        }
+        
+        // 添加到自选功能
+        document.querySelector('.btn-success').addEventListener('click', function() {
+            this.innerHTML = '<i class="fas fa-star mr-2"></i>已添加到自选';
+            this.classList.remove('btn-success');
+            this.classList.add('btn-secondary');
+            this.disabled = true;
+        });
+        }
+        
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 显示加载指示器
+            const loadingIndicator = document.createElement('div');
+            loadingIndicator.className = 'fixed inset-0 flex items-center justify-center bg-white bg-opacity-80 z-50';
+            loadingIndicator.innerHTML = `
+                <div class="text-center">
+                    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
+                    <div class="mt-3 text-lg font-medium">加载股票数据中...</div>
+                </div>
+            `;
+            document.body.appendChild(loadingIndicator);
+            
+            // 加载数据
+            const dataLoaded = await loadData();
+            
+            // 移除加载指示器
+            document.body.removeChild(loadingIndicator);
+            
+            if (dataLoaded) {
+                // 初始化搜索功能
+                initSearchFunction();
+                
+                // 更新股票基本信息
+                updateStockInfo();
+                
+                // 初始化股票K线图
+                initStockChart();
+                
+                // 更新当前日期
+                const dateElement = document.querySelector('#current-date');
+                if (dateElement) {
+                    const now = new Date();
+                    dateElement.textContent = now.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+                }
+            } else {
+                // 数据加载失败时显示错误信息
+                const errorAlert = document.createElement('div');
+                errorAlert.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+                errorAlert.textContent = '股票数据加载失败，请刷新页面重试';
+                document.body.appendChild(errorAlert);
+                
+                // 3秒后自动消失
+                setTimeout(() => {
+                    errorAlert.classList.add('fade-out');
+                    setTimeout(() => {
+                        document.body.removeChild(errorAlert);
+                    }, 500);
+                }, 3000);
+            }
+        });
+        
+        // 添加淡入淡出动画样式
+        const style = document.createElement('style');
+        style.textContent = `
+            .fade-out {
+                opacity: 0;
+                transition: opacity 0.5s ease;
+            }
+        `;
+        document.head.appendChild(style);
+        </script>
+</body>
+</html>

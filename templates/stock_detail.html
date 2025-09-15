@@ -1,0 +1,122 @@
+{% extends "layout.html" %}
+{% block title %}{{ stock.name }}({{ stock.code }}) - 股票详情{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stock-info {
+        font-size: 1.2rem;
+    }
+    .chart-container {
+        height: 400px;
+        margin: 20px 0;
+    }
+    .price-up {
+        color: #e63946;
+    }
+    .price-down {
+        color: #1d3557;
+    }
+    .k-line-chart {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <!-- 股票基本信息 -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h2>{{ stock.name }} <span class="text-muted">({{ stock.code }})</span></h2>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="stock-info mb-2"><strong>行业：</strong>{{ stock.industry if stock.industry else '未知' }}</p>
+                    <p class="stock-info mb-2"><strong>最新价：</strong><span class="{% if stock.change > 0 %}price-up{% else %}price-down{% endif %}">{{ stock.price }}</span></p>
+                    <p class="stock-info mb-2"><strong>涨跌额：</strong><span class="{% if stock.change > 0 %}price-up{% else %}price-down{% endif %}">{{ stock.change }}</span></p>
+                    <p class="stock-info mb-2"><strong>涨跌幅：</strong><span class="{% if stock.change > 0 %}price-up{% else %}price-down{% endif %}">{{ stock.change_percent }}%</span></p>
+                </div>
+                <div class="col-md-6 text-right">
+                    <p class="stock-info mb-2"><strong>开盘价：</strong>{{ stock.open_price }}</p>
+                    <p class="stock-info mb-2"><strong>最高价：</strong>{{ stock.high_price }}</p>
+                    <p class="stock-info mb-2"><strong>最低价：</strong>{{ stock.low_price }}</p>
+                    <p class="stock-info mb-2"><strong>成交量：</strong>{{ stock.volume }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 自选股操作 -->
+    <div class="text-center mb-4">
+        {% if session.username %}
+            {% if is_in_watchlist %}
+                <a href="{{ url_for('remove_from_watchlist', stock_code=stock.code) }}" class="btn btn-danger">
+                    <i class="fas fa-star"></i> 移除自选
+                </a>
+            {% else %}
+                <a href="{{ url_for('add_to_watchlist', stock_code=stock.code) }}" class="btn btn-primary">
+                    <i class="far fa-star"></i> 添加自选
+                </a>
+            {% endif %}
+        {% else %}
+            <a href="{{ url_for('login') }}" class="btn btn-primary">
+                登录后添加自选
+            </a>
+        {% endif %}
+    </div>
+    
+    <!-- K线图 -->
+    {% if chart_path %}
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h3>K线图</h3>
+        </div>
+        <div class="card-body k-line-chart">
+            <div class="chart-container">
+                <img src="{{ url_for('static', filename=chart_path) }}" class="img-fluid" alt="{{ stock.name }} K线图">
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- K线数据表格 -->
+    {% if kline_data is not none %}
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h3>历史K线数据</h3>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>日期</th>
+                            <th>开盘价</th>
+                            <th>收盘价</th>
+                            <th>最高价</th>
+                            <th>最低价</th>
+                            <th>成交量</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in kline_data %}
+                        <tr>
+                            <td>{{ row['date'] }}</td>
+                            <td>{{ row['open'] }}</td>
+                            <td>{{ row['close'] }}</td>
+                            <td>{{ row['high'] }}</td>
+                            <td>{{ row['low'] }}</td>
+                            <td>{{ row['volume'] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
