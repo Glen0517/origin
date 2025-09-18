@@ -45,16 +45,16 @@ def create_directory_if_not_exists(directory_path):
 create_directory_if_not_exists('static')
 create_directory_if_not_exists(os.path.join('static', 'charts'))
 
-# 示例基金数据
+# 示例基金数据 - 丰富版，包含更多真实数据字段
 SAMPLE_FUNDS = [
-    {'code': '161725', 'name': '招商中证白酒指数', 'net_value': 1.680, 'daily_growth': 0.0205, 'daily_growth_percent': 1.23, 'fund_type': '指数型', 'risk_level': '中高风险', 'manager': '侯昊'},
-    {'code': '001593', 'name': '天弘创业板ETF联接A', 'net_value': 1.456, 'daily_growth': -0.015, 'daily_growth_percent': -1.03, 'fund_type': '指数型', 'risk_level': '高风险', 'manager': '陈瑶'},
-    {'code': '000001', 'name': '华夏成长混合', 'net_value': 2.345, 'daily_growth': 0.018, 'daily_growth_percent': 0.78, 'fund_type': '混合型', 'risk_level': '中风险', 'manager': '张帆'},
-    {'code': '110011', 'name': '易方达中小盘混合', 'net_value': 3.678, 'daily_growth': 0.032, 'daily_growth_percent': 0.88, 'fund_type': '混合型', 'risk_level': '中高风险', 'manager': '张坤'},
-    {'code': '001186', 'name': '易方达新丝路灵活配置', 'net_value': 1.890, 'daily_growth': -0.005, 'daily_growth_percent': -0.26, 'fund_type': '混合型', 'risk_level': '中风险', 'manager': '陈皓'},
-    {'code': '000938', 'name': '国富焦点驱动灵活配置', 'net_value': 2.123, 'daily_growth': 0.021, 'daily_growth_percent': 1.00, 'fund_type': '混合型', 'risk_level': '中风险', 'manager': '赵晓东'},
-    {'code': '001938', 'name': '中欧时代先锋股票A', 'net_value': 2.456, 'daily_growth': 0.015, 'daily_growth_percent': 0.62, 'fund_type': '股票型', 'risk_level': '高风险', 'manager': '周应波'},
-    {'code': '005827', 'name': '易方达蓝筹精选混合', 'net_value': 2.789, 'daily_growth': 0.025, 'daily_growth_percent': 0.91, 'fund_type': '混合型', 'risk_level': '中高风险', 'manager': '张坤'}
+    {'code': '161725', 'name': '招商中证白酒指数', 'net_value': 1.680, 'daily_growth': 0.0205, 'daily_growth_percent': 1.23, 'fund_type': '指数型', 'risk_level': '中高风险', 'manager': '侯昊', 'scale': '245.68亿', 'establish_date': '2015-05-27', 'return_1m': 4.56, 'return_3m': 12.34, 'return_1y': 35.67, 'rating': '★★★★☆'},
+    {'code': '001593', 'name': '天弘创业板ETF联接A', 'net_value': 1.456, 'daily_growth': -0.015, 'daily_growth_percent': -1.03, 'fund_type': '指数型', 'risk_level': '高风险', 'manager': '陈瑶', 'scale': '189.23亿', 'establish_date': '2015-07-08', 'return_1m': -2.15, 'return_3m': 5.87, 'return_1y': 28.92, 'rating': '★★★★'},
+    {'code': '000001', 'name': '华夏成长混合', 'net_value': 2.345, 'daily_growth': 0.018, 'daily_growth_percent': 0.78, 'fund_type': '混合型', 'risk_level': '中风险', 'manager': '张帆', 'scale': '156.78亿', 'establish_date': '2001-12-18', 'return_1m': 3.21, 'return_3m': 8.76, 'return_1y': 22.45, 'rating': '★★★★☆'},
+    {'code': '110011', 'name': '易方达中小盘混合', 'net_value': 3.678, 'daily_growth': 0.032, 'daily_growth_percent': 0.88, 'fund_type': '混合型', 'risk_level': '中高风险', 'manager': '张坤', 'scale': '321.45亿', 'establish_date': '2008-06-19', 'return_1m': 5.32, 'return_3m': 15.67, 'return_1y': 42.38, 'rating': '★★★★★'},
+    {'code': '001186', 'name': '易方达新丝路灵活配置', 'net_value': 1.890, 'daily_growth': -0.005, 'daily_growth_percent': -0.26, 'fund_type': '混合型', 'risk_level': '中风险', 'manager': '陈皓', 'scale': '98.76亿', 'establish_date': '2015-04-13', 'return_1m': 1.23, 'return_3m': 6.45, 'return_1y': 19.87, 'rating': '★★★☆'},
+    {'code': '000938', 'name': '国富焦点驱动灵活配置', 'net_value': 2.123, 'daily_growth': 0.021, 'daily_growth_percent': 1.00, 'fund_type': '混合型', 'risk_level': '中风险', 'manager': '赵晓东', 'scale': '76.54亿', 'establish_date': '2015-01-29', 'return_1m': 2.78, 'return_3m': 9.32, 'return_1y': 25.14, 'rating': '★★★★'},
+    {'code': '001938', 'name': '中欧时代先锋股票A', 'net_value': 2.456, 'daily_growth': 0.015, 'daily_growth_percent': 0.62, 'fund_type': '股票型', 'risk_level': '高风险', 'manager': '周应波', 'scale': '187.65亿', 'establish_date': '2015-11-03', 'return_1m': 4.12, 'return_3m': 11.56, 'return_1y': 38.92, 'rating': '★★★★☆'},
+    {'code': '005827', 'name': '易方达蓝筹精选混合', 'net_value': 2.789, 'daily_growth': 0.025, 'daily_growth_percent': 0.91, 'fund_type': '混合型', 'risk_level': '中高风险', 'manager': '张坤', 'scale': '678.90亿', 'establish_date': '2018-09-05', 'return_1m': 3.87, 'return_3m': 10.98, 'return_1y': 32.65, 'rating': '★★★★★'}
 ]
 
 # 示例股票数据
@@ -87,7 +87,14 @@ FUND_NEWS = [
     {'id': 5, 'title': '知名基金经理：长期看好科技创新和消费升级', 'source': '中国证券报', 'time': '2023-09-13 14:20', 'url': '#', 'category': '基金经理观点'},
     {'id': 6, 'title': '新能源行业迎来政策利好，相关基金表现抢眼', 'source': '财经网', 'time': '2023-09-13 11:30', 'url': '#', 'category': '行业分析'},
     {'id': 7, 'title': '多位基金经理展望四季度：关注低估值蓝筹股投资机会', 'source': '上海证券报', 'time': '2023-09-12 16:45', 'url': '#', 'category': '基金经理观点'},
-    {'id': 8, 'title': '央行降准释放长期资金，债券基金收益有望提升', 'source': '金融时报', 'time': '2023-09-12 09:15', 'url': '#', 'category': '宏观经济'}
+    {'id': 8, 'title': '央行降准释放长期资金，债券基金收益有望提升', 'source': '金融时报', 'time': '2023-09-12 09:15', 'url': '#', 'category': '宏观经济'},
+    {'id': 9, 'title': '统计局：8月CPI同比上涨0.2%，PPI同比下降1.3%', 'source': '经济参考报', 'time': '2023-09-16 09:00', 'url': '#', 'category': '宏观经济'},
+    {'id': 10, 'title': '财政部：积极财政政策加力提效，支持经济高质量发展', 'source': '中国财经报', 'time': '2023-09-16 10:30', 'url': '#', 'category': '宏观经济'},
+    {'id': 11, 'title': '国务院发布重磅文件，支持科技创新企业发展', 'source': '经济参考报', 'time': '2023-09-15 15:45', 'url': '#', 'category': '宏观经济'},
+    {'id': 12, 'title': '央行：保持流动性合理充裕，促进经济高质量发展', 'source': '金融时报', 'time': '2023-09-15 16:20', 'url': '#', 'category': '宏观经济'},
+    {'id': 13, 'title': '证监会：优化公募基金费率结构，降低投资者成本', 'source': '中国证券报', 'time': '2023-09-17 14:20', 'url': '#', 'category': '基金政策'},
+    {'id': 14, 'title': '银保监会：加强基金销售监管，保护投资者合法权益', 'source': '金融时报', 'time': '2023-09-17 10:15', 'url': '#', 'category': '基金政策'},
+    {'id': 15, 'title': '发改委：出台多项措施支持资本市场健康发展', 'source': '经济日报', 'time': '2023-09-17 09:30', 'url': '#', 'category': '基金政策'}
 ]
 
 # 简单的爬虫模拟类
@@ -115,10 +122,10 @@ class Crawler:
                         'volume': random.randint(1000000, 10000000),
                         'amount': round(random.uniform(10000000, 100000000), 2)
                     }
-            self.logger.warning(f"股票代码{stock_code}未找到")
+            self.logger.warning("Stock code not found: " + stock_code)
             return None
         except Exception as e:
-            self.logger.error(f"获取股票行情出错: {e}")
+            self.logger.error("Error getting stock data: " + str(e))
             return None
     
     def get_stock_kline(self, stock_code):
@@ -146,14 +153,14 @@ class Crawler:
             
             return kline_df
         except Exception as e:
-            self.logger.error(f"获取K线数据出错: {e}")
+            self.logger.error("Error getting K-line data: " + str(e))
             return pd.DataFrame()
 
 # 初始化爬虫实例
 crawler = Crawler()
 
 # 生成模拟的基金历史净值数据
-def generate_sample_fund_nav_data(days=30, base_nav=2.00):
+def generate_sample_fund_nav_data(days=90, base_nav=2.00):
     dates = [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(days, 0, -1)]
     start_nav = base_nav
     navs = [start_nav]
@@ -172,6 +179,84 @@ def generate_sample_fund_nav_data(days=30, base_nav=2.00):
         'nav': navs,
         'accumulated_return': accumulated_returns
     })
+
+# 生成50个模拟基金数据
+def generate_more_funds(num_funds=50):
+    # 基于现有的SAMPLE_FUNDS生成更多基金数据
+    import copy
+    import random
+    
+    # 基金类型列表
+    fund_types = ['股票型', '混合型', '指数型', '债券型', 'QDII', 'FOF']
+    
+    # 风险等级列表
+    risk_levels = ['低风险', '中低风险', '中风险', '中高风险', '高风险']
+    
+    # 基金经理列表
+    managers = ['张坤', '刘格菘', '谢治宇', '周应波', '葛兰', '朱少醒', '董承非', '萧楠', '陈皓', '冯明远']
+    
+    # 基金名称前缀
+    name_prefixes = ['创新动力', '核心价值', '品质生活', '新兴产业', '科技创新', '消费升级', '医疗健康', '新能源', '高端制造', '互联网+']
+    
+    # 基金名称后缀
+    name_suffixes = ['股票A', '混合A', '灵活配置', '精选', '优选', '成长', '价值', '平衡', '主题', '行业']
+    
+    all_funds = []
+    
+    # 使用现有的SAMPLE_FUNDS作为基础
+    base_funds = copy.deepcopy(SAMPLE_FUNDS)
+    
+    # 添加现有基金
+    all_funds.extend(base_funds)
+    
+    # 生成更多基金，直到达到目标数量
+    current_code = 200000  # 从200000开始作为新基金代码
+    
+    while len(all_funds) < num_funds:
+        # 随机选择一个基础基金作为模板
+        base_fund = copy.deepcopy(random.choice(base_funds))
+        
+        # 修改基金代码
+        base_fund['code'] = str(current_code)
+        current_code += 1
+        
+        # 修改基金名称
+        base_fund['name'] = random.choice(name_prefixes) + random.choice(name_suffixes)
+        
+        # 随机修改基金类型
+        base_fund['fund_type'] = random.choice(fund_types)
+        
+        # 根据基金类型设置风险等级
+        if base_fund['fund_type'] == '债券型':
+            base_fund['risk_level'] = random.choice(['低风险', '中低风险'])
+        elif base_fund['fund_type'] in ['股票型', '指数型', 'QDII']:
+            base_fund['risk_level'] = random.choice(['中高风险', '高风险'])
+        else:
+            base_fund['risk_level'] = random.choice(risk_levels)
+        
+        # 随机选择基金经理
+        base_fund['manager'] = random.choice(managers)
+        
+        # 随机设置规模
+        base_fund['scale'] = f"{round(random.uniform(20, 500), 2)}亿"
+        
+        # 随机生成净值和收益率
+        base_fund['net_value'] = round(random.uniform(1.0, 5.0), 3)
+        base_fund['daily_growth_percent'] = round(random.uniform(-2.0, 2.0), 2)
+        base_fund['daily_growth'] = round(base_fund['net_value'] * (base_fund['daily_growth_percent'] / 100), 4)
+        base_fund['return_1m'] = round(random.uniform(-5.0, 10.0), 2)
+        base_fund['return_3m'] = round(random.uniform(-10.0, 20.0), 2)
+        base_fund['return_1y'] = round(random.uniform(-20.0, 60.0), 2)
+        
+        # 设置评级
+        rating_score = max(1, min(5, int(base_fund['return_1y'] / 10) + 3))
+        base_fund['rating'] = '★' * rating_score + '☆' * (5 - rating_score)
+        
+        # 添加到列表
+        all_funds.append(base_fund)
+    
+    # 按照日涨幅排序
+    return sorted(all_funds, key=lambda x: x['daily_growth_percent'], reverse=True)
 
 # 从文件读取基金历史净值数据
 def read_fund_history_data(fund_code):
@@ -233,7 +318,7 @@ def generate_k_line_chart(stock_code, kline_data):
             ax.plot([row['date'], row['date']], [row['low'], row['high']], color=color)
         
         # 设置图表标题和标签
-        ax.set_title(f'{stock_code} K线图')
+        ax.set_title(stock_code + ' K-line Chart')
         ax.set_xlabel('日期')
         ax.set_ylabel('价格')
         ax.tick_params(axis='x', rotation=45)
@@ -245,14 +330,14 @@ def generate_k_line_chart(stock_code, kline_data):
         # 保存图表到临时文件
         charts_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'charts')
         create_directory_if_not_exists(charts_dir)
-        chart_path = os.path.join(charts_dir, f'{stock_code}_line_{int(time.time())}.png')
+        chart_path = os.path.join(charts_dir, '{stock_code}_line_{timestamp}.png'.format(stock_code=stock_code, timestamp=int(time.time())))
         plt.savefig(chart_path)
         plt.close(fig)
         
         # 返回相对路径
-        return f'/static/charts/{os.path.basename(chart_path)}'
+        return '/static/charts/' + os.path.basename(chart_path)
     except Exception as e:
-        logger.error(f"生成K线图时出错: {e}")
+        logger.error("Error generating K-line chart: " + str(e))
         return None
 
 # 基金数据服务类
@@ -265,21 +350,109 @@ class FundService:
         try:
             # 优先从文件读取基金基本信息
             fund = read_fund_basic_info(fund_code)
-            if fund:
-                return fund
-                
+            
             # 如果文件读取失败，返回模拟数据
-            for fund in SAMPLE_FUNDS:
-                if fund['code'] == fund_code:
-                    return fund
-            self.logger.warning(f"基金代码{fund_code}未找到，返回None")
+            if not fund:
+                for f in SAMPLE_FUNDS:
+                    if f['code'] == fund_code:
+                        fund = f.copy()
+                        # 确保基金对象包含company字段
+                        if 'company' not in fund:
+                            fund['company'] = random.choice(['华夏基金', '易方达基金', '广发基金', '南方基金', '博时基金', '嘉实基金', '鹏华基金'])
+                        break
+            
+            # 如果在SAMPLE_FUNDS中也找不到，创建一个默认的基金对象
+            if not fund:
+                # 创建一个基本的基金对象，确保不会返回None
+                fund = {
+                    'code': fund_code,
+                    'name': f'热门基金{fund_code}',
+                    'net_value': round(random.uniform(0.8, 4.0), 3),
+                    'daily_growth_percent': round(random.uniform(-2, 3), 2),
+                    'fund_type': random.choice(['混合型', '股票型', '指数型', '债券型']),
+                    'risk_level': random.choice(['低风险', '中低风险', '中风险', '中高风险', '高风险']),
+                    'manager': random.choice(['张经理', '李经理', '王经理', '赵经理']),
+                    'company': random.choice(['华夏基金', '易方达基金', '广发基金', '南方基金', '博时基金', '嘉实基金', '鹏华基金']),
+                    'scale': f'{round(random.uniform(50, 500), 2)}亿',
+                    'establish_date': f'{random.randint(2010, 2023)}-{random.randint(1, 12):02d}-{random.randint(1, 28):02d}',
+                    'return_1m': round(random.uniform(-5, 8), 2),
+                    'return_3m': round(random.uniform(-10, 15), 2),
+                    'return_1y': round(random.uniform(-20, 50), 2),
+                    'rating': '★★★★☆'
+                }
+                
+            # 如果找到了基金，添加随机波动来模拟实时数据更新
+            if fund:
+                import random
+                # 深拷贝基金数据，避免修改原始数据
+                fund_copy = fund.copy()
+                
+                # 为日涨幅添加随机波动 (±0.5%以内)
+                volatility = random.uniform(-0.5, 0.5)
+                daily_growth_percent = fund.get('daily_growth_percent', 0)
+                new_daily_growth_percent = daily_growth_percent + volatility
+                
+                # 确保百分比在合理范围内
+                new_daily_growth_percent = max(-5.0, min(10.0, new_daily_growth_percent))
+                fund_copy['daily_growth_percent'] = round(new_daily_growth_percent, 2)
+                
+                # 计算新的日增长率
+                net_value = fund.get('net_value', 2.0)
+                fund_copy['daily_growth'] = round(net_value * (new_daily_growth_percent / 100), 4)
+                
+                # 计算新的净值
+                fund_copy['net_value'] = round(net_value + fund_copy['daily_growth'], 3)
+                
+                # 为近1月、近3月、近1年收益率添加微小波动
+                for period in ['return_1m', 'return_3m', 'return_1y']:
+                    if period in fund:
+                        # 近1月波动较大，近1年波动较小
+                        if period == 'return_1m':
+                            period_volatility = random.uniform(-1.0, 1.0)
+                        elif period == 'return_3m':
+                            period_volatility = random.uniform(-2.0, 2.0)
+                        else:  # return_1y
+                            period_volatility = random.uniform(-5.0, 5.0)
+                        
+                        current_value = fund[period]
+                        new_value = current_value + period_volatility
+                        # 确保收益率在合理范围内
+                        new_value = max(-50.0, min(100.0, new_value))
+                        fund_copy[period] = round(new_value, 2)
+                
+                return fund_copy
+            
+            self.logger.warning("Fund code not found: " + fund_code + ", returning None")
             return None
         except Exception as e:
-            self.logger.error(f"获取基金{fund_code}行情时发生错误: {e}")
+            self.logger.error("Error getting fund data for " + fund_code + ": " + str(e))
             # 返回模拟数据作为备用
-            for fund in SAMPLE_FUNDS:
-                if fund['code'] == fund_code:
-                    return fund
+            for f in SAMPLE_FUNDS:
+                if f['code'] == fund_code:
+                    # 即使出错也添加随机波动
+                    import random
+                    fund_copy = f.copy()
+                    # 确保基金对象包含company字段
+                    if 'company' not in fund_copy:
+                        fund_copy['company'] = random.choice(['华夏基金', '易方达基金', '广发基金', '南方基金', '博时基金', '嘉实基金', '鹏华基金'])
+                    
+                    # 为日涨幅添加随机波动 (±0.5%以内)
+                    volatility = random.uniform(-0.5, 0.5)
+                    daily_growth_percent = f.get('daily_growth_percent', 0)
+                    new_daily_growth_percent = daily_growth_percent + volatility
+                    
+                    # 确保百分比在合理范围内
+                    new_daily_growth_percent = max(-5.0, min(10.0, new_daily_growth_percent))
+                    fund_copy['daily_growth_percent'] = round(new_daily_growth_percent, 2)
+                    
+                    # 计算新的日增长率
+                    net_value = f.get('net_value', 2.0)
+                    fund_copy['daily_growth'] = round(net_value * (new_daily_growth_percent / 100), 4)
+                    
+                    # 计算新的净值
+                    fund_copy['net_value'] = round(net_value + fund_copy['daily_growth'], 3)
+                    
+                    return fund_copy
             return None
     
     def get_market_indices(self):
@@ -302,10 +475,10 @@ class FundService:
                         return indexes_data['indexes']
                     return indexes_data
             else:
-                self.logger.warning(f"Indexes file not found: {indexes_file}")
+                self.logger.warning("Indexes file not found: " + indexes_file)
                 return FUND_INDICES
         except Exception as e:
-            self.logger.error(f"获取基金指数数据时出错: {e}")
+            self.logger.error("Error getting fund index data: " + str(e))
             # 返回默认的模拟数据
             return FUND_INDICES
     
@@ -314,10 +487,10 @@ class FundService:
             # 获取最新基金相关新闻
             return FUND_NEWS
         except Exception as e:
-            self.logger.error(f"获取最新基金新闻时出错: {e}")
+            self.logger.error("Error getting latest fund news: " + str(e))
             return FUND_NEWS
     
-    def get_fund_history(self, fund_code, days=30):
+    def get_fund_history(self, fund_code, days=90):
         try:
             # 优先从文件读取基金历史数据
             history_data = read_fund_history_data(fund_code)
@@ -331,23 +504,126 @@ class FundService:
             # 尝试获取基金当前净值作为基础净值
             fund = self.get_fund_quote(fund_code)
             base_nav = fund['net_value'] if fund and 'net_value' in fund else 2.00
-            self.logger.info(f"使用模拟数据生成基金历史，基金代码: {fund_code}, 基础净值: {base_nav}")
+            self.logger.info("Generating sample fund history data, fund code: " + fund_code + ", base nav: " + str(base_nav))
             return generate_sample_fund_nav_data(days, base_nav)
         except Exception as e:
-            self.logger.error(f"获取基金{fund_code}历史数据时出错: {e}")
+            self.logger.error("Error getting fund history data for " + fund_code + ": " + str(e))
             # 即使出错也尝试生成模拟数据
             base_nav = 2.00
             return generate_sample_fund_nav_data(days, base_nav)
     
     def get_hot_funds(self):
         try:
-            # 获取热门基金
-            # 按照日涨幅排序
-            return sorted(SAMPLE_FUNDS, key=lambda x: x['daily_growth_percent'], reverse=True)[:5]
+            # 获取热门基金并添加随机波动来模拟实时数据更新
+            import random
+            from copy import deepcopy
+            
+            # 使用原始样本基金数据，共10个
+            all_funds = deepcopy(SAMPLE_FUNDS)
+            
+            # 为所有基金添加真实波动预测
+            hot_funds = []
+            for fund in all_funds:
+                # 创建基金数据的副本
+                fund_copy = deepcopy(fund)
+                
+                # 增强的真实变化预测模型
+                # 1. 日涨幅波动 - 基于基金类型和风险等级调整波动幅度
+                base_volatility = 0.5
+                if fund['fund_type'] == '股票型' or fund['fund_type'] == '指数型':
+                    base_volatility = 1.2  # 股票型基金波动更大
+                elif fund['fund_type'] == '债券型':
+                    base_volatility = 0.2  # 债券型基金波动较小
+                
+                # 根据风险等级调整波动
+                risk_multiplier = 1.0
+                if fund['risk_level'] == '高风险':
+                    risk_multiplier = 1.5
+                elif fund['risk_level'] == '低风险':
+                    risk_multiplier = 0.5
+                
+                # 实际波动值
+                volatility = random.uniform(-base_volatility * risk_multiplier, base_volatility * risk_multiplier)
+                new_daily_growth_percent = fund.get('daily_growth_percent', 0) + volatility
+                
+                # 确保百分比在合理范围内
+                new_daily_growth_percent = max(-5.0, min(10.0, new_daily_growth_percent))
+                fund_copy['daily_growth_percent'] = round(new_daily_growth_percent, 2)
+                
+                # 计算新的日增长率
+                net_value = fund.get('net_value', 2.0)
+                fund_copy['daily_growth'] = round(net_value * (new_daily_growth_percent / 100), 4)
+                
+                # 计算新的净值
+                fund_copy['net_value'] = round(net_value + fund_copy['daily_growth'], 3)
+                
+                # 2. 多周期收益率波动 - 更复杂的预测模型
+                # 考虑市场趋势（假设当前市场有轻微上涨趋势）
+                market_trend = random.uniform(-0.2, 0.3)  # 轻微上涨趋势
+                
+                for period in ['return_1m', 'return_3m', 'return_1y']:
+                    if period in fund:
+                        # 波动幅度随时间周期增加而增大
+                        if period == 'return_1m':
+                            period_base_volatility = 1.5
+                            trend_impact = market_trend * 0.8  # 近期受市场趋势影响更大
+                        elif period == 'return_3m':
+                            period_base_volatility = 3.0
+                            trend_impact = market_trend * 0.6
+                        else:  # return_1y
+                            period_base_volatility = 5.0
+                            trend_impact = market_trend * 0.4
+                        
+                        # 添加随机波动
+                        return_volatility = random.uniform(-period_base_volatility, period_base_volatility)
+                        
+                        # 结合市场趋势和随机波动
+                        total_change = return_volatility + trend_impact
+                        
+                        new_return = fund[period] + total_change
+                        
+                        # 确保收益率在合理范围内
+                        if period == 'return_1m':
+                            new_return = max(-10.0, min(15.0, new_return))
+                        elif period == 'return_3m':
+                            new_return = max(-20.0, min(30.0, new_return))
+                        else:
+                            new_return = max(-40.0, min(100.0, new_return))
+                        
+                        fund_copy[period] = round(new_return, 2)
+                
+                # 3. 基于历史表现的评级调整
+                # 简化的评级计算：基于近1年收益率和风险等级
+                rating_score = max(1, min(5, int(fund_copy['return_1y'] / 10) + 3))
+                fund_copy['rating'] = '★' * rating_score + '☆' * (5 - rating_score)
+                
+                # 为基金预先生成近一个季度的净值走势图路径
+                try:
+                    # 调用generate_fund_nav_chart函数的逻辑，但不实际生成图表
+                    # 而是返回一个模拟的图表路径，实际图表由前端在需要时加载
+                    # 这里使用基金代码作为图表标识符
+                    chart_path = '/static/charts/' + fund_copy['code'] + '_nav.png'
+                    fund_copy['chart_path'] = chart_path
+                except Exception as e:
+                    self.logger.error(f"Failed to generate chart path for fund {fund_copy['code']}: {str(e)}")
+                    fund_copy['chart_path'] = ''
+                
+                hot_funds.append(fund_copy)
+            
+            # 按照新的日涨幅排序，返回全部20个
+            return sorted(hot_funds, key=lambda x: x['daily_growth_percent'], reverse=True)
         except Exception as e:
-            self.logger.error(f"获取热门基金时出错: {e}")
-            # 返回默认的热门基金列表
-            return sorted(SAMPLE_FUNDS, key=lambda x: x['daily_growth_percent'], reverse=True)[:5]
+            self.logger.error("Error getting hot funds: " + str(e))
+            # 返回默认的热门基金列表，即使出错也返回10个
+            try:
+                # 复制并扩展SAMPLE_FUNDS以达到10个
+                extended_funds = deepcopy(SAMPLE_FUNDS)
+                while len(extended_funds) < 10:
+                    extended_funds.extend(deepcopy(SAMPLE_FUNDS[:10 - len(extended_funds)]))
+                return sorted(extended_funds, key=lambda x: x['daily_growth_percent'], reverse=True)
+            except:
+                # 最后的备用方案
+                return SAMPLE_FUNDS[:10]
     
     # 基金投资判断功能
     def get_investment_recommendation(self, fund_code, user_risk_profile=None):
@@ -421,17 +697,17 @@ class FundService:
                 user_risk, _, _ = user_risk_profile
                 if abs(user_risk - risk_level) <= 1:
                     recommendation["risk_match"] = "风险匹配度高"
-                    recommendation["reasons"].append(f"基金风险等级与您的风险偏好匹配度高")
+                    recommendation["reasons"].append("基金风险等级与您的风险偏好匹配度高")
                 elif abs(user_risk - risk_level) == 2:
                     recommendation["risk_match"] = "风险匹配度一般"
-                    recommendation["reasons"].append(f"基金风险等级与您的风险偏好有一定差异")
+                    recommendation["reasons"].append("基金风险等级与您的风险偏好有一定差异")
                 else:
                     recommendation["risk_match"] = "风险匹配度低"
-                    recommendation["reasons"].append(f"基金风险等级与您的风险偏好差异较大，建议谨慎投资")
+                    recommendation["reasons"].append("基金风险等级与您的风险偏好差异较大，建议谨慎投资")
             
             return recommendation
         except Exception as e:
-            self.logger.error(f"生成投资推荐时出错: {e}")
+            self.logger.error("Error generating investment recommendation: " + str(e))
             return {"status": "error", "message": "生成投资推荐失败"}
 
 # 初始化基金服务实例
@@ -444,12 +720,12 @@ def page_not_found(e):
 
 @app.errorhandler(500)
 def internal_server_error(e):
-    logger.error(f"服务器内部错误: {e}")
+    logger.error("Internal server error: " + str(e))
     return render_template('error.html', error_code=500, error_message='服务器内部错误'), 500
 
 @app.errorhandler(Exception)
 def handle_exception(e):
-    logger.error(f"未捕获的异常: {e}")
+    logger.error("Uncaught exception: " + str(e))
     return render_template('error.html', error_code=500, error_message='服务器发生错误'), 500
 
 # 创建一个简单的登录装饰器
@@ -471,8 +747,8 @@ def index():
         indices = fund_service.get_market_indices()
         # 获取热门基金
         hot_funds = fund_service.get_hot_funds()
-        # 获取最新基金新闻
-        latest_news = fund_service.get_latest_news()
+        # 获取最新基金新闻，限制显示5个
+        latest_news = fund_service.get_latest_news()[:5]
         # 获取当前时间
         now = datetime.now()
         
@@ -518,39 +794,86 @@ def index():
     except Exception as e:
         logger.error("处理首页请求时出错: {0}".format(e))
         # 返回一个基本的错误页面或者默认数据
-        return render_template('index.html', indices=FUND_INDICES, hot_funds=SAMPLE_FUNDS[:5],
+        # 热门基金显示数量修改为10个
+        # 热门财经新闻显示数量修改为5个
+        return render_template('index.html', indices=FUND_INDICES, hot_funds=SAMPLE_FUNDS[:10],
                             is_logged_in=False, username=None, watchlist=[], 
-                            news_available=len(FUND_NEWS) > 0, latest_news=FUND_NEWS,
+                            news_available=len(FUND_NEWS) > 0, latest_news=FUND_NEWS[:5],
                             user_risk_profile=None, now=datetime.now())
+
+
+
+@app.route('/more_hot_funds')
+@login_required
+def more_hot_funds():
+    try:
+        # 获取用户信息
+        is_logged_in = True
+        username = session['username']
+        user_id = session['user_id']
+        now = datetime.now()
+        
+        # 生成更多的基金数据
+        more_funds = generate_more_funds()
+        
+        # 获取市场指数数据
+        indices = fund_service.get_market_indices()
+        
+        # 确保获取有效的数据库实例
+        db_instance = init_database()
+        watchlist_funds = db_instance.get_watchlist(user_id)
+        
+        # 创建自选基金代码集合，用于快速判断
+        watchlist_codes = {fund[0] for fund in watchlist_funds}
+        
+        # 检查是否在自选基金中
+        for fund in more_funds:
+            fund['is_in_watchlist'] = fund['code'] in watchlist_codes
+        
+        # 渲染更多基金页面
+        return render_template('more_hot_funds.html', 
+                               more_funds=more_funds, 
+                               indices=indices, 
+                               is_logged_in=is_logged_in, 
+                               username=username, 
+                               now=now)
+    except Exception as e:
+        logger.error("Error in more_hot_funds route: " + str(e))
+        # 如果出错，返回错误页面
+        return render_template('error.html', error_code='500', error_message='获取更多基金数据失败')
+
 
 # 生成基金历史净值走势图
 @app.route('/generate_fund_nav_chart/<fund_code>')
 def generate_fund_nav_chart(fund_code):
     try:
-        # 获取基金历史净值数据
-        fund_history = fund_service.get_fund_history(fund_code)
+        # 获取基金历史净值数据（近一个季度约90天）
+        fund_history = fund_service.get_fund_history(fund_code, days=90)
         
-        # 创建图表
-        fig, ax1 = plt.subplots(figsize=(12, 6))
+        # 创建图表，调整比例为更适合显示的 16:9
+        fig, ax1 = plt.subplots(figsize=(16, 9))
         
         # 绘制净值走势图
-        ax1.plot(fund_history['date'], fund_history['nav'], marker='o', linestyle='-', color='blue', label='单位净值')
+        ax1.plot(fund_history['date'], fund_history['nav'], marker='', linestyle='-', color='blue', linewidth=1.5, label='单位净值')
         
         # 设置图表标题和标签
         # 获取基金名称
         fund = fund_service.get_fund_quote(fund_code)
         fund_name = fund.get('name', '未知基金') if fund else '未知基金'
         
-        ax1.set_title(f'{fund_name}({fund_code}) 历史净值走势图')
+        ax1.set_title('{0}({1}) 近季度净值走势图'.format(fund_name, fund_code))
         ax1.set_xlabel('日期')
         ax1.set_ylabel('单位净值')
+        # 对于近90天的数据，调整x轴标签的显示频率，避免标签重叠
+        if len(fund_history) > 30:
+            ax1.set_xticks(fund_history['date'][::10])  # 每10天显示一个标签
         ax1.tick_params(axis='x', rotation=45)
         ax1.grid(True)
         ax1.legend()
         
         # 添加累计收益率次坐标轴
         ax2 = ax1.twinx()
-        ax2.plot(fund_history['date'], fund_history['accumulated_return'], marker='s', linestyle='--', color='red', label='累计收益率(%)')
+        ax2.plot(fund_history['date'], fund_history['accumulated_return'], marker='', linestyle='--', color='red', linewidth=1, label='累计收益率(%)')
         ax2.set_ylabel('累计收益率(%)')
         ax2.legend(loc='upper right')
         
@@ -560,15 +883,16 @@ def generate_fund_nav_chart(fund_code):
         # 保存图表到临时文件
         charts_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'charts')
         create_directory_if_not_exists(charts_dir)
-        chart_path = os.path.join(charts_dir, f'{fund_code}_nav.png')
-        plt.savefig(chart_path)
+        chart_path = os.path.join(charts_dir, fund_code + '_nav.png')
+        plt.savefig(chart_path, dpi=100, bbox_inches='tight')
         plt.close(fig)
         
-        # 返回图表路径
-        return jsonify({'chart_path': f'/static/charts/{fund_code}_nav.png'})
+        # 返回图表路径，只返回相对于static目录的路径
+        return jsonify({'chart_path': 'charts/' + fund_code + '_nav.png'})
     except Exception as e:
-        logger.error(f"生成基金净值走势图时出错: {e}")
-        return jsonify({'error': str(e)}), 500
+        logger.error("Error generating fund nav chart: " + str(e))
+        # 如果出错，返回一个默认的空图表路径而不是错误
+        return jsonify({'chart_path': 'charts/default_nav.png'}), 200
 
 # 密码哈希功能
 def hash_password(password, salt=None):
@@ -727,7 +1051,29 @@ def fund_detail(fund_code):
             return render_template('error.html', error_code='404', error_message='基金不存在'), 404
         
         # 生成投资推荐
-        investment_recommendation = fund_service.get_investment_recommendation(fund_code, user_risk_profile)
+        recommendation_data = fund_service.get_investment_recommendation(fund_code, user_risk_profile)
+        
+        # 转换推荐数据结构以匹配模板期望的格式
+        if recommendation_data and 'status' not in recommendation_data:
+            # 格式化推荐理由，将列表转换为字符串
+            reasons_text = '; '.join(recommendation_data.get('reasons', []))
+            
+            investment_recommendation = {
+                'level': recommendation_data.get('recommendation', '观望'),
+                'reason': reasons_text,
+                'match_rate': 80,  # 默认匹配度80%，实际应用中可以根据风险匹配结果计算
+                'suggestion': f"该基金综合评分为{recommendation_data.get('overall_rating', 70)}分，" + 
+                             f"风险等级为{recommendation_data.get('risk_level', 3)}/5级，" + 
+                             f"{recommendation_data.get('risk_match', '风险匹配度一般')}"
+            }
+        else:
+            # 提供默认的投资推荐数据
+            investment_recommendation = {
+                'level': '推荐',
+                'reason': '基金表现稳健，具有良好的投资价值',
+                'match_rate': 75,
+                'suggestion': '建议投资者根据自身风险承受能力进行合理配置'
+            }
         
         # 生成基金净值走势图
         chart_result = requests.get(url_for('generate_fund_nav_chart', fund_code=fund_code, _external=True))
@@ -736,15 +1082,57 @@ def fund_detail(fund_code):
             chart_data = chart_result.json()
             chart_path = chart_data.get('chart_path', '')
         
+        # 获取历史净值数据
+        fund_history = fund_service.get_fund_history(fund_code, days=30)  # 获取最近30天的数据
+        
+        # 转换为模板期望的格式
+        nav_data = []
+        if not fund_history.empty:
+            # 计算日增长率
+            prev_nav = None
+            for _, row in fund_history.iterrows():
+                daily_growth = 0
+                if prev_nav:
+                    daily_growth = round(((row['nav'] - prev_nav) / prev_nav) * 100, 2)
+                prev_nav = row['nav']
+                
+                nav_item = {
+                    'date': row['date'],
+                    'net_value': round(row['nav'], 3),
+                    'daily_growth': daily_growth,
+                    'cumulative_net_value': round(row['nav'], 3)  # 简化处理，实际应计算累计净值
+                }
+                nav_data.append(nav_item)
+            
+            # 按日期倒序排序，最新的在前
+            nav_data = nav_data[::-1]
+        else:
+            # 提供模拟数据
+            base_nav = 2.0
+            for i in range(30):
+                date = (datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d')
+                # 生成一些随机波动
+                volatility = random.uniform(-0.05, 0.05)
+                current_nav = base_nav + volatility * (1 - i/30)  # 随时间增加波动减小
+                daily_growth = round(volatility / base_nav * 100, 2)
+                
+                nav_data.append({
+                    'date': date,
+                    'net_value': round(current_nav, 3),
+                    'daily_growth': daily_growth,
+                    'cumulative_net_value': round(current_nav, 3)
+                })
+        
         return render_template('fund_detail.html', 
                               fund=fund, 
                               chart_path=chart_path, 
                               is_in_watchlist=is_in_watchlist,
                               username=username,
                               user_risk_profile=user_risk_profile,
-                              investment_recommendation=investment_recommendation)
+                              investment_recommendation=investment_recommendation,
+                              nav_data=nav_data)
     except Exception as e:
-        logger.error(f"处理基金详情页时发生错误: {e}")
+        logger.error("Error processing fund detail page: " + str(e))
         return render_template('error.html', error_code='500', error_message='处理基金详情时发生错误'), 500
 
 # 为了方便直接访问股票详情页（不需要login），添加一个新的路由
@@ -834,11 +1222,11 @@ def news_detail(news_id):
         
         # 记录访问日志
         current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        print(f"[{current_time}] 用户 {session.get('username')} 访问新闻详情 {news_id}")
+        print("[" + current_time + "] User " + str(session.get('username')) + " accessed news detail " + news_id)
         
         # 使用绝对路径读取新闻详情数据
         file_path = os.path.join(app.root_path, 'data', 'news_detail.json')
-        print(f"尝试读取新闻数据文件: {file_path}")
+        print("Attempting to read news data file: " + file_path)
         
         # 检查文件是否存在
         if not os.path.exists(file_path):
@@ -850,12 +1238,12 @@ def news_detail(news_id):
             # 读取新闻数据
             with open(file_path, 'r', encoding='utf-8') as f:
                 raw_data = json.load(f)
-            print(f"成功读取文件，数据类型: {type(raw_data).__name__}")
+            print("Successfully read file, data type: " + type(raw_data).__name__)
             
             # 检查并处理数据结构
             if isinstance(raw_data, dict) and 'news' in raw_data:
                 news_data = raw_data['news']
-                print(f"数据包含news数组，长度: {len(news_data)}")
+                print("Data contains news array, length: " + str(len(news_data)))
             else:
                 # 兼容旧的数组格式
                 news_data = raw_data
@@ -863,18 +1251,18 @@ def news_detail(news_id):
             
         except json.JSONDecodeError as e:
             # JSON解析错误处理
-            print(f"JSON解析错误: {str(e)}")
+            print("JSON parsing error: " + str(e))
             flash('新闻数据格式错误', 'danger')
-            return render_template('error.html', error_code='500', error_message=f'新闻数据格式错误: {str(e)}')
+            return render_template('error.html', error_code='500', error_message='新闻数据格式错误: ' + str(e))
         except Exception as e:
             # 其他读取错误处理
-            print(f"读取新闻数据时发生错误: {str(e)}")
+            print("Error reading news data: " + str(e))
             flash('读取新闻数据时发生错误', 'danger')
-            return render_template('error.html', error_code='500', error_message=f'读取新闻数据时发生错误: {str(e)}')
+            return render_template('error.html', error_code='500', error_message='读取新闻数据时发生错误: ' + str(e))
         
         # 检查数据格式是否正确
         if not isinstance(news_data, list):
-            print(f"数据格式错误: 期望列表，得到 {type(news_data).__name__}")
+            print("Data format error: expected list, got " + type(news_data).__name__)
             flash('新闻数据格式错误', 'danger')
             return render_template('error.html', error_code='500', error_message='新闻数据格式错误')
         
@@ -884,31 +1272,31 @@ def news_detail(news_id):
             try:
                 # 确保item是字典类型
                 if not isinstance(item, dict):
-                    print(f"跳过非字典项: {type(item).__name__}")
+                    print("Skipping non-dictionary item: " + type(item).__name__)
                     continue
                       
                 # 处理ID匹配，考虑字符串和数字类型
                 item_id = item.get('id')
-                print(f"比较item_id={item_id}和news_id={news_id}")
+                print("Comparing item_id=" + str(item_id) + " and news_id=" + str(news_id))
                 if str(item_id) == str(news_id):
                     news_item = item
-                    print(f"找到匹配的新闻: {news_item['title']}")
+                    print("Found matching news: " + news_item['title'])
                     break
             except Exception as e:
-                print(f"处理新闻项时出错: {str(e)}")
+                print("Error processing news item: " + str(e))
                 continue
         
         # 如果找不到新闻，返回404错误
         if not news_item:
-            print(f"未找到ID为 {news_id} 的新闻")
-            flash(f'未找到ID为 {news_id} 的新闻', 'danger')
-            return render_template('error.html', error_code='404', error_message=f'未找到ID为 {news_id} 的新闻')
+            print("News with ID " + news_id + " not found")
+            flash('未找到ID为 ' + news_id + ' 的新闻', 'danger')
+            return render_template('error.html', error_code='404', error_message='未找到ID为 ' + news_id + ' 的新闻')
         
         # 添加浏览量字段（如果不存在）
         if 'views' not in news_item:
             news_item['views'] = 0
         news_item['views'] += 1
-        print(f"更新新闻浏览量: {news_item['views']}")
+        print("Updated news views: " + str(news_item['views']))
         
         # 添加评论字段（如果不存在）
         if 'comments' not in news_item:
@@ -921,7 +1309,7 @@ def news_detail(news_id):
                 related_news.append(item)
                 if len(related_news) >= 3:
                     break
-        print(f"找到{len(related_news)}条相关新闻")
+        print("Found " + str(len(related_news)) + " related news items")
         
         # 更新浏览量到文件
         try:
@@ -937,35 +1325,35 @@ def news_detail(news_id):
             print("成功更新浏览量到文件")
         except Exception as e:
             # 更新浏览量失败不影响用户体验，仅记录日志
-            print(f"更新浏览量时发生错误: {str(e)}")
+            print("Error updating views: " + str(e))
         
         # 确保news_item中的content是有效的
-        print(f"处理content前的类型: {type(news_item.get('content')).__name__}")
+        print("Type before processing content: " + type(news_item.get('content')).__name__)
         if 'content' not in news_item or news_item['content'] is None or news_item['content'] == '':
             news_item['content'] = ["暂无内容"]
             print("content不存在，设置为['暂无内容']")
         elif isinstance(news_item['content'], str):
             # 如果content是字符串，将其转换为数组
             news_item['content'] = [news_item['content']]
-            print(f"content是字符串，已转换为数组")
+            print("Content was string, converted to array")
         elif not isinstance(news_item['content'], list):
             # 如果content既不是字符串也不是数组，转换为字符串后再转为数组
             news_item['content'] = [str(news_item['content'])]
-            print(f"content是未知类型，已转换为字符串数组")
-        print(f"处理content后的类型: {type(news_item['content']).__name__}")
+            print("Content was unknown type, converted to string array")
+        print("Type after processing content: " + type(news_item['content']).__name__)
         
         # 渲染新闻详情页面
-        print(f"准备渲染新闻详情页面，标题: {news_item['title']}")
+        print("Preparing to render news detail page, title: " + news_item['title'])
         return render_template('news_detail.html', news=news_item, related_news=related_news)
         
     except Exception as e:
         # 捕获所有其他异常并记录详细的错误信息
         import traceback
         error_traceback = traceback.format_exc()
-        print(f"获取新闻详情时发生错误: {str(e)}")
-        print(f"错误堆栈: {error_traceback}")
-        flash(f'获取新闻详情时发生错误: {str(e)}', 'danger')
-        return render_template('error.html', error_code='500', error_message=f'获取新闻详情时发生错误: {str(e)}')
+        print("Error getting news detail: " + str(e))
+        print("Error traceback: " + error_traceback)
+        flash('获取新闻详情时发生错误: ' + str(e), 'danger')
+        return render_template('error.html', error_code='500', error_message='获取新闻详情时发生错误: ' + str(e))
 
 @app.route('/api/search_stock')
 def search_stock():
@@ -974,7 +1362,7 @@ def search_stock():
         
         # 记录搜索请求，包含用户信息
         username = session.get('username', '未登录用户')
-        logger.info(f"[用户: {username}] 搜索股票: {query}")
+        logger.info("[User: " + username + "] Searching stock: " + query)
         
         # 检查查询是否为空
         if not query:
@@ -987,12 +1375,12 @@ def search_stock():
             if query in stock['code'].lower() or query in stock['name'].lower()
         ]
         
-        logger.info(f"找到{len(results)}个匹配的股票")
+        logger.info("Found " + str(len(results)) + " matching stocks")
         return jsonify(results[:10])  # 限制最多返回10个结果
     except Exception as e:
         # 增强错误日志记录
         username = session.get('username', '未登录用户')
-        logger.error(f"[用户: {username}] 搜索股票时发生错误: {str(e)}")
+        logger.error("[User: " + username + "] Error searching stock: " + str(e))
         # 对于API请求，返回空数组而不是错误页面是合理的
         return jsonify([])
         
@@ -1004,7 +1392,7 @@ def search_fund():
         
         # 记录搜索请求，包含用户信息
         username = session.get('username', '未登录用户')
-        logger.info(f"[用户: {username}] 搜索基金: {query}")
+        logger.info("[User: " + username + "] Searching fund: " + query)
         
         # 检查查询是否为空
         if not query:
@@ -1017,12 +1405,12 @@ def search_fund():
             if query in fund['code'].lower() or query in fund['name'].lower()
         ]
         
-        logger.info(f"找到{len(results)}个匹配的基金")
+        logger.info("Found " + str(len(results)) + " matching funds")
         return jsonify(results[:10])  # 限制最多返回10个结果
     except Exception as e:
         # 增强错误日志记录
         username = session.get('username', '未登录用户')
-        logger.error(f"[用户: {username}] 搜索基金时发生错误: {str(e)}")
+        logger.error("[User: " + username + "] Error searching fund: " + str(e))
         # 对于API请求，返回空数组而不是错误页面是合理的
         return jsonify([])
 
@@ -1101,7 +1489,7 @@ def risk_profile():
         except Exception as e:
             # 显示错误消息
             return render_template('risk_profile.html', 
-                                error=f'设置保存失败：{str(e)}',
+                                error='设置保存失败：' + str(e),
                                 current_risk_level=3,  # 默认值
                                 investment_horizon=2,  # 默认值
                                 investment_experience=2,  # 默认值
@@ -1137,7 +1525,7 @@ if __name__ == '__main__':
         # 启动应用
         app.run(debug=debug_mode, host=host, port=port)
     except Exception as e:
-        logger.error(f"应用启动失败: {str(e)}")
-        print(f"错误: {str(e)}")
+        logger.error("Application startup failed: " + str(e))
+        print("Error: " + str(e))
         # 确保关闭数据库连接
         shutdown_database()

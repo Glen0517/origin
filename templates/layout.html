@@ -54,11 +54,28 @@
             background-color: #1d3557;
             border-color: #1d3557;
         }
+        .btn-info {
+            background-color: #17a2b8;
+            border-color: #17a2b8;
+        }
+        .btn-info:hover {
+            background-color: #138496;
+            border-color: #117a8b;
+        }
         .search-form {
             max-width: 300px;
         }
         .news-item {
             transition: background-color 0.2s ease-in-out;
+        }
+        /* 净值走势图容器样式 */
+        .chart-container {
+            max-width: 100%;
+            height: auto;
+            overflow-x: auto;
+        }
+        .nav-chart {
+            padding: 15px 0;
         }
         .news-item:hover {
             background-color: #f8f9fa;
@@ -71,6 +88,74 @@
             color: white;
             padding: 20px 0;
             margin-top: 40px;
+        }
+        
+        /* 热门基金自定义样式 */
+        .fund-grid-container {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 0;
+        }
+        .fund-info-column {
+            grid-column: span 4;
+        }
+        .fund-value-column {
+            grid-column: span 3;
+        }
+        .fund-change-column {
+            grid-column: span 2;
+        }
+        .fund-rating-column {
+            grid-column: span 1;
+        }
+        .fund-returns-column {
+            grid-column: span 3;
+        }
+        .fund-action-column {
+            grid-column: span 3;
+        }
+        
+        @media (min-width: 992px) {
+            .fund-info-column {
+                grid-column: span 3;
+            }
+            .fund-value-column {
+                grid-column: span 2;
+            }
+            .fund-action-column {
+                grid-column: span 1;
+            }
+        }
+        
+        .fund-row {
+            border-bottom: 1px solid #dee2e6;
+            transition: background-color 0.2s ease;
+        }
+        .fund-row:hover {
+            background-color: #f8f9fa;
+        }
+        .fund-row:last-child {
+            border-bottom: none;
+        }
+        .line-clamp-1 {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .flex {
+            display: flex;
+        }
+        .flex-col {
+            flex-direction: column;
+        }
+        .justify-center {
+            justify-content: center;
+        }
+        .items-center {
+            align-items: center;
+        }
+        .text-center {
+            text-align: center;
         }
     </style>
     {% block extra_css %}{% endblock %}
@@ -106,7 +191,7 @@
                     </select>
                     <form class="d-flex search-form position-absolute" action="javascript:void(0);" id="searchForm" style="left: 80px; right: 0;">
                         <input class="form-control rounded-start-0" type="search" placeholder="搜索代码或名称" aria-label="Search" id="searchInput">
-                        <button class="btn btn-outline-light" type="submit"><i class="fas fa-search"></i></button>
+                        <button class="btn btn-outline-light" type="submit" style="min-width: 40px;"><i class="fas fa-search" style="color: white;"></i></button>
                     </form>
                 </div>
                 
