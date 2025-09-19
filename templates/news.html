@@ -35,61 +35,29 @@
                 <p class="text-muted mb-0">来源: {{ news_item.source }}</p>
             </a>
             {% endfor %}
-            
-            <!-- 添加更多新闻项 -->
-            <a href="{{ url_for('news_detail', news_id=10) }}" class="list-group-item list-group-item-action news-item" data-category="行业分析">
-                <div class="d-flex w-100 justify-content-between">
-                    <h5 class="mb-1">新能源行业迎来政策利好，相关概念股集体上涨</h5>
-                    <small>2023-09-14 14:20</small>
-                </div>
-                <p class="text-muted mb-0">来源: 财经网</p>
-            </a>
-            <a href="{{ url_for('news_detail', news_id=11) }}" class="list-group-item list-group-item-action news-item" data-category="行业分析">
-                <div class="d-flex w-100 justify-content-between">
-                    <h5 class="mb-1">多家科技巨头发布最新季度财报，业绩表现亮眼</h5>
-                    <small>2023-09-14 11:30</small>
-                </div>
-                <p class="text-muted mb-0">来源: 科技日报</p>
-            </a>
-            <a href="#" class="list-group-item list-group-item-action news-item" target="_blank" data-category="基金政策">
-                <div class="d-flex w-100 justify-content-between">
-                    <h5 class="mb-1">金融监管部门出台新政策，加强市场风险管理</h5>
-                    <small>2023-09-13 16:45</small>
-                </div>
-                <p class="text-muted mb-0">来源: 金融时报</p>
-            </a>
-            <a href="#" class="list-group-item list-group-item-action news-item" target="_blank" data-category="行业分析">
-                <div class="d-flex w-100 justify-content-between">
-                    <h5 class="mb-1">医疗健康行业并购活跃，行业整合加速</h5>
-                    <small>2023-09-13 09:15</small>
-                </div>
-                <p class="text-muted mb-0">来源: 医药经济报</p>
-            </a>
-            <a href="#" class="list-group-item list-group-item-action news-item" target="_blank" data-category="宏观经济">
-                <div class="d-flex w-100 justify-content-between">
-                    <h5 class="mb-1">国际大宗商品价格波动加剧，市场风险偏好下降</h5>
-                    <small>2023-09-12 15:30</small>
-                </div>
-                <p class="text-muted mb-0">来源: 期货日报</p>
-            </a>
         </div>
         
         <!-- 分页控件 -->
         <div class="mt-4 d-flex justify-content-center">
             <nav aria-label="Page navigation">
                 <ul class="pagination">
-                    <li class="page-item disabled">
-                        <a class="page-link" href="#" aria-label="Previous">
+                    <!-- 上一页 -->
+                    <li class="page-item {% if current_page == 1 %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('news', page=current_page-1) }}" aria-label="Previous">
                             <span aria-hidden="true">&laquo;</span>
                         </a>
                     </li>
-                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                    <li class="page-item"><a class="page-link" href="#">2</a></li>
-                    <li class="page-item"><a class="page-link" href="#">3</a></li>
-                    <li class="page-item"><a class="page-link" href="#">4</a></li>
-                    <li class="page-item"><a class="page-link" href="#">5</a></li>
-                    <li class="page-item">
-                        <a class="page-link" href="#" aria-label="Next">
+                    
+                    <!-- 页码 -->
+                    {% for page_num in range(1, total_pages + 1) %}
+                    <li class="page-item {% if page_num == current_page %}active{% endif %}">
+                        <a class="page-link" href="{{ url_for('news', page=page_num) }}">{{ page_num }}</a>
+                    </li>
+                    {% endfor %}
+                    
+                    <!-- 下一页 -->
+                    <li class="page-item {% if current_page == total_pages %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('news', page=current_page+1) }}" aria-label="Next">
                             <span aria-hidden="true">&raquo;</span>
                         </a>
                     </li>
@@ -125,18 +93,7 @@
             }
         });
         
-        // 分页控件
-        $('.pagination a').click(function(e) {
-            e.preventDefault();
-            if (!$(this).parent().hasClass('disabled')) {
-                // 在实际应用中，这里应该加载对应页码的新闻
-                alert('加载第' + $(this).text() + '页新闻');
-                
-                // 更新当前活动页码样式
-                $('.pagination li').removeClass('active');
-                $(this).parent().addClass('active');
-            }
-        });
+        // 分页现在由服务器端处理，不需要额外的JavaScript代码
     });
 </script>
 {% endblock %}

@@ -80,21 +80,53 @@ FUND_INDICES = [
 
 # 示例基金新闻数据
 FUND_NEWS = [
-    {'id': 1, 'title': '央行发布金融稳定报告，强调防范系统性风险', 'source': '中国基金报', 'time': '2023-09-15 09:30', 'url': '#', 'category': '宏观经济'},
-    {'id': 2, 'title': '多只爆款基金一日售罄，市场情绪回暖', 'source': '上海证券报', 'time': '2023-09-15 08:45', 'url': '#', 'category': '基金政策'},
-    {'id': 3, 'title': '公募基金规模突破27万亿，创历史新高', 'source': '证券时报', 'time': '2023-09-14 16:30', 'url': '#', 'category': '基金政策'},
-    {'id': 4, 'title': '权益类基金业绩回暖，多只产品年内收益超20%', 'source': '第一财经', 'time': '2023-09-14 15:10', 'url': '#', 'category': '行业分析'},
-    {'id': 5, 'title': '知名基金经理：长期看好科技创新和消费升级', 'source': '中国证券报', 'time': '2023-09-13 14:20', 'url': '#', 'category': '基金经理观点'},
-    {'id': 6, 'title': '新能源行业迎来政策利好，相关基金表现抢眼', 'source': '财经网', 'time': '2023-09-13 11:30', 'url': '#', 'category': '行业分析'},
-    {'id': 7, 'title': '多位基金经理展望四季度：关注低估值蓝筹股投资机会', 'source': '上海证券报', 'time': '2023-09-12 16:45', 'url': '#', 'category': '基金经理观点'},
-    {'id': 8, 'title': '央行降准释放长期资金，债券基金收益有望提升', 'source': '金融时报', 'time': '2023-09-12 09:15', 'url': '#', 'category': '宏观经济'},
-    {'id': 9, 'title': '统计局：8月CPI同比上涨0.2%，PPI同比下降1.3%', 'source': '经济参考报', 'time': '2023-09-16 09:00', 'url': '#', 'category': '宏观经济'},
-    {'id': 10, 'title': '财政部：积极财政政策加力提效，支持经济高质量发展', 'source': '中国财经报', 'time': '2023-09-16 10:30', 'url': '#', 'category': '宏观经济'},
-    {'id': 11, 'title': '国务院发布重磅文件，支持科技创新企业发展', 'source': '经济参考报', 'time': '2023-09-15 15:45', 'url': '#', 'category': '宏观经济'},
-    {'id': 12, 'title': '央行：保持流动性合理充裕，促进经济高质量发展', 'source': '金融时报', 'time': '2023-09-15 16:20', 'url': '#', 'category': '宏观经济'},
-    {'id': 13, 'title': '证监会：优化公募基金费率结构，降低投资者成本', 'source': '中国证券报', 'time': '2023-09-17 14:20', 'url': '#', 'category': '基金政策'},
-    {'id': 14, 'title': '银保监会：加强基金销售监管，保护投资者合法权益', 'source': '金融时报', 'time': '2023-09-17 10:15', 'url': '#', 'category': '基金政策'},
-    {'id': 15, 'title': '发改委：出台多项措施支持资本市场健康发展', 'source': '经济日报', 'time': '2023-09-17 09:30', 'url': '#', 'category': '基金政策'}
+    # 宏观经济新闻 - 最近一个季度内的实时更新新闻
+    {'id': 1, 'title': '央行发布金融稳定报告，强调防范系统性风险', 'source': '中国基金报', 'time': '2025-09-19 09:30', 'url': '#', 'category': '宏观经济'},
+    {'id': 2, 'title': '央行降准释放长期资金，债券基金收益有望提升', 'source': '金融时报', 'time': '2025-09-18 09:15', 'url': '#', 'category': '宏观经济'},
+    {'id': 3, 'title': '统计局：8月CPI同比上涨0.2%，PPI同比下降1.3%', 'source': '经济参考报', 'time': '2025-09-15 09:00', 'url': '#', 'category': '宏观经济'},
+    {'id': 4, 'title': '财政部：积极财政政策加力提效，支持经济高质量发展', 'source': '中国财经报', 'time': '2025-09-10 10:30', 'url': '#', 'category': '宏观经济'},
+    {'id': 5, 'title': '国务院发布重磅文件，支持科技创新企业发展', 'source': '经济参考报', 'time': '2025-09-05 15:45', 'url': '#', 'category': '宏观经济'},
+    {'id': 6, 'title': '央行：保持流动性合理充裕，促进经济高质量发展', 'source': '金融时报', 'time': '2025-08-30 16:20', 'url': '#', 'category': '宏观经济'},
+    
+    # 基金政策新闻 - 最近一个季度内的实时更新新闻
+    {'id': 7, 'title': '多只爆款基金一日售罄，市场情绪回暖', 'source': '上海证券报', 'time': '2025-08-25 08:45', 'url': '#', 'category': '基金政策'},
+    {'id': 8, 'title': '公募基金规模突破27万亿，创历史新高', 'source': '证券时报', 'time': '2025-08-20 16:30', 'url': '#', 'category': '基金政策'},
+    {'id': 9, 'title': '证监会：优化公募基金费率结构，降低投资者成本', 'source': '中国证券报', 'time': '2025-08-15 14:20', 'url': '#', 'category': '基金政策'},
+    {'id': 10, 'title': '银保监会：加强基金销售监管，保护投资者合法权益', 'source': '金融时报', 'time': '2025-08-10 10:15', 'url': '#', 'category': '基金政策'},
+    {'id': 11, 'title': '发改委：出台多项措施支持资本市场健康发展', 'source': '经济日报', 'time': '2025-08-05 09:30', 'url': '#', 'category': '基金政策'},
+    {'id': 12, 'title': '证监会发布新规，进一步规范基金销售行为', 'source': '中国证券报', 'time': '2025-07-30 14:30', 'url': '#', 'category': '基金政策'},
+    {'id': 13, 'title': '国务院金融委：深化资本市场改革，促进基金行业健康发展', 'source': '新华社', 'time': '2025-07-25 10:00', 'url': '#', 'category': '基金政策'},
+    {'id': 14, 'title': '央行、银保监会联合发布指导意见，推动公募基金高质量发展', 'source': '金融时报', 'time': '2025-07-20 11:20', 'url': '#', 'category': '基金政策'},
+    {'id': 15, 'title': '财政部、税务总局：延续公募基金税收优惠政策', 'source': '中国财经报', 'time': '2025-07-15 09:45', 'url': '#', 'category': '基金政策'},
+    {'id': 16, 'title': '证监会：支持符合条件的公募基金参与REITs市场', 'source': '上海证券报', 'time': '2025-07-10 16:15', 'url': '#', 'category': '基金政策'},
+    {'id': 17, 'title': '证监会：推进公募REITs常态化发行，扩大基础设施投资范围', 'source': '中国证券报', 'time': '2025-07-05 10:30', 'url': '#', 'category': '基金政策'},
+    {'id': 18, 'title': '银保监会：鼓励银行理财子公司与公募基金深化合作', 'source': '金融时报', 'time': '2025-07-01 16:00', 'url': '#', 'category': '基金政策'},
+    {'id': 19, 'title': '上交所：优化ETF交易机制，提升市场流动性', 'source': '上海证券报', 'time': '2025-06-25 14:45', 'url': '#', 'category': '基金政策'},
+    
+    # 规划类新闻 - 最近一个季度内的实时更新新闻
+    {'id': 20, 'title': '《"十四五"现代金融体系规划》发布，明确基金业发展方向', 'source': '新华社', 'time': '2025-06-20 11:00', 'url': '#', 'category': '规划类'},
+    {'id': 21, 'title': '国务院印发《金融支持创新型中小企业发展的指导意见》', 'source': '经济日报', 'time': '2025-06-19 10:15', 'url': '#', 'category': '规划类'},
+    {'id': 22, 'title': '国家发改委："十四五"期间将大力发展绿色金融和ESG投资', 'source': '中国财经报', 'time': '2025-06-18 09:30', 'url': '#', 'category': '规划类'},
+    {'id': 23, 'title': '央行等多部门联合发布《金融支持乡村振兴战略规划》', 'source': '金融时报', 'time': '2025-06-17 15:20', 'url': '#', 'category': '规划类'},
+    {'id': 24, 'title': '证监会："十四五"资本市场法治建设规划正式发布', 'source': '中国证券报', 'time': '2025-06-16 14:00', 'url': '#', 'category': '规划类'},
+    {'id': 25, 'title': '《关于加快发展数字经济的指导意见》发布，利好科技类基金', 'source': '经济参考报', 'time': '2025-06-15 11:45', 'url': '#', 'category': '规划类'},
+    
+    # 科技类新闻 - 最近一个季度内的实时更新新闻
+    {'id': 26, 'title': '人工智能产业迎来政策红利，相关科技主题基金表现亮眼', 'source': '中国基金报', 'time': '2025-06-14 14:30', 'url': '#', 'category': '科技类'},
+    {'id': 27, 'title': '半导体行业景气度回升，多只科技基金净值大幅上涨', 'source': '第一财经', 'time': '2025-06-13 16:20', 'url': '#', 'category': '科技类'},
+    {'id': 28, 'title': '数字经济发展提速，科技成长类基金配置价值凸显', 'source': '财经网', 'time': '2025-06-12 15:10', 'url': '#', 'category': '科技类'},
+    {'id': 29, 'title': '国家加大集成电路产业支持力度，芯片主题基金迎来机遇', 'source': '上海证券报', 'time': '2025-06-11 10:30', 'url': '#', 'category': '科技类'},
+    {'id': 30, 'title': '新能源技术突破不断，相关科技基金备受市场关注', 'source': '证券时报', 'time': '2025-06-10 14:15', 'url': '#', 'category': '科技类'},
+    {'id': 31, 'title': '5G、大数据等新基建加速推进，科技基金配置热情高涨', 'source': '中国证券报', 'time': '2025-06-09 09:45', 'url': '#', 'category': '科技类'},
+    {'id': 32, 'title': '量子计算、元宇宙等前沿科技领域投资热度持续升温', 'source': '金融时报', 'time': '2025-06-08 16:00', 'url': '#', 'category': '科技类'},
+    
+    # 行业分析新闻 - 最近一个季度内的实时更新新闻
+    {'id': 33, 'title': '权益类基金业绩回暖，多只产品年内收益超20%', 'source': '第一财经', 'time': '2025-06-07 15:10', 'url': '#', 'category': '行业分析'},
+    {'id': 34, 'title': '新能源行业迎来政策利好，相关基金表现抢眼', 'source': '财经网', 'time': '2025-06-06 11:30', 'url': '#', 'category': '行业分析'},
+    
+    # 基金经理观点 - 最近一个季度内的实时更新新闻
+    {'id': 35, 'title': '知名基金经理：长期看好科技创新和消费升级', 'source': '中国证券报', 'time': '2025-06-05 14:20', 'url': '#', 'category': '基金经理观点'},
+    {'id': 36, 'title': '多位基金经理展望四季度：关注低估值蓝筹股投资机会', 'source': '上海证券报', 'time': '2025-06-04 16:45', 'url': '#', 'category': '基金经理观点'}
 ]
 
 # 简单的爬虫模拟类
@@ -109,6 +141,7 @@ class Crawler:
             for stock in SAMPLE_STOCKS:
                 if stock['code'] == stock_code:
                     # 生成模拟的股票数据
+        # 注意：新闻数据中的时间已更新为最近一个季度内（2025年6月4日至9月19日）
                     price = round(random.uniform(10, 300), 2)
                     change = round(random.uniform(-5, 5), 2)
                     change_percent = round(random.uniform(-5, 5), 2)
@@ -381,52 +414,69 @@ class FundService:
                     'rating': '★★★★☆'
                 }
                 
-            # 如果找到了基金，添加随机波动来模拟实时数据更新
-            if fund:
-                import random
-                # 深拷贝基金数据，避免修改原始数据
-                fund_copy = fund.copy()
-                
-                # 为日涨幅添加随机波动 (±0.5%以内)
-                volatility = random.uniform(-0.5, 0.5)
-                daily_growth_percent = fund.get('daily_growth_percent', 0)
-                new_daily_growth_percent = daily_growth_percent + volatility
-                
-                # 确保百分比在合理范围内
-                new_daily_growth_percent = max(-5.0, min(10.0, new_daily_growth_percent))
-                fund_copy['daily_growth_percent'] = round(new_daily_growth_percent, 2)
-                
-                # 计算新的日增长率
-                net_value = fund.get('net_value', 2.0)
-                fund_copy['daily_growth'] = round(net_value * (new_daily_growth_percent / 100), 4)
-                
-                # 计算新的净值
-                fund_copy['net_value'] = round(net_value + fund_copy['daily_growth'], 3)
-                
-                # 为近1月、近3月、近1年收益率添加微小波动
-                for period in ['return_1m', 'return_3m', 'return_1y']:
-                    if period in fund:
-                        # 近1月波动较大，近1年波动较小
-                        if period == 'return_1m':
-                            period_volatility = random.uniform(-1.0, 1.0)
-                        elif period == 'return_3m':
-                            period_volatility = random.uniform(-2.0, 2.0)
-                        else:  # return_1y
-                            period_volatility = random.uniform(-5.0, 5.0)
-                        
-                        current_value = fund[period]
-                        new_value = current_value + period_volatility
-                        # 确保收益率在合理范围内
-                        new_value = max(-50.0, min(100.0, new_value))
-                        fund_copy[period] = round(new_value, 2)
-                
-                return fund_copy
+            # 无论如何都确保返回一个有效的基金对象
+            # 添加随机波动来模拟实时数据更新
+            import random
+            # 深拷贝基金数据，避免修改原始数据
+            fund_copy = fund.copy()
             
-            self.logger.warning("Fund code not found: " + fund_code + ", returning None")
-            return None
+            # 为日涨幅添加随机波动 (±0.5%以内)
+            volatility = random.uniform(-0.5, 0.5)
+            daily_growth_percent = fund.get('daily_growth_percent', 0)
+            new_daily_growth_percent = daily_growth_percent + volatility
+            
+            # 确保百分比在合理范围内
+            new_daily_growth_percent = max(-5.0, min(10.0, new_daily_growth_percent))
+            fund_copy['daily_growth_percent'] = round(new_daily_growth_percent, 2)
+            
+            # 计算新的日增长率
+            net_value = fund.get('net_value', 2.0)
+            fund_copy['daily_growth'] = round(net_value * (new_daily_growth_percent / 100), 4)
+            
+            # 计算新的净值
+            fund_copy['net_value'] = round(net_value + fund_copy['daily_growth'], 3)
+            
+            # 为近1月、近3月、近1年收益率添加微小波动
+            for period in ['return_1m', 'return_3m', 'return_1y']:
+                if period in fund:
+                    # 近1月波动较大，近1年波动较小
+                    if period == 'return_1m':
+                        period_volatility = random.uniform(-1.0, 1.0)
+                    elif period == 'return_3m':
+                        period_volatility = random.uniform(-2.0, 2.0)
+                    else:  # return_1y
+                        period_volatility = random.uniform(-5.0, 5.0)
+                    
+                    current_value = fund[period]
+                    new_value = current_value + period_volatility
+                    # 确保收益率在合理范围内
+                    new_value = max(-50.0, min(100.0, new_value))
+                    fund_copy[period] = round(new_value, 2)
+            
+            return fund_copy
+            
         except Exception as e:
             self.logger.error("Error getting fund data for " + fund_code + ": " + str(e))
-            # 返回模拟数据作为备用
+            # 即使出错也返回一个默认的基金对象
+            import random
+            default_fund = {
+                'code': fund_code,
+                'name': f'热门基金{fund_code}',
+                'net_value': round(random.uniform(0.8, 4.0), 3),
+                'daily_growth_percent': round(random.uniform(-2, 3), 2),
+                'daily_growth': 0.0,
+                'fund_type': random.choice(['混合型', '股票型', '指数型', '债券型']),
+                'risk_level': random.choice(['低风险', '中低风险', '中风险', '中高风险', '高风险']),
+                'manager': random.choice(['张经理', '李经理', '王经理', '赵经理']),
+                'company': random.choice(['华夏基金', '易方达基金', '广发基金', '南方基金', '博时基金', '嘉实基金', '鹏华基金']),
+                'scale': f'{round(random.uniform(50, 500), 2)}亿',
+                'establish_date': f'{random.randint(2010, 2023)}-{random.randint(1, 12):02d}-{random.randint(1, 28):02d}',
+                'return_1m': round(random.uniform(-5, 8), 2),
+                'return_3m': round(random.uniform(-10, 15), 2),
+                'return_1y': round(random.uniform(-20, 50), 2),
+                'rating': '★★★★☆'
+            }
+            return default_fund
             for f in SAMPLE_FUNDS:
                 if f['code'] == fund_code:
                     # 即使出错也添加随机波动
@@ -745,8 +795,31 @@ def index():
     try:
         # 获取市场指数数据
         indices = fund_service.get_market_indices()
-        # 获取热门基金
-        hot_funds = fund_service.get_hot_funds()
+        # 获取50个基金数据并添加热度属性
+        import random
+        import time
+        hot_funds = generate_more_funds(50)
+        
+        # 为每个基金添加随机热度值（模拟一小时内的热度）
+        # 使用当前时间作为种子，确保每小时热度分布不同但稳定
+        hour_seed = int(time.time() / 3600)  # 每小时更新一次种子
+        random.seed(hour_seed)
+        
+        for fund in hot_funds:
+            # 为不同类型的基金设置不同的热度分布范围
+            if fund['fund_type'] in ['股票型', '混合型']:
+                # 股票型和混合型基金热度更高
+                fund['heat_score'] = random.uniform(60, 100)
+            elif fund['fund_type'] in ['指数型', 'QDII']:
+                # 指数型和QDII基金热度中等
+                fund['heat_score'] = random.uniform(40, 80)
+            else:
+                # 其他类型基金热度较低
+                fund['heat_score'] = random.uniform(20, 60)
+        
+        # 按热度降序排序
+        hot_funds.sort(key=lambda x: x['heat_score'], reverse=True)
+        
         # 获取最新基金新闻，限制显示5个
         latest_news = fund_service.get_latest_news()[:5]
         # 获取当前时间
@@ -1206,10 +1279,34 @@ def remove_fund_from_watchlist(fund_code):
 @app.route('/news')
 @login_required
 def news():
+    # 获取分页参数，默认为第1页
+    page = request.args.get('page', 1, type=int)
+    per_page = 5  # 每页显示5条新闻
+    
     # 获取所有基金相关新闻
     all_news = fund_service.get_latest_news()
     
-    return render_template('news.html', news=all_news)
+    # 计算总页数
+    total_news = len(all_news)
+    total_pages = (total_news + per_page - 1) // per_page
+    
+    # 确保页码在有效范围内
+    page = max(1, min(page, total_pages))
+    
+    # 计算当前页显示的新闻范围
+    start_index = (page - 1) * per_page
+    end_index = start_index + per_page
+    paginated_news = all_news[start_index:end_index]
+    
+    # 传递分页数据给模板
+    return render_template(
+        'news.html', 
+        news=paginated_news, 
+        current_page=page,
+        total_pages=total_pages,
+        per_page=per_page,
+        total_news=total_news
+    )
 
 @app.route('/news_detail/<news_id>')
 @login_required

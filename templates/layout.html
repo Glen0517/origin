@@ -63,7 +63,14 @@
             border-color: #117a8b;
         }
         .search-form {
-            max-width: 300px;
+            max-width: 400px;
+            display: flex;
+        }
+        .search-form .form-select {
+            flex: 0 0 80px;
+        }
+        .search-form .form-control {
+            flex: 1;
         }
         .news-item {
             transition: background-color 0.2s ease-in-out;
@@ -184,14 +191,14 @@
                 </ul>
                 
                 <!-- 搜索框 -->
-                <div class="position-relative me-4">
-                    <select id="searchType" class="form-select bg-dark text-white border-0 rounded-start">
-                        <option value="stock">股票</option>
-                        <option value="fund" selected>基金</option>
-                    </select>
-                    <form class="d-flex search-form position-absolute" action="javascript:void(0);" id="searchForm" style="left: 80px; right: 0;">
-                        <input class="form-control rounded-start-0" type="search" placeholder="搜索代码或名称" aria-label="Search" id="searchInput">
-                        <button class="btn btn-outline-light" type="submit" style="min-width: 40px;"><i class="fas fa-search" style="color: white;"></i></button>
+                <div class="me-4 flex-grow-1 max-w-md">
+                    <form class="d-flex search-form" action="javascript:void(0);" id="searchForm">
+                        <select id="searchType" class="form-select bg-dark text-white border border-white/20 rounded-start">
+                            <option value="stock">股票</option>
+                            <option value="fund" selected>基金</option>
+                        </select>
+                        <input class="form-control border border-white/20" type="search" placeholder="搜索代码或名称" aria-label="Search" id="searchInput">
+                        <button class="btn btn-outline-light border border-white/20 rounded-end" type="submit"><i class="fas fa-search"></i></button>
                     </form>
                 </div>
                 
