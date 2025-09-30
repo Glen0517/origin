@@ -1,10 +1,10 @@
 {% extends "layout.html" %}
-{% block title %}基金市场动态{% endblock %}
+{% block title %}财政市场动态{% endblock %}
 
 {% block content %}
 <div class="mb-4">
-    <h1 class="text-center">基金市场动态</h1>
-    <p class="text-center text-muted">及时了解基金市场动态，把握投资机会</p>
+    <h1 class="text-center">财政市场动态</h1>
+    <p class="text-center text-muted">及时了解市场动态，把握投资机会</p>
 </div>
 
 <!-- 新闻分类导航 -->
@@ -12,12 +12,15 @@
     <div class="card">
         <div class="card-body">
             <div class="btn-group" role="group" aria-label="新闻分类">
-                <button type="button" class="btn btn-primary">全部</button>
-                <button type="button" class="btn btn-outline-primary">宏观经济</button>
-                <button type="button" class="btn btn-outline-primary">基金政策</button>
-                <button type="button" class="btn btn-outline-primary">行业分析</button>
-                <button type="button" class="btn btn-outline-primary">基金经理观点</button>
-            </div>
+                    <a href="{{ url_for('news', category='全部') }}" class="btn {% if current_category == '全部' %}btn-primary{% else %}btn-outline-primary{% endif %}">全部</a>
+                    <a href="{{ url_for('news', category='宏观经济') }}" class="btn {% if current_category == '宏观经济' %}btn-primary{% else %}btn-outline-primary{% endif %}">宏观经济</a>
+                    <a href="{{ url_for('news', category='政策法规') }}" class="btn {% if current_category == '政策法规' %}btn-primary{% else %}btn-outline-primary{% endif %}">政策法规</a>
+                    <a href="{{ url_for('news', category='行业新闻') }}" class="btn {% if current_category == '行业新闻' %}btn-primary{% else %}btn-outline-primary{% endif %}">行业新闻</a>
+                    <a href="{{ url_for('news', category='公司新闻') }}" class="btn {% if current_category == '公司新闻' %}btn-primary{% else %}btn-outline-primary{% endif %}">公司新闻</a>
+                    <a href="{{ url_for('news', category=current_category, show_all=not show_all) }}" class="btn {% if show_all %}btn-danger{% else %}btn-outline-secondary{% endif %} ml-2">
+                        {{ '返回分页' if show_all else '显示全部' }}
+                    </a>
+                </div>
         </div>
     </div>
 </div>
@@ -38,12 +41,13 @@
         </div>
         
         <!-- 分页控件 -->
+        {% if not show_all %}
         <div class="mt-4 d-flex justify-content-center">
             <nav aria-label="Page navigation">
                 <ul class="pagination">
                     <!-- 上一页 -->
                     <li class="page-item {% if current_page == 1 %}disabled{% endif %}">
-                        <a class="page-link" href="{{ url_for('news', page=current_page-1) }}" aria-label="Previous">
+                        <a class="page-link" href="{{ url_for('news', page=current_page-1, category=current_category) }}" aria-label="Previous">
                             <span aria-hidden="true">&laquo;</span>
                         </a>
                     </li>
@@ -51,19 +55,24 @@
                     <!-- 页码 -->
                     {% for page_num in range(1, total_pages + 1) %}
                     <li class="page-item {% if page_num == current_page %}active{% endif %}">
-                        <a class="page-link" href="{{ url_for('news', page=page_num) }}">{{ page_num }}</a>
+                        <a class="page-link" href="{{ url_for('news', page=page_num, category=current_category) }}">{{ page_num }}</a>
                     </li>
                     {% endfor %}
                     
                     <!-- 下一页 -->
                     <li class="page-item {% if current_page == total_pages %}disabled{% endif %}">
-                        <a class="page-link" href="{{ url_for('news', page=current_page+1) }}" aria-label="Next">
+                        <a class="page-link" href="{{ url_for('news', page=current_page+1, category=current_category) }}" aria-label="Next">
                             <span aria-hidden="true">&raquo;</span>
                         </a>
                     </li>
                 </ul>
             </nav>
         </div>
+        {% else %}
+        <div class="mt-4 d-flex justify-content-center">
+            <p class="text-muted">共显示全部 {{ total_news }} 条新闻</p>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
@@ -93,7 +102,15 @@
             }
         });
         
-        // 分页现在由服务器端处理，不需要额外的JavaScript代码
+        // 确保分类切换时能够正确保持当前状态
+        $('.btn-group a').not('[href*="show_all"]').click(function(e) {
+            // 保留show_all参数
+            if ({{ show_all|lower }}) {
+                e.preventDefault();
+                const href = $(this).attr('href');
+                window.location.href = href + '&show_all=true';
+            }
+        });
     });
 </script>
 {% endblock %}

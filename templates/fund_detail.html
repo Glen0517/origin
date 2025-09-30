@@ -49,7 +49,7 @@
         <div class="card-body">
             <div class="row">
                 <div class="col-md-6">
-                    <p class="fund-info mb-2"><strong>基金类型：</strong>{{ fund.type if fund.type else '未知' }}</p>
+                    <p class="fund-info mb-2"><strong>基金类型：</strong>{{ fund.fund_type if fund.fund_type else '未知' }}</p>
                     <p class="fund-info mb-2"><strong>最新净值：</strong><span class="font-weight-bold">{{ fund.net_value }}</span></p>
                     <p class="fund-info mb-2"><strong>日增长率：</strong><span class="{% if fund.daily_growth > 0 %}price-up{% else %}price-down{% endif %}">{{ fund.daily_growth }}%</span></p>
                     <p class="fund-info mb-2"><strong>成立日期：</strong>{{ fund.establish_date }}</p>

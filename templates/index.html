@@ -2,6 +2,17 @@
 {% block title %}基金投资分析平台首页{% endblock %}
 
 {% block content %}
+<!-- 数据更新时间提示 -->
+<div class="text-right mb-3">
+    <small class="text-muted">
+        {% if last_update_time %}
+            数据最后更新时间: {{ last_update_time.strftime('%Y-%m-%d %H:%M:%S') }}
+        {% else %}
+            数据加载中...
+        {% endif %}
+    </small>
+</div>
+
 <!-- 欢迎信息 -->
 <div class="mb-4">
     <h2>欢迎来到基金投资分析平台</h2>
@@ -206,6 +217,59 @@
 </div>
 
 
+
+<!-- 热门股票部分 -->
+<div class="mb-6">
+    <h3 class="border-bottom pb-2 mb-3">
+        <i class="fas fa-chart-line mr-2"></i>热门股票
+    </h3>
+    <div class="card bg-white">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>股票代码</th>
+                        <th>股票名称</th>
+                        <th>最新价格</th>
+                        <th>涨跌幅</th>
+                        <th>涨跌额</th>
+                        <th>成交量(万手)</th>
+                        <th>成交额(万)</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stock in hot_stocks %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('stock_detail', stock_code=stock.code) }}" class="text-primary">{{ stock.code }}</a>
+                        </td>
+                        <td>{{ stock.name }}</td>
+                        <td class="stock-price">{{ stock.price }}</td>
+                        <td class="
+                            {% if stock.change_percent > 0 %}price-up
+                            {% else %}price-down
+                            {% endif %}">
+                            {{ stock.change_percent }}%
+                        </td>
+                        <td class="
+                            {% if stock.change > 0 %}price-up
+                            {% else %}price-down
+                            {% endif %}">
+                            {{ stock.change }}
+                        </td>
+                        <td>{{ (stock.volume / 10000)|round(2) }}</td>
+                        <td>{{ (stock.amount / 10000)|round(2) }}</td>
+                        <td>
+                            <a href="{{ url_for('stock_detail', stock_code=stock.code) }}" class="btn btn-primary btn-sm">查看详情</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
 <!-- 热门财经新闻部分 -->
 <div class="mb-6">

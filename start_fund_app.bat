@@ -1,4 +1,4 @@
 @echo off
-cd /d d:\new_trea_project
+cd /d d:\git_project\origin
 E:\python\python.exe app.py
 pause

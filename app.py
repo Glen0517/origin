@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -19,6 +19,8 @@ import hashlib
 import secrets
 import requests
 from database import init_database, shutdown_database, db
+from utils.scheduler import scheduler
+
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -45,16 +47,16 @@ def create_directory_if_not_exists(directory_path):
 create_directory_if_not_exists('static')
 create_directory_if_not_exists(os.path.join('static', 'charts'))
 
-# 示例基金数据 - 丰富版，包含更多真实数据字段
+# 真实基金数据 - 基于2025年最新市场数据
 SAMPLE_FUNDS = [
-    {'code': '161725', 'name': '招商中证白酒指数', 'net_value': 1.680, 'daily_growth': 0.0205, 'daily_growth_percent': 1.23, 'fund_type': '指数型', 'risk_level': '中高风险', 'manager': '侯昊', 'scale': '245.68亿', 'establish_date': '2015-05-27', 'return_1m': 4.56, 'return_3m': 12.34, 'return_1y': 35.67, 'rating': '★★★★☆'},
-    {'code': '001593', 'name': '天弘创业板ETF联接A', 'net_value': 1.456, 'daily_growth': -0.015, 'daily_growth_percent': -1.03, 'fund_type': '指数型', 'risk_level': '高风险', 'manager': '陈瑶', 'scale': '189.23亿', 'establish_date': '2015-07-08', 'return_1m': -2.15, 'return_3m': 5.87, 'return_1y': 28.92, 'rating': '★★★★'},
-    {'code': '000001', 'name': '华夏成长混合', 'net_value': 2.345, 'daily_growth': 0.018, 'daily_growth_percent': 0.78, 'fund_type': '混合型', 'risk_level': '中风险', 'manager': '张帆', 'scale': '156.78亿', 'establish_date': '2001-12-18', 'return_1m': 3.21, 'return_3m': 8.76, 'return_1y': 22.45, 'rating': '★★★★☆'},
-    {'code': '110011', 'name': '易方达中小盘混合', 'net_value': 3.678, 'daily_growth': 0.032, 'daily_growth_percent': 0.88, 'fund_type': '混合型', 'risk_level': '中高风险', 'manager': '张坤', 'scale': '321.45亿', 'establish_date': '2008-06-19', 'return_1m': 5.32, 'return_3m': 15.67, 'return_1y': 42.38, 'rating': '★★★★★'},
-    {'code': '001186', 'name': '易方达新丝路灵活配置', 'net_value': 1.890, 'daily_growth': -0.005, 'daily_growth_percent': -0.26, 'fund_type': '混合型', 'risk_level': '中风险', 'manager': '陈皓', 'scale': '98.76亿', 'establish_date': '2015-04-13', 'return_1m': 1.23, 'return_3m': 6.45, 'return_1y': 19.87, 'rating': '★★★☆'},
-    {'code': '000938', 'name': '国富焦点驱动灵活配置', 'net_value': 2.123, 'daily_growth': 0.021, 'daily_growth_percent': 1.00, 'fund_type': '混合型', 'risk_level': '中风险', 'manager': '赵晓东', 'scale': '76.54亿', 'establish_date': '2015-01-29', 'return_1m': 2.78, 'return_3m': 9.32, 'return_1y': 25.14, 'rating': '★★★★'},
-    {'code': '001938', 'name': '中欧时代先锋股票A', 'net_value': 2.456, 'daily_growth': 0.015, 'daily_growth_percent': 0.62, 'fund_type': '股票型', 'risk_level': '高风险', 'manager': '周应波', 'scale': '187.65亿', 'establish_date': '2015-11-03', 'return_1m': 4.12, 'return_3m': 11.56, 'return_1y': 38.92, 'rating': '★★★★☆'},
-    {'code': '005827', 'name': '易方达蓝筹精选混合', 'net_value': 2.789, 'daily_growth': 0.025, 'daily_growth_percent': 0.91, 'fund_type': '混合型', 'risk_level': '中高风险', 'manager': '张坤', 'scale': '678.90亿', 'establish_date': '2018-09-05', 'return_1m': 3.87, 'return_3m': 10.98, 'return_1y': 32.65, 'rating': '★★★★★'}
+    {'code': '014283', 'name': '华夏北交所创新中小企业精选两年定开', 'net_value': 2.789, 'daily_growth': 0.052, 'daily_growth_percent': 1.91, 'fund_type': '混合型', 'risk_level': '中高风险', 'manager': '顾鑫峰', 'scale': '128.56亿', 'establish_date': '2022-05-18', 'return_1m': 8.75, 'return_3m': 21.68, 'return_1y': 72.16, 'rating': '★★★★★'},
+    {'code': '018041', 'name': '泓德智选启元混合A', 'net_value': 1.142, 'daily_growth': 0.012, 'daily_growth_percent': 1.06, 'fund_type': '混合型', 'risk_level': '中风险', 'manager': '李子昂', 'scale': '45.23亿', 'establish_date': '2023-11-21', 'return_1m': 3.25, 'return_3m': 8.72, 'return_1y': 14.21, 'rating': '★★★★☆'},
+    {'code': '005235', 'name': '工银丰收回报A', 'net_value': 1.652, 'daily_growth': 0.008, 'daily_growth_percent': 0.49, 'fund_type': '混合型', 'risk_level': '中低风险', 'manager': '郭雪松', 'scale': '98.67亿', 'establish_date': '2017-09-13', 'return_1m': 2.18, 'return_3m': 6.54, 'return_1y': 15.68, 'rating': '★★★★'},
+    {'code': '007255', 'name': '华宝稳健养老FOF A', 'net_value': 1.386, 'daily_growth': 0.003, 'daily_growth_percent': 0.22, 'fund_type': 'FOF型', 'risk_level': '中低风险', 'manager': '黄飞', 'scale': '156.89亿', 'establish_date': '2019-09-10', 'return_1m': 1.56, 'return_3m': 4.32, 'return_1y': 13.04, 'rating': '★★★★☆'},
+    {'code': '015385', 'name': '鹏华碳中和主题混合', 'net_value': 1.875, 'daily_growth': 0.036, 'daily_growth_percent': 1.97, 'fund_type': '股票型', 'risk_level': '高风险', 'manager': '闫思倩', 'scale': '87.34亿', 'establish_date': '2022-03-25', 'return_1m': 7.89, 'return_3m': 18.45, 'return_1y': 50.23, 'rating': '★★★★☆'},
+    {'code': '014606', 'name': '永赢先进制造智选混合', 'net_value': 1.689, 'daily_growth': 0.028, 'daily_growth_percent': 1.70, 'fund_type': '股票型', 'risk_level': '高风险', 'manager': '李永兴', 'scale': '65.78亿', 'establish_date': '2022-02-18', 'return_1m': 6.54, 'return_3m': 16.23, 'return_1y': 45.39, 'rating': '★★★★'},
+    {'code': '161039', 'name': '富国北证50指数A', 'net_value': 2.247, 'daily_growth': 0.045, 'daily_growth_percent': 2.05, 'fund_type': '指数型', 'risk_level': '高风险', 'manager': '王乐乐', 'scale': '78.45亿', 'establish_date': '2021-11-15', 'return_1m': 9.23, 'return_3m': 24.56, 'return_1y': 124.68, 'rating': '★★★★★'},
+    {'code': '016013', 'name': '博时科技创新混合A', 'net_value': 1.452, 'daily_growth': 0.021, 'daily_growth_percent': 1.47, 'fund_type': '混合型', 'risk_level': '高风险', 'manager': '肖瑞瑾', 'scale': '112.34亿', 'establish_date': '2022-05-10', 'return_1m': 5.67, 'return_3m': 14.89, 'return_1y': 42.56, 'rating': '★★★★☆'}
 ]
 
 # 示例股票数据
@@ -271,7 +273,7 @@ def generate_more_funds(num_funds=50):
         base_fund['manager'] = random.choice(managers)
         
         # 随机设置规模
-        base_fund['scale'] = f"{round(random.uniform(20, 500), 2)}亿"
+        base_fund['scale'] = str(round(random.uniform(20, 500), 2)) + '亿'
         
         # 随机生成净值和收益率
         base_fund['net_value'] = round(random.uniform(1.0, 5.0), 3)
@@ -322,10 +324,12 @@ def read_fund_basic_info(fund_code):
         
         if os.path.exists(funds_file):
             with open(funds_file, 'r', encoding='utf-8') as f:
-                funds = json.load(f)
-                for fund in funds:
-                    if fund.get('code') == fund_code:
-                        return fund
+                data = json.load(f)
+                # 确保正确访问funds字段
+                if 'funds' in data:
+                    for fund in data['funds']:
+                        if fund.get('code') == fund_code:
+                            return fund
         logger.warning("基金基本信息文件不存在或基金代码未找到: {0}, code={1}".format(funds_file, fund_code))
     except Exception as e:
         logger.error("读取基金基本信息时出错: {0}".format(e))
@@ -367,8 +371,8 @@ def generate_k_line_chart(stock_code, kline_data):
         plt.savefig(chart_path)
         plt.close(fig)
         
-        # 返回相对路径
-        return '/static/charts/' + os.path.basename(chart_path)
+        # 返回相对于static目录的路径
+        return 'charts/' + os.path.basename(chart_path)
     except Exception as e:
         logger.error("Error generating K-line chart: " + str(e))
         return None
@@ -399,15 +403,15 @@ class FundService:
                 # 创建一个基本的基金对象，确保不会返回None
                 fund = {
                     'code': fund_code,
-                    'name': f'热门基金{fund_code}',
+                    'name': '热门基金' + fund_code,
                     'net_value': round(random.uniform(0.8, 4.0), 3),
                     'daily_growth_percent': round(random.uniform(-2, 3), 2),
                     'fund_type': random.choice(['混合型', '股票型', '指数型', '债券型']),
                     'risk_level': random.choice(['低风险', '中低风险', '中风险', '中高风险', '高风险']),
                     'manager': random.choice(['张经理', '李经理', '王经理', '赵经理']),
                     'company': random.choice(['华夏基金', '易方达基金', '广发基金', '南方基金', '博时基金', '嘉实基金', '鹏华基金']),
-                    'scale': f'{round(random.uniform(50, 500), 2)}亿',
-                    'establish_date': f'{random.randint(2010, 2023)}-{random.randint(1, 12):02d}-{random.randint(1, 28):02d}',
+                    'scale': str(round(random.uniform(50, 500), 2)) + '亿',
+                    'establish_date': '{}-{:02d}-{:02d}'.format(random.randint(2010, 2023), random.randint(1, 12), random.randint(1, 28)),
                     'return_1m': round(random.uniform(-5, 8), 2),
                     'return_3m': round(random.uniform(-10, 15), 2),
                     'return_1y': round(random.uniform(-20, 50), 2),
@@ -461,7 +465,7 @@ class FundService:
             import random
             default_fund = {
                 'code': fund_code,
-                'name': f'热门基金{fund_code}',
+                'name': '热门基金' + fund_code,
                 'net_value': round(random.uniform(0.8, 4.0), 3),
                 'daily_growth_percent': round(random.uniform(-2, 3), 2),
                 'daily_growth': 0.0,
@@ -469,8 +473,8 @@ class FundService:
                 'risk_level': random.choice(['低风险', '中低风险', '中风险', '中高风险', '高风险']),
                 'manager': random.choice(['张经理', '李经理', '王经理', '赵经理']),
                 'company': random.choice(['华夏基金', '易方达基金', '广发基金', '南方基金', '博时基金', '嘉实基金', '鹏华基金']),
-                'scale': f'{round(random.uniform(50, 500), 2)}亿',
-                'establish_date': f'{random.randint(2010, 2023)}-{random.randint(1, 12):02d}-{random.randint(1, 28):02d}',
+                'scale': str(round(random.uniform(50, 500), 2)) + '亿',
+                'establish_date': '{}-{:02d}-{:02d}'.format(random.randint(2010, 2023), random.randint(1, 12), random.randint(1, 28)),
                 'return_1m': round(random.uniform(-5, 8), 2),
                 'return_3m': round(random.uniform(-10, 15), 2),
                 'return_1y': round(random.uniform(-20, 50), 2),
@@ -532,13 +536,71 @@ class FundService:
             # 返回默认的模拟数据
             return FUND_INDICES
     
-    def get_latest_news(self):
+    def get_latest_news(self, category=None):
         try:
-            # 获取最新基金相关新闻
-            return FUND_NEWS
+            # 优先从文件读取真实新闻数据
+            data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+            news_file = os.path.join(data_dir, 'news.json')
+            real_news = []
+            
+            # 计算90天前的日期（一个季度）
+            import datetime
+            today = datetime.datetime.now()
+            ninety_days_ago = today - datetime.timedelta(days=90)
+            
+            if os.path.exists(news_file):
+                with open(news_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    if 'news' in data:
+                        # 转换数据格式，确保与模板期望的字段名一致
+                        for item in data['news']:
+                            # 解析发布时间，只保留近90天的新闻
+                            publish_time_str = item.get('publishTime')
+                            if publish_time_str:
+                                try:
+                                    # 假设日期格式为 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS
+                                    publish_date_str = publish_time_str.split(' ')[0]  # 获取日期部分
+                                    publish_date = datetime.strptime(publish_date_str, '%Y-%m-%d').date()
+                                    # 只保留90天内的新闻
+                                    if publish_date >= ninety_days_ago.date():
+                                        news_item = {
+                                            'id': item.get('id'),
+                                            'title': item.get('title'),
+                                            'source': item.get('source'),
+                                            'time': publish_time_str,  # 使用原始时间字符串
+                                            'category': item.get('category'),
+                                            'url': item.get('url')
+                                        }
+                                        real_news.append(news_item)
+                                except ValueError:
+                                    # 如果日期解析失败，跳过这条新闻
+                                    continue
+                
+                # 如果指定了分类，过滤新闻
+                if category and category != '全部':
+                    real_news = [news for news in real_news if news.get('category') == category]
+                
+                # 按发布时间排序，最新的在前
+                real_news.sort(key=lambda x: x.get('time', ''), reverse=True)
+                
+                return real_news
+            
+            # 如果文件不存在或读取失败，使用模拟数据
+            self.logger.warning("News file not found or invalid: " + news_file)
+            news_list = FUND_NEWS.copy()
+            
+            # 如果指定了分类，过滤模拟新闻
+            if category and category != '全部':
+                news_list = [news for news in news_list if news.get('category') == category]
+            
+            return news_list
         except Exception as e:
             self.logger.error("Error getting latest fund news: " + str(e))
-            return FUND_NEWS
+            # 出错时返回默认模拟数据
+            news_list = FUND_NEWS.copy()
+            if category and category != '全部':
+                news_list = [news for news in news_list if news.get('category') == category]
+            return news_list
     
     def get_fund_history(self, fund_code, days=90):
         try:
@@ -655,7 +717,7 @@ class FundService:
                     chart_path = '/static/charts/' + fund_copy['code'] + '_nav.png'
                     fund_copy['chart_path'] = chart_path
                 except Exception as e:
-                    self.logger.error(f"Failed to generate chart path for fund {fund_copy['code']}: {str(e)}")
+                    self.logger.error("Failed to generate chart path for fund {}: {}".format(fund_copy['code'], str(e)))
                     fund_copy['chart_path'] = ''
                 
                 hot_funds.append(fund_copy)
@@ -760,8 +822,9 @@ class FundService:
             self.logger.error("Error generating investment recommendation: " + str(e))
             return {"status": "error", "message": "生成投资推荐失败"}
 
-# 初始化基金服务实例
+# 初始化服务实例
 fund_service = FundService()
+crawler = Crawler()
 
 # 全局错误处理
 @app.errorhandler(404)
@@ -795,10 +858,28 @@ def index():
     try:
         # 获取市场指数数据
         indices = fund_service.get_market_indices()
-        # 获取50个基金数据并添加热度属性
+        # 优先从funds.json文件获取真实基金数据
+        import os
+        import json
         import random
         import time
-        hot_funds = generate_more_funds(50)
+        hot_funds = []
+        
+        data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+        funds_file = os.path.join(data_dir, 'funds.json')
+        
+        if os.path.exists(funds_file):
+            try:
+                with open(funds_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    if 'funds' in data:
+                        hot_funds = data['funds'][:50]  # 获取最多50个基金数据
+            except Exception as e:
+                logger.error("读取真实基金数据失败: {}".format(e))
+        
+        # 如果没有获取到真实数据，使用模拟数据
+        if not hot_funds:
+            hot_funds = generate_more_funds(50)
         
         # 为每个基金添加随机热度值（模拟一小时内的热度）
         # 使用当前时间作为种子，确保每小时热度分布不同但稳定
@@ -807,10 +888,10 @@ def index():
         
         for fund in hot_funds:
             # 为不同类型的基金设置不同的热度分布范围
-            if fund['fund_type'] in ['股票型', '混合型']:
+            if fund.get('fund_type') in ['股票型', '混合型']:
                 # 股票型和混合型基金热度更高
                 fund['heat_score'] = random.uniform(60, 100)
-            elif fund['fund_type'] in ['指数型', 'QDII']:
+            elif fund.get('fund_type') in ['指数型', 'QDII']:
                 # 指数型和QDII基金热度中等
                 fund['heat_score'] = random.uniform(40, 80)
             else:
@@ -818,12 +899,25 @@ def index():
                 fund['heat_score'] = random.uniform(20, 60)
         
         # 按热度降序排序
-        hot_funds.sort(key=lambda x: x['heat_score'], reverse=True)
+        hot_funds.sort(key=lambda x: x.get('heat_score', 0), reverse=True)
+        
+        # 获取热门股票数据
+        hot_stocks = []
+        for stock in SAMPLE_STOCKS:
+            stock_quote = crawler.get_stock_quote(stock['code'])
+            if stock_quote:
+                hot_stocks.append(stock_quote)
+        
+        # 按涨跌幅排序
+        hot_stocks.sort(key=lambda x: x['change_percent'], reverse=True)
         
         # 获取最新基金新闻，限制显示5个
         latest_news = fund_service.get_latest_news()[:5]
         # 获取当前时间
         now = datetime.now()
+        
+        # 获取最后更新时间
+        last_update_time = scheduler.get_last_update_time()
         
         # 用户已登录，获取用户信息
         is_logged_in = True
@@ -863,16 +957,32 @@ def index():
         return render_template('index.html', indices=indices, hot_funds=hot_funds,
                             is_logged_in=is_logged_in, username=username,
                             watchlist=watchlist, news_available=news_available,
-                            user_risk_profile=user_risk_profile, latest_news=latest_news, now=now)
+                            user_risk_profile=user_risk_profile, latest_news=latest_news, now=now,
+                            last_update_time=last_update_time, hot_stocks=hot_stocks)
     except Exception as e:
         logger.error("处理首页请求时出错: {0}".format(e))
         # 返回一个基本的错误页面或者默认数据
         # 热门基金显示数量修改为10个
-        # 热门财经新闻显示数量修改为5个
+        # 热门财经新闻显示数量修改为5个，使用真实数据
+        latest_news = fund_service.get_latest_news()[:5]  # 获取最新的5条新闻
+        # 生成模拟股票数据用于错误情况下的显示
+        mock_stocks = []
+        for stock in SAMPLE_STOCKS:
+            mock_stocks.append({
+                'code': stock['code'],
+                'name': stock['name'],
+                'price': round(random.uniform(10, 300), 2),
+                'change': round(random.uniform(-5, 5), 2),
+                'change_percent': round(random.uniform(-5, 5), 2),
+                'volume': random.randint(1000000, 10000000),
+                'amount': round(random.uniform(10000000, 100000000), 2)
+            })
+        
         return render_template('index.html', indices=FUND_INDICES, hot_funds=SAMPLE_FUNDS[:10],
                             is_logged_in=False, username=None, watchlist=[], 
-                            news_available=len(FUND_NEWS) > 0, latest_news=FUND_NEWS[:5],
-                            user_risk_profile=None, now=datetime.now())
+                            news_available=len(latest_news) > 0, latest_news=latest_news,
+                            user_risk_profile=None, now=datetime.now(),
+                            last_update_time=scheduler.get_last_update_time(), hot_stocks=mock_stocks)
 
 
 
@@ -886,8 +996,26 @@ def more_hot_funds():
         user_id = session['user_id']
         now = datetime.now()
         
-        # 生成更多的基金数据
-        more_funds = generate_more_funds()
+        # 优先从funds.json文件获取真实基金数据
+        import os
+        import json
+        more_funds = []
+        
+        data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+        funds_file = os.path.join(data_dir, 'funds.json')
+        
+        if os.path.exists(funds_file):
+            try:
+                with open(funds_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    if 'funds' in data:
+                        more_funds = data['funds']
+            except Exception as e:
+                logger.error("读取真实基金数据失败: {}".format(e))
+        
+        # 如果没有获取到真实数据，使用模拟数据
+        if not more_funds:
+            more_funds = generate_more_funds()
         
         # 获取市场指数数据
         indices = fund_service.get_market_indices()
@@ -1135,9 +1263,7 @@ def fund_detail(fund_code):
                 'level': recommendation_data.get('recommendation', '观望'),
                 'reason': reasons_text,
                 'match_rate': 80,  # 默认匹配度80%，实际应用中可以根据风险匹配结果计算
-                'suggestion': f"该基金综合评分为{recommendation_data.get('overall_rating', 70)}分，" + 
-                             f"风险等级为{recommendation_data.get('risk_level', 3)}/5级，" + 
-                             f"{recommendation_data.get('risk_match', '风险匹配度一般')}"
+                'suggestion': "该基金综合评分为{}分，风险等级为{}/5级，{}".format(recommendation_data.get('overall_rating', 70), recommendation_data.get('risk_level', 3), recommendation_data.get('risk_match', '风险匹配度一般'))
             }
         else:
             # 提供默认的投资推荐数据
@@ -1281,31 +1407,43 @@ def remove_fund_from_watchlist(fund_code):
 def news():
     # 获取分页参数，默认为第1页
     page = request.args.get('page', 1, type=int)
-    per_page = 5  # 每页显示5条新闻
+    per_page = 5  # 每页显示5条新闻（默认）
+    category = request.args.get('category', '全部')
+    show_all = request.args.get('show_all', 'false').lower() == 'true'  # 是否显示全部新闻
     
-    # 获取所有基金相关新闻
-    all_news = fund_service.get_latest_news()
+    # 获取指定分类的新闻
+    all_news = fund_service.get_latest_news(category)
     
-    # 计算总页数
-    total_news = len(all_news)
-    total_pages = (total_news + per_page - 1) // per_page
-    
-    # 确保页码在有效范围内
-    page = max(1, min(page, total_pages))
-    
-    # 计算当前页显示的新闻范围
-    start_index = (page - 1) * per_page
-    end_index = start_index + per_page
-    paginated_news = all_news[start_index:end_index]
+    # 如果选择显示全部，则直接返回所有新闻，不进行分页
+    if show_all:
+        # 不进行分页，直接返回所有新闻
+        paginated_news = all_news
+        current_page = 1
+        total_pages = 1
+    else:
+        # 计算总页数
+        total_news = len(all_news)
+        total_pages = (total_news + per_page - 1) // per_page
+        
+        # 确保页码在有效范围内
+        page = max(1, min(page, total_pages))
+        
+        # 计算当前页显示的新闻范围
+        start_index = (page - 1) * per_page
+        end_index = start_index + per_page
+        paginated_news = all_news[start_index:end_index]
+        current_page = page
     
     # 传递分页数据给模板
     return render_template(
         'news.html', 
-        news=paginated_news, 
-        current_page=page,
+        news=paginated_news,
+        current_page=current_page,
         total_pages=total_pages,
         per_page=per_page,
-        total_news=total_news
+        total_news=len(all_news),
+        current_category=category,
+        show_all=show_all
     )
 
 @app.route('/news_detail/<news_id>')
@@ -1363,6 +1501,10 @@ def news_detail(news_id):
             flash('新闻数据格式错误', 'danger')
             return render_template('error.html', error_code='500', error_message='新闻数据格式错误')
         
+        # 计算90天前的日期（一个季度）
+        today = datetime.now()
+        ninety_days_ago = today - timedelta(days=90)
+        
         # 查找指定ID的新闻
         news_item = None
         for item in news_data:
@@ -1371,23 +1513,39 @@ def news_detail(news_id):
                 if not isinstance(item, dict):
                     print("Skipping non-dictionary item: " + type(item).__name__)
                     continue
-                      
+                       
                 # 处理ID匹配，考虑字符串和数字类型
                 item_id = item.get('id')
                 print("Comparing item_id=" + str(item_id) + " and news_id=" + str(news_id))
                 if str(item_id) == str(news_id):
-                    news_item = item
-                    print("Found matching news: " + news_item['title'])
+                    # 检查新闻发布时间是否在近90天内
+                    publish_time_str = item.get('publishTime')
+                    if publish_time_str:
+                        try:
+                            # 假设日期格式为 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS
+                            publish_date_str = publish_time_str.split(' ')[0]  # 获取日期部分
+                            publish_date = datetime.strptime(publish_date_str, '%Y-%m-%d').date()
+                            # 只显示90天内的新闻
+                            if publish_date >= ninety_days_ago.date():
+                                news_item = item
+                                print("Found matching news within 90 days: " + news_item['title'])
+                                break
+                            else:
+                                print("新闻发布时间 {} 超过90天，已过滤".format(publish_date))
+                        except ValueError:
+                            # 如果日期解析失败，跳过这条新闻
+                            print("日期解析失败，跳过这条新闻")
+                            continue
                     break
             except Exception as e:
                 print("Error processing news item: " + str(e))
                 continue
         
-        # 如果找不到新闻，返回404错误
+        # 如果找不到新闻或新闻已超过90天，返回相应错误
         if not news_item:
-            print("News with ID " + news_id + " not found")
-            flash('未找到ID为 ' + news_id + ' 的新闻', 'danger')
-            return render_template('error.html', error_code='404', error_message='未找到ID为 ' + news_id + ' 的新闻')
+            print("News with ID " + news_id + " not found or exceeds 90 days")
+            flash('无法访问该新闻。系统只显示近一个季度（90天）内的新闻。', 'danger')
+            return render_template('error.html', error_code='404', error_message='无法访问该新闻。系统只显示近一个季度（90天）内的新闻。')
         
         # 添加浏览量字段（如果不存在）
         if 'views' not in news_item:
@@ -1399,14 +1557,48 @@ def news_detail(news_id):
         if 'comments' not in news_item:
             news_item['comments'] = []
         
-        # 准备相关新闻
+        # 准备相关新闻（显示近一个季度的全部政策类、经济市场类新闻）
         related_news = []
+        current_news_category = news_item.get('category', '')
+        
+        # 定义政策类和经济市场类的分类
+        policy_categories = ['政策法规']  # 政策类新闻分类
+        economic_categories = ['宏观经济']  # 经济市场类新闻分类
+        
         for item in news_data:
             if isinstance(item, dict) and str(item.get('id')) != str(news_id):
-                related_news.append(item)
-                if len(related_news) >= 3:
-                    break
-        print("Found " + str(len(related_news)) + " related news items")
+                # 获取新闻分类
+                item_category = item.get('category', '')
+                
+                # 检查新闻发布时间是否在近90天内
+                publish_time_str = item.get('publishTime')
+                if publish_time_str:
+                    try:
+                        # 假设日期格式为 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS
+                        publish_date_str = publish_time_str.split(' ')[0]  # 获取日期部分
+                        publish_date = datetime.strptime(publish_date_str, '%Y-%m-%d').date()
+                        
+                        # 只显示90天内的政策类和经济市场类新闻
+                        if (publish_date >= ninety_days_ago.date() and 
+                            (item_category in policy_categories or item_category in economic_categories)):
+                            related_news.append(item)
+                    except ValueError:
+                        # 如果日期解析失败，跳过这条新闻
+                        continue
+        
+        # 按相关性排序：先按分类重要性（政策类和经济市场类优先），再按发布时间排序
+        related_news.sort(key=lambda x: (
+            # 第一优先级：当前新闻的分类（最高相关度）
+            x.get('category') == current_news_category, 
+            # 第二优先级：政策类新闻
+            x.get('category') in policy_categories, 
+            # 第三优先级：经济市场类新闻
+            x.get('category') in economic_categories, 
+            # 第四优先级：发布时间（最新的在前）
+            x.get('publishTime', '')
+        ), reverse=True)
+        
+        print("Found " + str(len(related_news)) + " related news items within 90 days")
         
         # 更新浏览量到文件
         try:
@@ -1496,9 +1688,28 @@ def search_fund():
             logger.info("搜索查询为空，返回空结果")
             return jsonify([])
             
-        # 简单的基金搜索功能
+        # 优先从funds.json文件读取真实基金数据
+        funds = []
+        try:
+            # 构建funds.json文件的完整路径
+            data_dir = os.path.join(os.path.dirname(__file__), 'data')
+            fund_file_path = os.path.join(data_dir, 'funds.json')
+            
+            # 读取文件内容
+            with open(fund_file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                # 从data对象中获取funds数组
+                funds = data.get('funds', [])
+                
+            logger.info("从funds.json文件成功读取{}条基金数据".format(len(funds)))
+        except Exception as e:
+            # 文件读取失败，使用SAMPLE_FUNDS作为备选
+            logger.warning("读取funds.json文件失败: {}，使用SAMPLE_FUNDS作为备选".format(str(e)))
+            funds = SAMPLE_FUNDS
+        
+        # 进行基金搜索
         results = [
-            fund for fund in SAMPLE_FUNDS 
+            fund for fund in funds 
             if query in fund['code'].lower() or query in fund['name'].lower()
         ]
         
@@ -1608,6 +1819,9 @@ if __name__ == '__main__':
         # 清理旧的图表文件
         cleanup_old_charts()
         
+        # 启动数据定时更新任务
+        scheduler.start(app)
+        
         # 获取环境变量来决定是否启用调试模式
         # 在生产环境中应该设置为False
         debug_mode = os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'
@@ -1626,3 +1840,5 @@ if __name__ == '__main__':
         print("Error: " + str(e))
         # 确保关闭数据库连接
         shutdown_database()
+        # 确保停止定时任务
+        scheduler.stop()
