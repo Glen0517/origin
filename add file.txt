@@ -1,1 +1,1 @@
-project3：zephyrOS project. 
+project3：FreeRTOS project. 
