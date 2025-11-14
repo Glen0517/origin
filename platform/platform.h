@@ -1,52 +1,68 @@
-/*
- * 平台抽象层定义
- * 提供通用的平台接口，使系统可以移植到不同的MCU上
+/**
+ * @file platform.h
+ * @brief 平台抽象层接口定义
+ * @details 该模块提供了硬件平台的抽象接口，允许上层应用以统一的方式访问不同硬件平台的功能。
+ *          通过平台抽象层，可以实现应用程序与硬件平台的解耦，提高代码的可移植性。
  */
-
 #ifndef PLATFORM_H
 #define PLATFORM_H
 
 #include "../include/types.h"
 
-// 平台配置宏定义
+/**
+ * @brief 平台配置宏定义
+ * @details 提供了平台相关的基础配置参数，用于定制平台行为
+ */
 #define PLATFORM_CONFIG_CLOCK_FREQ_HZ     (72000000U)  // 系统时钟频率
 #define PLATFORM_CONFIG_TIMER_FREQ_HZ     (1000U)      // 系统定时器频率
 #define PLATFORM_CONFIG_TICK_PER_MS       (PLATFORM_CONFIG_CLOCK_FREQ_HZ / 1000U)  // 每毫秒的时钟周期数
 #define PLATFORM_CONFIG_MAX_GPIO_PORTS    (12U)        // 最大GPIO端口数
 #define PLATFORM_CONFIG_MAX_GPIO_PINS     (16U)        // 最大GPIO引脚数
 
-// 平台初始化状态
+/**
+ * @brief 平台初始化状态枚举
+ * @details 定义了平台的不同初始化阶段和状态
+ */
 typedef enum {
-    PLATFORM_STATE_UNINIT = 0,
-    PLATFORM_STATE_INITIALIZING,
-    PLATFORM_STATE_INITIALIZED,
-    PLATFORM_STATE_ERROR
+    PLATFORM_STATE_UNINIT = 0,         // 未初始化状态
+    PLATFORM_STATE_INITIALIZING,       // 初始化中
+    PLATFORM_STATE_INITIALIZED,        // 初始化完成
+    PLATFORM_STATE_ERROR               // 错误状态
 } platform_state_t;
 
-// 平台时钟源
+/**
+ * @brief 平台时钟源枚举
+ * @details 定义了平台支持的各种时钟源选项
+ */
 typedef enum {
-    PLATFORM_CLOCK_SOURCE_INTERNAL = 0,
-    PLATFORM_CLOCK_SOURCE_EXTERNAL,
-    PLATFORM_CLOCK_SOURCE_PLL
+    PLATFORM_CLOCK_SOURCE_INTERNAL = 0,    // 内部时钟源
+    PLATFORM_CLOCK_SOURCE_EXTERNAL,        // 外部时钟源
+    PLATFORM_CLOCK_SOURCE_PLL              // 锁相环时钟源
 } platform_clock_source_t;
 
-// 平台信息结构
+/**
+ * @brief 平台信息结构体
+ * @details 存储平台的基本信息和配置参数
+ */
 typedef struct {
-    const char *name;                   // 平台名称
-    const char *mcu_name;               // MCU名称
-    uint32_t clock_freq_hz;             // 系统时钟频率
-    uint32_t flash_size_kb;             // Flash大小
-    uint32_t ram_size_kb;               // RAM大小
-    uint32_t cpu_id[3];                 // CPU ID
-    platform_clock_source_t clock_source; // 时钟源
+    const char *name;                       // 平台名称
+    const char *mcu_name;                   // MCU名称
+    uint32_t clock_freq_hz;                 // 系统时钟频率
+    uint32_t flash_size_kb;                 // Flash大小
+    uint32_t ram_size_kb;                   // RAM大小
+    uint32_t cpu_id[3];                     // CPU ID
+    platform_clock_source_t clock_source;   // 时钟源
 } platform_info_t;
 
-// 平台初始化配置
+/**
+ * @brief 平台初始化配置结构体
+ * @details 包含平台初始化所需的配置参数
+ */
 typedef struct {
-    platform_clock_source_t clock_source; // 时钟源选择
-    uint32_t target_freq_hz;            // 目标频率
-    bool use_cache;                     // 是否使用缓存
-    bool use_fpu;                       // 是否使用FPU
+    platform_clock_source_t clock_source;   // 时钟源选择
+    uint32_t target_freq_hz;                // 目标频率
+    bool use_cache;                         // 是否使用缓存
+    bool use_fpu;                           // 是否使用FPU
 } platform_init_config_t;
 
 /*
@@ -148,5 +164,12 @@ bool platform_get_memory_info(uint32_t *free_ram, uint32_t *total_ram);
  * @return 是否成功注册
  */
 bool platform_register_default_impl(void);
+
+/**
+ * @brief 注册STM32平台实现
+ * 在main函数中调用此函数注册STM32平台实现
+ * @return 是否成功注册
+ */
+bool platform_register_stm32_impl(void);
 
 #endif /* PLATFORM_H */

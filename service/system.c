@@ -8,6 +8,7 @@
 #include "../rtos/rtos_adapter.h"
 #include "../rtos/FreeRTOSConfig.h"
 #include "../platform/platform.h"
+#include "../hal/hal_uart.h"
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
@@ -32,6 +33,32 @@ static uint32_t system_start_time = 0;
 const char *system_get_log_level_string(log_level_t level);
 
 // 任务优先级处理将在调度器中直接实现
+
+/**
+ * @brief 初始化串口用于日志输出
+ */
+static bool system_init_log_uart(void) {
+    // 配置UART用于日志输出
+    uart_config_t log_uart_config = {
+        .baudrate = 115200,
+        .data_bits = UART_DATA_BITS_8,
+        .stop_bits = UART_STOP_BITS_1,
+        .parity = UART_PARITY_NONE,
+        .flow_control = UART_FLOW_CONTROL_NONE,
+        .dma_enable = false,
+        .rx_interrupt_enable = false,
+        .tx_interrupt_enable = false
+    };
+    
+    // 初始化UART1作为日志输出
+    if (!hal_uart_init(UART_1, &log_uart_config)) {
+        // 串口初始化失败，使用printf作为后备
+        printf("串口初始化失败，将使用printf作为后备\n");
+        return false;
+    }
+    
+    return true;
+}
 
 /**
  * @brief 初始化系统服务
@@ -69,9 +96,13 @@ bool system_init(void) {
     };
     
     if (!platform_init(&platform_config)) {
-        system_log(LOG_LEVEL_ERROR, "平台初始化失败\n");
+        // 平台初始化失败，使用printf输出错误（因为system_log可能还未就绪）
+        printf("平台初始化失败\n");
         return false;
     }
+    
+    // 初始化日志串口
+    system_init_log_uart();
     
     // 初始化内存管理
     system_memory_init();
@@ -85,6 +116,7 @@ bool system_init(void) {
     system_log(LOG_LEVEL_INFO, "系统服务初始化成功\n");
     
     system_initialized = true;
+    system_start_time = system_get_time_ms();
     return true;
 }
 
@@ -400,13 +432,31 @@ void system_log_level(log_level_t level, const char *format, ...) {
         level = LOG_LEVEL_INFO;
     }
     
-    // 在实际应用中，这里会根据配置输出到不同的目标（串口、文件等）
+    // 准备日志缓冲区
     char buffer[256];
     vsnprintf(buffer, sizeof(buffer), format, args);
     
-    // 简单的控制台输出实现
+    // 获取日志级别字符串
     const char *level_str = system_get_log_level_string(level);
-    printf("[%s] %s", level_str, buffer);
+    
+    // 构造完整日志消息
+    char log_buffer[300];
+    snprintf(log_buffer, sizeof(log_buffer), "[%s] %s", level_str, buffer);
+    
+    // 尝试使用UART输出日志
+    bool uart_success = false;
+    if (system_initialized) {
+        // 使用hal_uart_send_data发送日志数据
+        uint16_t length = (uint16_t)strlen(log_buffer);
+        if (hal_uart_send_data(UART_1, (uint8_t *)log_buffer, length) > 0) {
+            uart_success = true;
+        }
+    }
+    
+    // 如果UART输出失败，使用printf作为后备
+    if (!uart_success) {
+        printf("%s", log_buffer);
+    }
     
     va_end(args);
 }

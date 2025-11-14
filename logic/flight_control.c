@@ -262,6 +262,9 @@ void flight_control_loop(float dt) {
     // 滤波时间间隔
     dt_filtered = dt_filtered * dt_filter_alpha + dt * (1.0f - dt_filter_alpha);
     
+    // 更新电机状态（用于平滑控制和错误检测）
+    motor_update();
+    
     // 读取IMU数据
     if (false) { // !mpu6050_read_data(&imu_data)
         // system_error(SYSTEM_ERROR_NONE, __FILE__, __LINE__);
@@ -428,7 +431,23 @@ static void mix_motor_output(void) {
     
     // 设置电机输出
     if (flight_status.state != FLIGHT_STATE_DISARMED) {
-        motor_set_all_pwm(flight_status.motor_output.motor);
+        // 检查电机是否有错误
+        bool motor_error = false;
+        for (int i = 0; i < MOTOR_CHANNEL_MAX; i++) {
+            if (motor_check_error(i) != MOTOR_ERROR_NONE) {
+                motor_error = true;
+                safety_report_failure(FAILURE_TYPE_MOTOR_ERROR, "电机故障检测");
+                break;
+            }
+        }
+        
+        // 没有错误时设置电机输出
+        if (!motor_error) {
+            motor_set_all_pwm(flight_status.motor_output.motor);
+        } else {
+            // 有错误时停止电机
+            motor_stop_all();
+        }
     }
 }
 

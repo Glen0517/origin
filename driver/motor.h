@@ -28,12 +28,26 @@ typedef struct {
     bool direction;                    // 旋转方向 (true=正向, false=反向)
 } motor_config_t;
 
+// 电机故障类型
+typedef enum {
+    MOTOR_ERROR_NONE = 0,              // 无故障
+    MOTOR_ERROR_OVERHEAT,              // 过热
+    MOTOR_ERROR_ESC_FAILURE,           // ESC故障
+    MOTOR_ERROR_SPEED_MISMATCH,        // 速度不匹配
+    MOTOR_ERROR_PWM_OUT_OF_RANGE,      // PWM超出范围
+    MOTOR_ERROR_CALIBRATION_FAILED     // 校准失败
+} motor_error_t;
+
 // 电机状态结构体
 typedef struct {
     motor_channel_t channel;           // 电机通道
     uint16_t current_pwm;              // 当前PWM值
     bool is_enabled;                   // 是否启用
     float duty_cycle;                  // 占空比 (0.0f - 1.0f)
+    uint16_t temperature;              // 温度 (摄氏度)
+    motor_error_t error;               // 错误状态
+    bool direction_inverted;           // 方向是否反转
+    uint32_t last_update_time;         // 最后更新时间
 } motor_status_t;
 
 /**
@@ -98,6 +112,57 @@ bool motor_enable(motor_channel_t channel);
  * @return 禁用是否成功
  */
 bool motor_disable(motor_channel_t channel);
+
+/**
+ * @brief 设置电机温度
+ * @param channel 电机通道
+ * @param temperature 温度值（摄氏度）
+ * @return 设置是否成功
+ */
+bool motor_set_temperature(motor_channel_t channel, uint16_t temperature);
+
+/**
+ * @brief 反转电机方向
+ * @param channel 电机通道
+ * @param invert 是否反转
+ * @return 设置是否成功
+ */
+bool motor_invert_direction(motor_channel_t channel, bool invert);
+
+/**
+ * @brief 平滑设置电机PWM
+ * @param channel 电机通道
+ * @param target_pwm 目标PWM值
+ * @param transition_time 过渡时间（毫秒）
+ * @return 设置是否成功
+ */
+bool motor_set_pwm_smooth(motor_channel_t channel, uint16_t target_pwm, uint32_t transition_time);
+
+/**
+ * @brief 检查电机故障
+ * @param channel 电机通道
+ * @return 故障状态
+ */
+motor_error_t motor_check_error(motor_channel_t channel);
+
+/**
+ * @brief 清除电机错误
+ * @param channel 电机通道
+ * @return 操作是否成功
+ */
+bool motor_clear_error(motor_channel_t channel);
+
+/**
+ * @brief 电机校准
+ * @param channel 电机通道
+ * @return 校准是否成功
+ */
+bool motor_calibrate(motor_channel_t channel);
+
+/**
+ * @brief 更新电机状态（用于平滑控制和监控）
+ */
+void motor_update(void);
 
 /**
  * @brief 获取电机状态

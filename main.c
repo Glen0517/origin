@@ -28,16 +28,16 @@
 static bool system_init_all(void);
 
 // 声明平台注册函数
-extern bool platform_register_default_impl(void);
+extern bool platform_register_stm32_impl(void);
 
 int main(void) {
     // 系统启动标志
     bool system_ready = false;
     
-    // 首先注册默认平台实现
-    if (!platform_register_default_impl()) {
+    // 首先注册STM32平台实现
+    if (!platform_register_stm32_impl()) {
         // 在平台初始化前，无法使用系统日志，直接返回错误
-        system_log(LOG_LEVEL_FATAL, "Failed to register default platform implementation!\n");
+        (LOG_LEVEL_FATAL, "Failed to register default platform implementation!\n");
         return -1;
     }
     

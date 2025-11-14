@@ -1,6 +1,11 @@
 {
     "files.associations": {
         "compare": "c",
-        "type_traits": "c"
+        "type_traits": "c",
+        "types.h": "c",
+        "string.h": "c",
+        "stdint.h": "c",
+        "platform.h": "c",
+        "stdio.h": "c"
     }
 }
