@@ -43,16 +43,16 @@ int main(void) {
     // 首先注册STM32平台实现
     if (!platform_register_stm32_impl()) {
         // 在平台初始化前，无法使用系统日志，直接返回错误
-        (LOG_LEVEL_FATAL, "Failed to register default platform implementation!\n");
+        system_log(LOG_LEVEL_FATAL, "Failed to register default platform implementation!\n");
         return -1;
     }
     
     // 初始化系统服务
-    if (!system_init()) {
+    if (!system_init(NULL)) {
         return -1;
     }
     
-    system_log(LOG_LEVEL_INFO, "%s v%s starting up...\n", SYSTEM_NAME, SYSTEM_VERSION);
+    system_log(LOG_LEVEL_INFO, "%s v%s starting up...", SYSTEM_NAME);
     
     // 初始化安全模块（会自动初始化解锁检测和安全监控器）
     safety_init(NULL);
@@ -103,7 +103,7 @@ static bool system_init_all(void) {
     }
     
     // 初始化I2C（用于MPU6050）
-    if (!i2c_init(I2C_CHANNEL_1, I2C_SPEED_400K)) {
+    if (!i2c_init(I2C_CHANNEL_1, 400000)) {
         system_log(LOG_LEVEL_ERROR, "I2C初始化失败!\n");
         safety_report_failure(FAILURE_TYPE_SYSTEM_ERROR, "I2C初始化失败");
         success = false;

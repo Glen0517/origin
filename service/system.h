@@ -190,7 +190,7 @@ bool system_get_error(error_info_t *error);
 // 硬件初始化函数声明
 bool gpio_init_all(void);
 bool timer_init_all(void);
-bool i2c_init(uint8_t channel, uint8_t speed);
+bool i2c_init(i2c_channel_t channel, i2c_speed_mode_t speed_mode);
 bool uart_init_all(void);
 
 #endif // SYSTEM_H

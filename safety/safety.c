@@ -15,7 +15,6 @@
 
 // 定义ABS宏
 #define ABS(x) ((x) > 0 ? (x) : -(x))
-#include <stdint.h> /* 确保float32_t类型可用 */
 
 // 安全配置和状态
 static safety_config_t safety_config;
@@ -418,8 +417,8 @@ void safety_perform_recovery(failure_type_t type) {
     switch (type) {
         case FAILURE_TYPE_MPU6050_ERROR:
             // 尝试重新初始化MPU6050
-    mpu6050_init(0); // 添加参数
-    break;
+            mpu6050_reinit();
+            break;
             
         case FAILURE_TYPE_MOTOR_ERROR:
             // 停止并禁用所有电机

@@ -57,10 +57,7 @@ static void system_error(uint8_t error_code, const char *file, uint32_t line) {
     (void)line;
     // 简化实现
 }
-#define FLIGHT_MODE_ATTITUDE 1
-#define FLIGHT_MODE_GPS 2
-#define FLIGHT_MODE_HEADLESS 3
-#define SYSTEM_ERROR_NONE 0
+
 #include "../driver/motor.h"
 #include "../config/config.h"
 #include "../algorithm/attitude.h"
@@ -547,11 +544,10 @@ bool flight_control_arm(void) {
     if (all_enabled) {
         flight_status.state = FLIGHT_STATE_ARMED;
         flight_status.arm_time = 0; // system_get_time_ms();
-        // system_log(LOG_LEVEL_INFO, "电机已解锁");  // 暂时注释掉，因为system_log未定义
+        safety_report_failure(FAILURE_TYPE_MOTOR_ERROR, "电机已解锁");
         return true;
     } else {
-        // system_log(LOG_LEVEL_ERROR, "解锁失败：电机启用失败\n");  // 暂时注释掉，因为system_log未定义
-        safety_report_failure(FAILURE_TYPE_MOTOR_ERROR, "电机启用失败");
+        safety_report_failure(FAILURE_TYPE_MOTOR_ERROR, "解锁失败：电机启用失败");
         return false;
     }
 }

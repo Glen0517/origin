@@ -287,7 +287,7 @@ bool mpu6050_read_raw_data(mpu6050_data_t *data) {
     data->gyro_raw[2] = (int16_t)((buffer[12] << 8) | buffer[13]);
     
     // 标记数据有效
-    data-> data_valid = true;
+    data->data_valid = true;
     
     return true;
 }
@@ -307,14 +307,14 @@ bool mpu6050_read_data(mpu6050_data_t *data) {
     
     // 应用校准参数并转换为物理量
     // 陀螺仪数据 (°/s)
-    data-> gyro[0] = ((float)data-> gyro_raw[0] * gyro_scale_factor) - calib_data.gyro_offset[0];
-    data-> gyro[1] = ((float)data-> gyro_raw[1] * gyro_scale_factor) - calib_data.gyro_offset[1];
-    data-> gyro[2] = ((float)data-> gyro_raw[2] * gyro_scale_factor) - calib_data.gyro_offset[2];
+    data->gyro[0] = ((float)data->gyro_raw[0] * gyro_scale_factor) - calib_data.gyro_offset[0];
+    data->gyro[1] = ((float)data->gyro_raw[1] * gyro_scale_factor) - calib_data.gyro_offset[1];
+    data->gyro[2] = ((float)data->gyro_raw[2] * gyro_scale_factor) - calib_data.gyro_offset[2];
     
     // 加速度计数据 (g)
-    data-> accel[0] = (((float)data->accel_raw[0] * accel_scale_factor) - calib_data.accel_offset[0]) * calib_data.accel_scale[0];
-    data-> accel[1] = (((float)data->accel_raw[1] * accel_scale_factor) - calib_data.accel_offset[1]) * calib_data.accel_scale[1];
-    data-> accel[2] = (((float)data->accel_raw[2] * accel_scale_factor) - calib_data.accel_offset[2]) * calib_data.accel_scale[2];
+    data->accel[0] = (((float)data->accel_raw[0] * accel_scale_factor) - calib_data.accel_offset[0]) * calib_data.accel_scale[0];
+    data->accel[1] = (((float)data->accel_raw[1] * accel_scale_factor) - calib_data.accel_offset[1]) * calib_data.accel_scale[1];
+    data->accel[2] = (((float)data->accel_raw[2] * accel_scale_factor) - calib_data.accel_offset[2]) * calib_data.accel_scale[2];
     
     return true;
 }
@@ -397,6 +397,22 @@ void mpu6050_get_calibration_data(mpu6050_calib_data_t *calib_data_out) {
     if (calib_data_out != NULL) {
         *calib_data_out = calib_data;
     }
+}
+
+/**
+ * @brief 重新初始化MPU6050
+ * @return 是否重新初始化成功
+ */
+bool mpu6050_reinit(void) {
+    if (!mpu_initialized) {
+        return false;
+    }
+    
+    // 标记为未初始化
+    mpu_initialized = false;
+    
+    // 重新初始化
+    return mpu6050_init(&mpu_config);
 }
 
 /**

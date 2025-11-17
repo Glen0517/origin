@@ -210,6 +210,12 @@ void mpu6050_set_calibration_data(mpu6050_calib_data_t *calib_data);
 void mpu6050_get_calibration_data(mpu6050_calib_data_t *calib_data);
 
 /**
+ * @brief 重新初始化MPU6050
+ * @return 是否重新初始化成功
+ */
+bool mpu6050_reinit(void);
+
+/**
  * @brief 检查MPU6050是否就绪
  * @return 是否已初始化并就绪
  */
