@@ -10,22 +10,28 @@
 #include "../include/types.h"
 
 /**
- * @brief GPIO端口枚举
- * @details 定义了系统支持的GPIO端口，不同芯片平台可能支持的端口数量不同
+ * @brief GPIO端口枚举 - 平台抽象端口定义
+ * @details 使用抽象端口编号，支持不同芯片平台的不同端口数量。
+ *          实际平台映射时，根据具体芯片端口数量进行适配。
  */
 typedef enum {
-    GPIO_PORT_A = 0,    // 端口A
-    GPIO_PORT_B,        // 端口B
-    GPIO_PORT_C,        // 端口C
-    GPIO_PORT_D,        // 端口D
-    GPIO_PORT_E,        // 端口E
-    GPIO_PORT_F,        // 端口F
-    GPIO_PORT_G,        // 端口G
-    GPIO_PORT_H,        // 端口H
-    GPIO_PORT_I,        // 端口I
-    GPIO_PORT_J,        // 端口J
-    GPIO_PORT_K,        // 端口K
-    GPIO_PORT_MAX       // 端口数量最大值，用于边界检查
+    GPIO_PORT_0 = 0,    // 抽象端口0
+    GPIO_PORT_1,        // 抽象端口1
+    GPIO_PORT_2,        // 抽象端口2
+    GPIO_PORT_3,        // 抽象端口3
+    GPIO_PORT_4,        // 抽象端口4
+    GPIO_PORT_5,        // 抽象端口5
+    GPIO_PORT_6,        // 抽象端口6
+    GPIO_PORT_7,        // 抽象端口7
+    GPIO_PORT_8,        // 抽象端口8
+    GPIO_PORT_9,        // 抽象端口9
+    GPIO_PORT_10,       // 抽象端口10
+    GPIO_PORT_11,       // 抽象端口11
+    GPIO_PORT_12,       // 抽象端口12
+    GPIO_PORT_13,       // 抽象端口13
+    GPIO_PORT_14,       // 抽象端口14
+    GPIO_PORT_15,       // 抽象端口15
+    GPIO_PORT_MAX       // 最大端口数量限制
 } gpio_port_t;
 
 /**
@@ -159,17 +165,25 @@ bool hal_gpio_read_input(gpio_port_t port, gpio_pin_t pin);
 void hal_gpio_toggle(gpio_port_t port, gpio_pin_t pin);
 
 /**
+ * @brief GPIO中断回调函数类型定义
+ * @details 使用标准化的中断处理机制，提高跨平台兼容性
+ */
+typedef void (*gpio_exti_callback_t)(uint32_t exti_line, void *user_data);
+
+/**
  * @brief 配置GPIO外部中断
  * @param port GPIO端口
  * @param pin GPIO引脚
  * @param trigger 触发方式
  * @param callback 中断回调函数
+ * @param user_data 用户数据指针
  * @return 是否配置成功
  * @note 配置中断后，需要调用hal_gpio_enable_exti使能中断
  */
 bool hal_gpio_config_exti(gpio_port_t port, gpio_pin_t pin, 
                          gpio_exti_trigger_t trigger, 
-                         void (*callback)(void));
+                         gpio_exti_callback_t callback,
+                         void *user_data);
 
 /**
  * @brief 使能GPIO外部中断

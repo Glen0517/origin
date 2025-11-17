@@ -1,5 +1,10 @@
-/*
- * 姿态解算算法接口定义
+/**
+ * @file attitude.h
+ * @brief 姿态解算算法接口定义
+ * @details 该模块提供了多种姿态解算算法的实现，包括互补滤波、Madgwick和Mahony算法。
+ *          支持四元数和欧拉角表示，提供统一的姿态数据接口。
+ * @author 系统开发团队
+ * @version 2.0.0
  */
 
 #ifndef ATTITUDE_H
@@ -8,12 +13,27 @@
 #include "../include/types.h"
 #include "../config/config.h"
 
-// 姿态解算算法类型
+// ========================== 姿态解算算法类型定义 ==========================
+
+/// 姿态解算算法类型枚举 - 支持多种算法选择
 typedef enum {
-    ATTITUDE_ALGORITHM_COMPLEMENTARY,  // 互补滤波
-    ATTITUDE_ALGORITHM_MADGWICK,       // Madgwick算法
-    ATTITUDE_ALGORITHM_MAHONY          // Mahony算法
+    ATTITUDE_ALGORITHM_COMPLEMENTARY = 0,  // 互补滤波算法
+    ATTITUDE_ALGORITHM_MADGWICK,           // Madgwick算法
+    ATTITUDE_ALGORITHM_MAHONY              // Mahony算法
 } attitude_algorithm_t;
+
+// ========================== 姿态解算常量定义 ==========================
+
+// 姿态解算算法参数默认值 - 提高代码可维护性
+#ifndef ATTITUDE_DEFAULT_COMPLEMENTARY_GAIN
+    #define ATTITUDE_DEFAULT_COMPLEMENTARY_GAIN   0.98f   // 互补滤波默认增益
+#endif
+#ifndef ATTITUDE_DEFAULT_BETA_VALUE
+    #define ATTITUDE_DEFAULT_BETA_VALUE          0.1f    // Madgwick/Mahony默认beta值
+#endif
+#ifndef ATTITUDE_FILTER_FREQUENCY
+    #define ATTITUDE_FILTER_FREQUENCY            5.0f    // 滤波器频率 (Hz)
+#endif
 
 // 姿态解算配置结构体
 typedef struct {

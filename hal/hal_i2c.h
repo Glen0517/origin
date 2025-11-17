@@ -1,5 +1,10 @@
-/*
- * I2C硬件抽象层接口定义
+/**
+ * @file hal_i2c.h
+ * @brief I2C硬件抽象层接口定义
+ * @details 该模块提供了通用的I2C操作接口，屏蔽了不同硬件平台之间的差异，
+ *          使上层应用可以以统一的方式操作I2C设备。
+ * @author 系统开发团队
+ * @version 2.0.0
  */
 
 #ifndef HAL_I2C_H
@@ -7,13 +12,13 @@
 
 #include "../include/types.h"
 
-// I2C通道定义
+// I2C通道定义 - 抽象通道编号
 typedef enum {
-    I2C_1 = 0,
-    I2C_2,
-    I2C_3,
-    I2C_4,
-    I2C_MAX
+    I2C_CHANNEL_0 = 0,    // 抽象通道0
+    I2C_CHANNEL_1,        // 抽象通道1
+    I2C_CHANNEL_2,        // 抽象通道2
+    I2C_CHANNEL_3,        // 抽象通道3
+    I2C_CHANNEL_MAX       // 最大通道数
 } i2c_channel_t;
 
 // I2C模式定义

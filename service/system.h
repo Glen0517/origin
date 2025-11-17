@@ -1,5 +1,10 @@
-/*
- * 系统服务接口定义
+/**
+ * @file system.h
+ * @brief 系统服务接口定义
+ * @details 该模块提供了系统级的服务功能，包括任务管理、错误处理、内存管理、日志输出等。
+ *          采用统一的错误处理和日志机制，提高系统的可维护性和可监控性。
+ * @author 系统开发团队
+ * @version 2.0.0
  */
 
 #ifndef SYSTEM_H
@@ -8,20 +13,31 @@
 #include "../include/types.h"
 #include "../platform/platform.h"
 
-// 系统定时器配置
-#define SYSTEM_TIMER_CHANNEL      TIMER_1    // 系统定时器通道
-#define SYSTEM_TIMER_PRESCALER    71999      // 定时器预分频器（72MHz / 72000 = 1kHz）
-#define SYSTEM_TIMER_AUTO_RELOAD  999        // 自动重载值（1kHz / 1000 = 1Hz中断）
+// 系统定时器配置结构体 - 提高可配置性
+typedef struct {
+    uint32_t channel;           // 定时器通道
+    uint32_t prescaler;         // 预分频器值
+    uint32_t auto_reload;       // 自动重载值
+    uint32_t freq_hz;           // 目标频率
+} system_timer_config_t;
 
-// 系统日志级别
-#define SYSTEM_LOG_LEVEL          CURRENT_LOG_LEVEL
+// 系统配置结构体 - 统一管理配置参数
+typedef struct {
+    system_timer_config_t timer_config;     // 定时器配置
+    log_level_t log_level;                  // 日志级别
+    uint32_t max_tasks;                     // 最大任务数
+    uint32_t task_stack_size;               // 任务堆栈大小
+    bool memory_pool_enable;                // 内存池使能
+} system_config_t;
 
-// 系统任务优先级
+/// 系统任务优先级枚举 - 统一优先级定义
 typedef enum {
-    TASK_PRIORITY_LOW,
-    TASK_PRIORITY_MEDIUM,
-    TASK_PRIORITY_HIGH,
-    TASK_PRIORITY_REALTIME
+    TASK_PRIORITY_LOW = 0,       // 低优先级
+    TASK_PRIORITY_BELOW_NORMAL,  // 低于正常优先级
+    TASK_PRIORITY_NORMAL,        // 正常优先级
+    TASK_PRIORITY_ABOVE_NORMAL,  // 高于正常优先级
+    TASK_PRIORITY_HIGH,          // 高优先级
+    TASK_PRIORITY_REALTIME       // 实时优先级
 } task_priority_t;
 
 // 系统任务函数类型
@@ -41,9 +57,17 @@ typedef struct {
 
 /**
  * @brief 初始化系统服务
+ * @param config 系统配置参数
  * @return 是否初始化成功
  */
-bool system_init(void);
+bool system_init(const system_config_t *config);
+
+/**
+ * @brief 获取系统默认配置
+ * @param config 系统配置结构体指针
+ * @return 是否获取成功
+ */
+bool system_get_default_config(system_config_t *config);
 
 /**
  * @brief 系统延迟函数

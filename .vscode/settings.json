@@ -7,5 +7,7 @@
         "stdint.h": "c",
         "platform.h": "c",
         "stdio.h": "c"
-    }
+    },
+    "search.useGlobalIgnoreFiles": true,
+    "search.useParentIgnoreFiles": true
 }
