@@ -1,0 +1,488 @@
+# CAN网络节点功能详细规划
+
+## 1. 传感器节点功能规范
+
+### 1.1 温度传感器阵列节点 (0x9555AAA6)
+
+#### 硬件配置
+- **主控制器**: TMS320F28335 DSP
+- **传感器接口**: 支持最多8路DS18B20温度传感器
+- **采样精度**: 12位分辨率 (0.0625°C)
+- **温度范围**: -55°C至+125°C
+- **CAN收发器**: TJA1050
+- **电源**: 5V DC，功耗<1W
+
+#### 软件功能
+```c
+// 温度传感器节点核心功能模块
+void temp_sensor_node_init(void) {
+    // 初始化CAN总线和邮箱
+    configureEcanB();
+    // 初始化温度传感器接口
+    init_ds18b20_interface();
+    // 配置定时器中断进行周期性采样
+    init_sample_timer();
+}
+
+// 温度数据采集函数
+void collect_temperature_data(void) {
+    // 遍历所有连接的温度传感器
+    for(int i=0; i<NUM_SENSORS; i++) {
+        // 读取传感器原始数据
+        int16 raw_temp = read_ds18b20(i);
+        // 温度数据处理和校准
+        int16 calibrated_temp = calibrate_temperature(raw_temp, i);
+        
+        // 准备CAN消息
+        struct CAN_DATA can_temp;
+        can_temp.id = TEMP_SENSOR_ID;
+        can_temp.data0 = (raw_temp << 4) | i;  // 高12位原始值，低4位传感器ID
+        can_temp.data1 = calibrated_temp;      // 校准后温度值 (0.01°C)
+        can_temp.data2 = get_system_ticks();   // 采样时间戳
+        can_temp.index = TEMP_DATA_INDEX;
+        
+        // 发送温度数据
+        send_data(TEMP_DATA_MBX, can_temp);
+    }
+}
+```
+
+#### 通信规范
+- **数据发送频率**: 1Hz（正常模式），10Hz（温度异常）
+- **消息优先级**: 中低优先级 (24-31)
+- **关键功能**:
+  - 温度超限自动报警（阈值可配置）
+  - 传感器断线检测和报告
+  - 支持远程读取特定传感器数据
+
+### 1.2 电流/电压监测节点 (0x9555AAA7)
+
+#### 硬件配置
+- **主控制器**: TMS320F28335 DSP
+- **模拟前端**: 16位ADC，8通道同时采样
+- **传感器接口**: 支持电流互感器和电压分压器
+- **隔离模块**: 光耦隔离保护
+- **CAN收发器**: TJA1050
+
+#### 软件功能
+```c
+// 电流电压监测节点核心功能
+void power_monitor_node_init(void) {
+    // 初始化CAN总线和配置邮箱
+    configureEcanB();
+    // 初始化ADC模块
+    init_adc_module();
+    // 配置采样定时器
+    init_power_sample_timer();
+    // 加载校准参数
+    load_calibration_params();
+}
+
+// 电力数据采集处理
+void collect_power_data(void) {
+    // 启动ADC采样
+    start_adc_conversion();
+    
+    // 读取电压数据
+    int16 voltage_raw = read_adc_channel(VOLTAGE_CHANNEL);
+    float voltage = convert_to_voltage(voltage_raw);
+    
+    // 读取电流数据
+    int16 current_raw = read_adc_channel(CURRENT_CHANNEL);
+    float current = convert_to_current(current_raw);
+    
+    // 计算功率
+    float power = voltage * current;
+    
+    // 准备CAN消息
+    struct CAN_DATA power_data;
+    power_data.id = POWER_MONITOR_ID;
+    power_data.data0 = (int16)(voltage * 100);      // 电压值 (0.01V)
+    power_data.data1 = (int16)(current * 1000);     // 电流值 (0.001A)
+    power_data.data2 = (int16)(power * 10);         // 功率值 (0.1W)
+    power_data.index = POWER_DATA_INDEX;
+    
+    // 发送电力数据
+    send_data(POWER_DATA_MBX, power_data);
+    
+    // 监测异常并触发报警
+    if(check_power_anomalies(voltage, current)) {
+        send_power_alarm(voltage, current);
+    }
+}
+```
+
+#### 通信规范
+- **数据发送频率**: 100Hz（高精度模式），10Hz（标准模式）
+- **消息优先级**: 中等优先级 (16-23)
+- **关键功能**:
+  - 过压/欠压/过流保护
+  - 功率监测和电能累计
+  - 支持远程配置采样率和报警阈值
+
+### 1.3 环境监测节点 (0x9555AAA8)
+
+#### 硬件配置
+- **主控制器**: TMS320F28335 DSP
+- **传感器**: 
+  - DHT22温湿度传感器
+  - BH1750光照强度传感器
+  - MQ-135空气质量传感器
+- **通信接口**: I2C和1-Wire
+- **CAN收发器**: TJA1050
+
+#### 软件功能
+```c
+// 环境监测节点初始化
+void environment_node_init(void) {
+    // 初始化CAN总线
+    configureEcanB();
+    // 初始化传感器接口
+    init_i2c_interface();
+    init_onewire_interface();
+    // 初始化各环境传感器
+    init_dht22();
+    init_bh1750();
+    init_mq135();
+}
+
+// 环境数据采集
+void collect_environment_data(void) {
+    struct CAN_DATA env_data;
+    env_data.id = ENVIRONMENT_NODE_ID;
+    
+    // 采集温度数据
+    int16 temperature = read_dht22_temperature();
+    
+    // 采集湿度数据
+    int16 humidity = read_dht22_humidity();
+    
+    // 采集光照强度
+    int16 light_level = read_bh1750();
+    
+    // 组合数据
+    env_data.data0 = temperature;    // 温度 (0.1°C)
+    env_data.data1 = humidity;       // 湿度 (0.1%)
+    env_data.data2 = light_level;    // 光照 (lux)
+    env_data.index = ENV_DATA_INDEX;
+    
+    // 发送环境数据
+    send_data(ENV_DATA_MBX, env_data);
+}
+```
+
+#### 通信规范
+- **数据发送频率**: 10Hz（标准模式），可配置
+- **消息优先级**: 中低优先级 (24-31)
+- **关键功能**:
+  - 环境参数综合监测
+  - 趋势分析和异常检测
+  - 支持基于环境参数的自动控制
+
+## 2. 执行器节点功能规范
+
+### 2.1 电机控制节点 (0x9555AAAB)
+
+#### 硬件配置
+- **主控制器**: TMS320F28335 DSP
+- **功率驱动**: DRV8301三相电机驱动
+- **电流检测**: 分流电阻 + 放大器
+- **位置反馈**: 编码器接口 (增量式)
+- **CAN收发器**: TJA1050
+
+#### 软件功能
+```c
+// 电机控制节点初始化
+void motor_control_node_init(void) {
+    // 初始化CAN总线
+    configureEcanB();
+    // 初始化电机驱动
+    init_motor_driver();
+    // 初始化编码器
+    init_encoder();
+    // 初始化PID控制器
+    init_pid_controller();
+}
+
+// 电机控制命令处理
+void process_motor_command(struct CAN_DATA command) {
+    // 根据命令类型执行不同操作
+    switch(command.data0) {
+        case MOTOR_CMD_POSITION:
+            // 位置控制模式
+            set_motor_position(command.data1);
+            break;
+        case MOTOR_CMD_SPEED:
+            // 速度控制模式
+            set_motor_speed(command.data1);
+            break;
+        case MOTOR_CMD_TORQUE:
+            // 力矩控制模式
+            set_motor_torque(command.data1);
+            break;
+        case MOTOR_CMD_STOP:
+            // 停止电机
+            stop_motor();
+            break;
+    }
+    
+    // 发送电机状态反馈
+    send_motor_status();
+}
+
+// 电机状态反馈
+void send_motor_status(void) {
+    struct CAN_DATA motor_status;
+    motor_status.id = MOTOR_STATUS_ID;
+    motor_status.data0 = get_motor_position();
+    motor_status.data1 = get_motor_speed();
+    motor_status.data2 = get_motor_current();
+    motor_status.index = MOTOR_STATUS_INDEX;
+    
+    send_data(MOTOR_STATUS_MBX, motor_status);
+}
+```
+
+#### 通信规范
+- **控制命令响应**: 实时响应 (<1ms)
+- **状态反馈频率**: 50Hz
+- **消息优先级**: 
+  - 控制命令: 高优先级 (8-15)
+  - 状态反馈: 中等优先级 (16-23)
+- **关键功能**:
+  - 多模式控制（位置、速度、力矩）
+  - 过流保护和热保护
+  - 故障诊断和报告
+  - 自动回零和限位保护
+
+### 2.2 继电器控制节点 (0x9555AAAC)
+
+#### 硬件配置
+- **主控制器**: TMS320F28335 DSP
+- **继电器驱动**: 8路继电器模块
+- **状态反馈**: 光电耦合器检测
+- **电源监测**: 电压监控电路
+- **CAN收发器**: TJA1050
+
+#### 软件功能
+```c
+// 继电器节点初始化
+void relay_node_init(void) {
+    // 初始化CAN总线
+    configureEcanB();
+    // 初始化GPIO接口
+    init_gpio_for_relays();
+    // 初始化状态监测
+    init_relay_monitoring();
+    // 初始状态设置
+    set_all_relays_off();
+}
+
+// 继电器命令处理
+void process_relay_command(struct CAN_DATA command) {
+    Uint8 relay_mask = (Uint8)(command.data0 & 0xFF);  // 继电器掩码
+    Uint8 action = (Uint8)(command.data1 & 0xFF);      // 动作类型
+    
+    switch(action) {
+        case RELAY_ACTION_ON:
+            // 打开指定继电器
+            set_relays_on(relay_mask);
+            break;
+        case RELAY_ACTION_OFF:
+            // 关闭指定继电器
+            set_relays_off(relay_mask);
+            break;
+        case RELAY_ACTION_TOGGLE:
+            // 切换指定继电器
+            toggle_relays(relay_mask);
+            break;
+    }
+    
+    // 发送继电器状态反馈
+    send_relay_status();
+}
+
+// 状态监测和反馈
+void send_relay_status(void) {
+    struct CAN_DATA relay_status;
+    relay_status.id = RELAY_STATUS_ID;
+    relay_status.data0 = get_relay_states();    // 当前状态掩码
+    relay_status.data1 = get_relay_errors();    // 错误状态
+    relay_status.data2 = get_power_status();    // 电源状态
+    relay_status.index = RELAY_STATUS_INDEX;
+    
+    send_data(RELAY_STATUS_MBX, relay_status);
+}
+```
+
+#### 通信规范
+- **命令响应时间**: <5ms
+- **状态反馈频率**: 10Hz
+- **消息优先级**: 高优先级 (8-15)
+- **关键功能**:
+  - 8路独立继电器控制
+  - 状态监测和故障诊断
+  - 电源状态监控
+  - 支持定时开关操作
+
+### 2.3 显示屏节点 (0x9555AAAD)
+
+#### 硬件配置
+- **主控制器**: TMS320F28335 DSP
+- **显示接口**: LCD/LED显示屏 (16x2 LCD或图形LCD)
+- **按键输入**: 4x4矩阵键盘
+- **CAN收发器**: TJA1050
+
+#### 软件功能
+```c
+// 显示屏节点初始化
+void display_node_init(void) {
+    // 初始化CAN总线
+    configureEcanB();
+    // 初始化显示接口
+    init_display_interface();
+    // 初始化键盘
+    init_keypad();
+    // 显示启动画面
+    show_startup_screen();
+}
+
+// 显示命令处理
+void process_display_command(struct CAN_DATA command) {
+    Uint8 cmd_type = (Uint8)(command.data0 & 0xFF);
+    
+    switch(cmd_type) {
+        case DISPLAY_CMD_TEXT:
+            // 显示文本
+            display_text(command.data1, command.data2);
+            break;
+        case DISPLAY_CMD_CLEAR:
+            // 清屏
+            clear_display();
+            break;
+        case DISPLAY_CMD_UPDATE_VALUE:
+            // 更新数值显示
+            update_value_display(command.data1, command.data2);
+            break;
+        case DISPLAY_CMD_SET_MODE:
+            // 设置显示模式
+            set_display_mode(command.data1);
+            break;
+    }
+}
+
+// 按键输入处理并发送
+void process_keypad_input(void) {
+    Uint8 key = read_keypad();
+    if(key != NO_KEY_PRESSED) {
+        struct CAN_DATA key_event;
+        key_event.id = DISPLAY_KEY_EVENT_ID;
+        key_event.data0 = key;
+        key_event.data1 = get_system_ticks();
+        key_event.index = KEY_EVENT_INDEX;
+        
+        send_data(KEY_EVENT_MBX, key_event);
+    }
+}
+```
+
+#### 通信规范
+- **命令响应时间**: <20ms
+- **按键事件传输**: 实时
+- **消息优先级**: 中低优先级 (32-39)
+- **关键功能**:
+  - 文本和数值显示
+  - 多页面信息切换
+  - 按键输入捕获和转发
+  - 系统状态可视化
+
+### 2.4 报警节点 (0x9555AAAE)
+
+#### 硬件配置
+- **主控制器**: TMS320F28335 DSP
+- **蜂鸣器驱动**: 压电蜂鸣器控制
+- **LED闪烁控制**: RGB LED控制
+- **外部报警接口**: 继电器输出控制外部警报
+- **CAN收发器**: TJA1050
+
+#### 软件功能
+```c
+// 报警节点初始化
+void alarm_node_init(void) {
+    // 初始化CAN总线
+    configureEcanB();
+    // 初始化警报硬件
+    init_buzzer();
+    init_leds();
+    init_external_alarm();
+    // 加载报警配置
+    load_alarm_config();
+}
+
+// 报警命令处理
+void process_alarm_command(struct CAN_DATA command) {
+    Uint8 alarm_level = (Uint8)((command.data0 >> 8) & 0xFF);
+    Uint8 alarm_type = (Uint8)(command.data0 & 0xFF);
+    
+    // 根据报警级别和类型执行相应动作
+    switch(alarm_level) {
+        case ALARM_LEVEL_INFO:
+            // 信息提示
+            show_info_alarm(alarm_type);
+            break;
+        case ALARM_LEVEL_WARNING:
+            // 警告级别
+            show_warning_alarm(alarm_type);
+            break;
+        case ALARM_LEVEL_ERROR:
+            // 错误级别
+            show_error_alarm(alarm_type);
+            break;
+        case ALARM_LEVEL_CRITICAL:
+            // 严重错误
+            show_critical_alarm(alarm_type);
+            break;
+        case ALARM_LEVEL_RESET:
+            // 重置所有警报
+            reset_all_alarms();
+            break;
+    }
+}
+
+// 发送报警确认
+void send_alarm_acknowledge(Uint8 alarm_id) {
+    struct CAN_DATA alarm_ack;
+    alarm_ack.id = ALARM_ACK_ID;
+    alarm_ack.data0 = alarm_id;
+    alarm_ack.data1 = get_system_ticks();
+    alarm_ack.index = ALARM_ACK_INDEX;
+    
+    send_data(ALARM_ACK_MBX, alarm_ack);
+}
+```
+
+#### 通信规范
+- **报警响应时间**: <50ms
+- **优先级**: 高优先级 (8-15)，紧急报警为最高优先级 (0-7)
+- **关键功能**:
+  - 多级报警支持
+  - 可配置的报警模式
+  - 报警确认和记录
+  - 远程消警功能
+
+## 3. 节点间协同工作规范
+
+### 3.1 数据同步机制
+- **时间戳同步**: 所有节点使用统一的时间基准
+- **数据一致性**: 采用发布/订阅模式保证数据一致性
+- **周期性同步**: 主节点定期广播同步消息
+
+### 3.2 错误处理策略
+- **节点离线检测**: 通过心跳消息监控节点在线状态
+- **自动恢复机制**: 故障节点尝试自动重启恢复
+- **降级运行模式**: 网络部分故障时，关键功能仍可运行
+
+### 3.3 节点发现与配置
+- **自动发现**: 新节点接入网络时自动识别
+- **动态配置**: 远程更新节点参数和功能
+- **网络状态监测**: 实时监控网络负载和健康状态

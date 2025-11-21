@@ -1,0 +1,41 @@
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+Debug/*
+.launches/CanTest.launch
+.ccsproject
+/Debug__opt_for_speed__0/
+/Debug__opt_for_speed__1/
+/Debug__opt_for_speed__2/
+/Debug__opt_for_speed__3/
+/Debug__opt_for_speed__4/
+/Debug__opt_for_speed__5/
