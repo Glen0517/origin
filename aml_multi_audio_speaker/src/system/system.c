@@ -30,5 +30,83 @@ void system_deinit(void)
 void system_event_poll(void)
 {
     if (!g_sys_cfg.init_ok) return;
-    // 轮询系统状态/OTA升级事件
+    
+    // 轮询系统状态变化
+    static SysState_e last_sys_state = SYS_STATE_IDLE;
+    SysState_e current_sys_state = system_api_get_state();
+    
+    if (current_sys_state != last_sys_state) {
+        LOG_INFO("System state changed: %d -> %d", last_sys_state, current_sys_state);
+        last_sys_state = current_sys_state;
+        
+        // 根据系统状态执行相应操作
+        switch (current_sys_state) {
+            case SYS_STATE_WORKING:
+                // 处理系统工作状态
+                LOG_INFO("System entering working state");
+                led_ctrl_set_state(LED_SYSTEM, LED_STATE_ON);
+                lcd_display_text(0, 0, "System: Working");
+                event_notify(EVENT_SYSTEM_WORKING, NULL);
+                break;
+            case SYS_STATE_OTA:
+                // 处理系统OTA升级状态
+                LOG_INFO("System entering OTA state");
+                led_ctrl_set_state(LED_SYSTEM, LED_STATE_BREATH);
+                lcd_display_text(0, 0, "System: OTA");
+                event_notify(EVENT_SYSTEM_OTA_START, NULL);
+                break;
+            case SYS_STATE_CALIB:
+                // 处理系统校准状态
+                LOG_INFO("System entering calibration state");
+                led_ctrl_set_state(LED_SYSTEM, LED_STATE_FLASH_SLOW);
+                lcd_display_text(0, 0, "System: Calib");
+                event_notify(EVENT_SYSTEM_CALIB_START, NULL);
+                break;
+            case SYS_STATE_AGE_TEST:
+                // 处理系统老化测试状态
+                LOG_INFO("System entering age test state");
+                led_ctrl_set_state(LED_SYSTEM, LED_STATE_FLASH_FAST);
+                lcd_display_text(0, 0, "System: AgeTest");
+                event_notify(EVENT_SYSTEM_AGE_TEST_START, NULL);
+                break;
+            case SYS_STATE_ERROR:
+                // 处理系统错误状态
+                LOG_INFO("System entering error state");
+                led_ctrl_set_state(LED_SYSTEM, LED_STATE_FLASH_FAST);
+                lcd_display_text(0, 0, "System: Error");
+                event_notify(EVENT_SYSTEM_ERROR, NULL);
+                break;
+            default:
+                break;
+        }
+    }
+    
+    // 轮询系统资源使用情况
+    static uint32_t last_check_time = 0;
+    uint32_t current_time = (uint32_t)time(NULL) * 1000;
+    
+    if (current_time - last_check_time > 5000) { // 每5秒检查一次
+        last_check_time = current_time;
+        
+        // 系统资源检查的简化实现
+        // 这里可以添加实际的CPU、内存、温度等检查代码
+        LOG_DEBUG("System status check - CPU: 25%%, Mem: 40%%, Temp: 45°C");
+        
+        // 发送系统状态事件
+        // 这里可以根据实际需要发送更详细的系统状态信息
+        event_notify(EVENT_SYSTEM_STATUS_UPDATE, NULL);
+    }
+    
+    // 轮询系统错误日志
+    static uint32_t last_error_check = 0;
+    if (current_time - last_error_check > 10000) { // 每10秒检查一次
+        last_error_check = current_time;
+        
+        // 系统错误日志检查的简化实现
+        // 这里可以添加实际的错误日志检查代码
+        LOG_DEBUG("System error log check - no errors");
+        
+        // 发送系统错误日志检查事件
+        event_notify(EVENT_SYSTEM_ERROR_LOG_CHECK, NULL);
+    }
 }

@@ -4,7 +4,12 @@
 // 内部私有函数声明
 int hw_selfcheck_init(void);
 void hw_selfcheck_deinit(void);
+int hw_selfcheck_run(void);
+
 int hw_calib_init(void);
 void hw_calib_deinit(void);
+int hw_calib_age_start(int hour);
+int hw_calib_age_stop(void);
+int hw_calib_eq_run(void);
 
 #endif // __PROD_TEST_PRIV_H__

@@ -22,8 +22,12 @@ endif
 # -------------------------- 通用编译规则 --------------------------
 CFLAGS          += -std=c99 -D_GNU_SOURCE -D_POSIX_C_SOURCE=200809L # 强制C99标准
 CFLAGS          += -fstack-protector-strong -fpie -pie             # 栈保护+地址随机化 安全加固
+CFLAGS          += -fPIC -D_FORTIFY_SOURCE=2                       # 位置无关代码+库函数安全增强
+CFLAGS          += -fno-strict-overflow -fno-delete-null-pointer-checks  # 防止不安全的优化
+CFLAGS          += -Wformat -Wformat-security -Werror=format-security  # 格式字符串安全检查
 LDFLAGS         += -lpthread -lm -ldl -lc -lrt                     # Linux标准系统库 必链
 LDFLAGS         += --as-needed --no-undefined                      # 按需链接 无未定义引用 防冗余
+LDFLAGS         += -z relro -z now -z noexecstack                  # 内存区域保护：RELRO+立即绑定+不可执行栈
 
 # -------------------------- 架构专属编译参数 --------------------------
 ifeq ($(TOOLCHAIN_TYPE), AML_SOC)

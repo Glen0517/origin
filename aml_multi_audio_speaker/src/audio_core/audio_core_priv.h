@@ -33,5 +33,7 @@ int audio_ringbuf_init(unsigned int size);
 void audio_ringbuf_deinit(void);
 unsigned int audio_ringbuf_write(unsigned char *data, unsigned int len);
 unsigned int audio_ringbuf_read(unsigned char *data, unsigned int len);
+unsigned int audio_ringbuf_get_free_space(void);
+unsigned int audio_ringbuf_get_used_space(void);
 
 #endif // __AUDIO_CORE_PRIV_H__

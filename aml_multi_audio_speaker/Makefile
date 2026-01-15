@@ -3,19 +3,9 @@
 CFLAGS += -DCJSON_ALLOW_COMMENTS -I./src/storage -I./include
 LDFLAGS += -L./lib -ljson-c -lpthread -ldl
 
-# Makefile 产品编译宏配置
-ifeq ($(PRODUCT),1)
-CFLAGS += -DCURRENT_PRODUCT_TYPE=1
-endif
-ifeq ($(PRODUCT),2)
-CFLAGS += -DCURRENT_PRODUCT_TYPE=2
-endif
-ifeq ($(PRODUCT),3)
-CFLAGS += -DCURRENT_PRODUCT_TYPE=3
-endif
-ifeq ($(PRODUCT),4)
-CFLAGS += -DCURRENT_PRODUCT_TYPE=4
-endif
+# Makefile 产品编译宏配置 - 简化版本
+PRODUCT ?= 1  # 默认产品类型为1
+CFLAGS += -DCURRENT_PRODUCT_TYPE=$(PRODUCT)
 
 # 头文件路径
 CFLAGS += -I./include -I./src/storage -I./src/peripheral

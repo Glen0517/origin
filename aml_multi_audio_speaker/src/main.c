@@ -56,11 +56,43 @@ static void sig_handler(int sig) {
  */
 static int module_init_all(void) {
     int ret = 0;
+    
+    // 创建并初始化音频核心配置
+    AudioCoreConfig_t audio_cfg = {
+        .sample_rate = 48000,
+        .channel_num = 2,
+        .pcm_buffer_size = 4096,
+        .hw_decode_en = true,
+        .dolby_dts_en = false
+    };
+    
+    // 创建并初始化HDMI ARC配置
+    HdmiArcConfig_t hdmi_cfg = {
+        .cec_en = true,
+        .auto_switch_en = true,
+        .sample_rate = 48000
+    };
+    
+    // 创建并初始化SPDIF配置
+    SpdifConfig_t spdif_cfg = {
+        .auto_switch_en = true,
+        .sample_rate = 48000,
+        .bits_per_sample = 16
+    };
+    
+    // 创建并初始化外设配置
+    PeripheralConfig_t peri_cfg = {
+        .key_debounce_ms = 50,
+        .long_press_ms = 1000,
+        .ir_learn_en = true,
+        .mic_mute_en = true
+    };
+    
     // 基础核心模块
     ret |= storage_init();
-    ret |= peripheral_init();
+    ret |= peripheral_init(&peri_cfg);
     ret |= bluetooth_init();
-    ret |= audio_core_init();
+    ret |= audio_core_init(&audio_cfg);
     ret |= audio_source_init();
     ret |= volume_ctrl_init();
     ret |= play_ctrl_init();
@@ -70,22 +102,27 @@ static int module_init_all(void) {
 
     // 宏控加载模块
 #ifdef CONFIG_ENABLE_HDMI_ARC
-    ret |= hdmi_arc_init();
+    ret |= hdmi_arc_init(&hdmi_cfg);
 #endif
 #ifdef CONFIG_ENABLE_SPDIF
-    ret |= spdif_optical_init();
+    ret |= spdif_optical_init(&spdif_cfg);
 #endif
 #ifdef CONFIG_ENABLE_DOLBY_DTS
     ret |= sound_effects_init();
 #endif
 #ifdef CONFIG_ENABLE_WIFI_MEDIA
-    ret |= wifi_media_init();
+    WifiMediaConfig_t wifi_cfg = {
+        .wifi_name = "Aml_Soundbar",
+        .dlna_en = true,
+        .airplay_en = true
+    };
+    ret |= wifi_media_init(&wifi_cfg);
 #endif
 #ifdef CONFIG_ENABLE_BT_MESH
     ret |= subwoofer_comm_init();
 #endif
 
-    LOG_INFO("✅ All modules init: Product Type=%d, Status=%s", 
+    LOG_INFO("All modules init: Product Type=%d, Status=%s", 
              CURRENT_PRODUCT_TYPE, ret == 0 ? "SUCCESS" : "WARN");
     return ret == 0 ? 0 : -1;
 }
@@ -112,7 +149,7 @@ static void module_deinit_all(void) {
 
     prod_test_deinit();
     system_deinit();
-    comm_mcu_deinit();  // 适配截图：原uart_mcu_comm_deinit
+    comm_mcu_deinit(); 
     play_ctrl_deinit();
     volume_ctrl_deinit();
     audio_source_deinit();
@@ -137,6 +174,12 @@ static void main_business_loop(void) {
         system_event_poll();
 #ifdef CONFIG_ENABLE_BT_MESH
         subwoofer_comm_event_poll();
+#endif
+#ifdef CONFIG_ENABLE_HDMI_ARC
+        hdmi_arc_event_poll();
+#endif
+#ifdef CONFIG_ENABLE_SPDIF
+        spdif_optical_event_poll();
 #endif
         usleep(10 * 1000);
     }
@@ -164,7 +207,7 @@ int main(int argc, char *argv[]) {
     LOG_INFO("Compile: %s %s | Product Type: %d", __DATE__, __TIME__, CURRENT_PRODUCT_TYPE);
     LOG_INFO("=====================================================");
 
-    // 播放开机提示音
+    // 播放开机提示音 + 开机显示图标
     boot_tone = res_load_resource(RES_TYPE_TONE_BOOT);
     if (boot_tone.res_valid) {
         audio_core_play_tone(boot_tone.res_data, boot_tone.res_size);
