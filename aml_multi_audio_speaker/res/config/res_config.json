@@ -1,0 +1,44 @@
+{
+    "resource_manager": {
+        "version": "1.0.0",
+        "description": "AML Audio Speaker Resource Config - Product Level Resource Load Rule",
+        "global": {
+            "resource_root_path": "./res/assets/",
+            "resource_cache_enable": true,
+            "resource_check_enable": true,
+            "default_resource_path": "./res/assets/common/"
+        },
+        "product_level_config": {
+            "1": {
+                "product_type": "HIGH_END_SPEAKER",
+                "resource_load_level": 3,
+                "enable_resources": ["all_tone", "hd_font", "all_eq", "all_icon", "dolby_eq"],
+                "disable_resources": []
+            },
+            "2": {
+                "product_type": "MID_END_SPEAKER",
+                "resource_load_level": 2,
+                "enable_resources": ["all_tone", "default_font", "rock_eq", "classic_eq", "bt_icon", "hdmi_icon", "spdif_icon"],
+                "disable_resources": ["dolby_eq", "bass_eq", "hd_font"]
+            },
+            "3": {
+                "product_type": "LOW_END_SPEAKER",
+                "resource_load_level": 1,
+                "enable_resources": ["basic_tone", "default_font", "default_eq", "bt_icon", "usb_icon"],
+                "disable_resources": ["hdmi_icon", "spdif_icon", "rock_eq", "classic_eq", "dolby_eq", "bass_eq"]
+            },
+            "4": {
+                "product_type": "SUBWOOFER",
+                "resource_load_level": 1,
+                "enable_resources": ["basic_tone", "default_font", "bass_eq", "bt_mesh_icon"],
+                "disable_resources": ["hdmi_icon", "spdif_icon", "dolby_eq", "rock_eq", "classic_eq"]
+            }
+        },
+        "module_resource_switch": {
+            "hdmi_arc_enable": true,
+            "spdif_enable": true,
+            "dolby_dts_enable": true,
+            "bt_mesh_enable": true
+        }
+    }
+}

@@ -1,0 +1,46 @@
+# ==============================================================================
+# 自研业务模块 动态库编译规则 (开发首选 - .so文件 编译快 增量更新)
+# 功能：编译src下所有宏控开启的模块为独立动态库，输出到lib/output目录
+# 与静态库规则完全一致，仅编译参数不同，一键切换，无业务代码修改
+# ==============================================================================
+include ./toolchain.mk
+include ./compile_flags.mk
+
+LIB_OUT := $(LIB_OUT_ROOT)
+$(MKDIR) $(LIB_OUT)
+
+MODULES_BASE := audio_core audio_source play_ctrl volume_ctrl peripheral storage bluetooth system uart_mcu_comm
+MODULES_EXT := 
+ifdef CONFIG_ENABLE_HDMI_ARC
+MODULES_EXT += hdmi_arc
+endif
+ifdef CONFIG_ENABLE_SPDIF
+MODULES_EXT += spdif_optical
+endif
+ifdef CONFIG_ENABLE_DOLBY_DTS
+MODULES_EXT += sound_effects
+endif
+ifdef CONFIG_ENABLE_BT_MESH
+MODULES_EXT += subwoofer_comm
+endif
+
+MODULES := $(MODULES_BASE) $(MODULES_EXT)
+
+# -------------------------- 动态库编译规则 --------------------------
+all: $(MODULES)
+	@echo -e "\033[32m✅ [动态库编译完成] 输出路径: $(LIB_OUT) ✅\033[0m"
+
+define COMPILE_SHARED_LIB
+$(1):
+	@echo -e "\033[36m🔨 编译动态模块: $(1) ...\033[0m"
+	$(CC) $(CFLAGS) $(SOFLAGS) -I$(INC_ROOT) $(SRC_ROOT)/$(1)/*.c -o $(LIB_OUT)/lib$(1).so
+endef
+
+$(foreach mod,$(MODULES),$(eval $(call COMPILE_SHARED_LIB,$(mod))))
+
+# -------------------------- 清理规则 --------------------------
+clean:
+	$(RM) $(LIB_OUT)/*.so
+	@echo -e "\033[32m✅ [动态库清理完成] ✅\033[0m"
+
+.PHONY: all clean $(MODULES)

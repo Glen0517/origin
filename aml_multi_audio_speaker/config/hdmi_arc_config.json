@@ -1,0 +1,18 @@
+{
+  "hdmi_arc_global": {
+    "hdmi_version": "ARC/eARC",
+    "cec_protocol_enable": true,
+    "cec_device_type": "SPEAKER",
+    "audio_format_support": ["PCM", "Dolby Digital", "DTS"],
+    "channel_support": [2, 5.1],
+    "default_channel": 2,
+    "auto_switch_audio_format": true,
+    "arc_audio_sync": true,
+    "sync_timeout_ms": 500,
+    "arc_reconnect_enable": true,
+    "reconnect_retry_cnt": 5,
+    "reconnect_interval_ms": 1000,
+    "hdmi_hot_plug_detect": true,
+    "hot_plug_mute_time": 300
+  }
+}

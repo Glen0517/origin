@@ -1,0 +1,59 @@
+# ==============================================================================
+# 自研业务模块 静态库编译规则 (量产首选 - .a文件 无运行依赖 稳定可靠)
+# 功能：编译src下所有宏控开启的模块为独立静态库，输出到lib/output目录
+# 宏控裁剪：自动跳过CONFIG_ENABLE_*=0的模块，无冗余编译，与产品分级逻辑一致
+# ==============================================================================
+include ./toolchain.mk
+include ./compile_flags.mk
+
+# 静态库输出目录
+LIB_OUT := $(LIB_OUT_ROOT)
+$(MKDIR) $(LIB_OUT)
+
+# -------------------------- 基础模块 - 所有产品必编译 --------------------------
+MODULES_BASE := audio_core audio_source play_ctrl volume_ctrl peripheral storage bluetooth system uart_mcu_comm
+
+# -------------------------- 功能模块 - 宏控按需编译 --------------------------
+MODULES_EXT := 
+ifdef CONFIG_ENABLE_HDMI_ARC
+MODULES_EXT += hdmi_arc
+endif
+ifdef CONFIG_ENABLE_SPDIF
+MODULES_EXT += spdif_optical
+endif
+ifdef CONFIG_ENABLE_DOLBY_DTS
+MODULES_EXT += sound_effects
+endif
+ifdef CONFIG_ENABLE_BT_MESH
+MODULES_EXT += subwoofer_comm
+endif
+ifdef CONFIG_ENABLE_WIFI_MEDIA
+MODULES_EXT += wifi_media
+endif
+ifdef CONFIG_ENABLE_CALIB_MODE
+MODULES_EXT += prod_test
+endif
+
+# 全量待编译模块
+MODULES := $(MODULES_BASE) $(MODULES_EXT)
+
+# -------------------------- 静态库编译规则 --------------------------
+all: $(MODULES)
+	@echo -e "\033[32m [静态库编译完成] 输出路径: $(LIB_OUT) ✅\033[0m"
+
+define COMPILE_STATIC_LIB
+$(1):
+	@echo -e "\033[36m 编译模块: $(1) ...\033[0m"
+	$(CC) $(CFLAGS) -I$(INC_ROOT) -c $(SRC_ROOT)/$(1)/*.c -o $(LIB_OUT)/$(1).o
+	$(AR) $(ARFLAGS) $(LIB_OUT)/lib$(1).a $(LIB_OUT)/$(1).o
+	$(RM) $(LIB_OUT)/$(1).o
+endef
+
+$(foreach mod,$(MODULES),$(eval $(call COMPILE_STATIC_LIB,$(mod))))
+
+# -------------------------- 清理规则 --------------------------
+clean:
+	$(RM) $(LIB_OUT)/*.a $(LIB_OUT)/*.o
+	@echo -e "\033[32m✅ [静态库清理完成] ✅\033[0m"
+
+.PHONY: all clean $(MODULES)

@@ -1,0 +1,74 @@
+{
+  "product_info": {
+    "vendor": "AML_SOUNDBAR",
+    "hw_version": "V2.1",
+    "fw_version": "V2.1.0",
+    "build_time": "2026-01-14"
+  },
+  "product_type_list": {
+    "high_end_soundbar": {
+      "enable_hdmi_arc": true,
+      "enable_spdif": true,
+      "enable_bluetooth": true,
+      "enable_bluetooth_mesh": true,
+      "enable_wifi_media": true,
+      "enable_dolby_dts": true,
+      "enable_5_1_sound": true,
+      "enable_3vol_ctrl": true,
+      "enable_ir_learn": true,
+      "enable_mic_mute": true,
+      "enable_dual_ota": true,
+      "enable_full_prod_test": true,
+      "enable_audio_calib": true,
+      "support_lossless_audio": true
+    },
+    "mid_end_soundbar": {
+      "enable_hdmi_arc": true,
+      "enable_spdif": true,
+      "enable_bluetooth": true,
+      "enable_bluetooth_mesh": false,
+      "enable_wifi_media": false,
+      "enable_dolby_dts": false,
+      "enable_5_1_sound": false,
+      "enable_2vol_ctrl": true,
+      "enable_ir_learn": false,
+      "enable_mic_mute": false,
+      "enable_usb_ota": true,
+      "enable_simple_prod_test": true,
+      "enable_audio_calib": false,
+      "support_lossless_audio": true
+    },
+    "low_end_bt_speaker": {
+      "enable_hdmi_arc": false,
+      "enable_spdif": false,
+      "enable_bluetooth": true,
+      "enable_bluetooth_mesh": false,
+      "enable_wifi_media": false,
+      "enable_dolby_dts": false,
+      "enable_5_1_sound": false,
+      "enable_1vol_ctrl": true,
+      "enable_ir_learn": false,
+      "enable_mic_mute": false,
+      "enable_usb_ota": true,
+      "enable_mini_prod_test": true,
+      "enable_audio_calib": false,
+      "support_lossless_audio": false
+    },
+    "subwoofer": {
+      "enable_hdmi_arc": false,
+      "enable_spdif": false,
+      "enable_bluetooth": true,
+      "enable_bluetooth_mesh": true,
+      "enable_wifi_media": false,
+      "enable_dolby_dts": false,
+      "enable_5_1_sound": false,
+      "enable_1vol_ctrl": true,
+      "enable_ir_learn": false,
+      "enable_mic_mute": false,
+      "enable_usb_ota": true,
+      "enable_sub_prod_test": true,
+      "enable_audio_calib": true,
+      "support_lossless_audio": false
+    }
+  }
+}

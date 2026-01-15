@@ -1,0 +1,46 @@
+{
+  "high_end_soundbar": {
+    "key_debounce_time_ms": 20,
+    "long_press_time_ms": 800,
+    "key_map": [
+      {"key_code": 0x01, "key_name": "PLAY_PAUSE", "short_func": "PLAY_PAUSE", "long_func": "NONE"},
+      {"key_code": 0x02, "key_name": "VOL_UP", "short_func": "VOLUME_UP", "long_func": "VOLUME_MAX"},
+      {"key_code": 0x03, "key_name": "VOL_DOWN", "short_func": "VOLUME_DOWN", "long_func": "VOLUME_MIN"},
+      {"key_code": 0x04, "key_name": "SOURCE_SWITCH", "short_func": "SOURCE_NEXT", "long_func": "SOURCE_RESET"},
+      {"key_code": 0x05, "key_name": "SOUND_FIELD", "short_func": "SOUND_FIELD_NEXT", "long_func": "SOUND_FIELD_DEFAULT"},
+      {"key_code": 0x06, "key_name": "BASS_UP", "short_func": "BASS_GAIN_UP", "long_func": "BASS_MAX"},
+      {"key_code": 0x07, "key_name": "TREBLE_UP", "short_func": "TREBLE_GAIN_UP", "long_func": "TREBLE_MAX"},
+      {"key_code": 0x08, "key_name": "MIC_MUTE", "short_func": "MIC_TOGGLE", "long_func": "NONE"},
+      {"key_code": 0x09, "key_name": "IR_LEARN", "short_func": "IR_LEARN_START", "long_func": "IR_LEARN_CLEAR"}
+    ]
+  },
+  "mid_end_soundbar": {
+    "key_debounce_time_ms": 20,
+    "long_press_time_ms": 800,
+    "key_map": [
+      {"key_code": 0x01, "key_name": "PLAY_PAUSE", "short_func": "PLAY_PAUSE", "long_func": "NONE"},
+      {"key_code": 0x02, "key_name": "VOL_UP", "short_func": "VOLUME_UP", "long_func": "VOLUME_MAX"},
+      {"key_code": 0x03, "key_name": "VOL_DOWN", "short_func": "VOLUME_DOWN", "long_func": "VOLUME_MIN"},
+      {"key_code": 0x04, "key_name": "SOURCE_SWITCH", "short_func": "SOURCE_NEXT", "long_func": "SOURCE_RESET"},
+      {"key_code": 0x05, "key_name": "BASS_UP", "short_func": "BASS_GAIN_UP", "long_func": "BASS_MAX"}
+    ]
+  },
+  "low_end_bt_speaker": {
+    "key_debounce_time_ms": 20,
+    "long_press_time_ms": 800,
+    "key_map": [
+      {"key_code": 0x01, "key_name": "PLAY_PAUSE", "short_func": "PLAY_PAUSE", "long_func": "BT_PAIR"},
+      {"key_code": 0x02, "key_name": "VOL_UP", "short_func": "VOLUME_UP", "long_func": "VOLUME_MAX"},
+      {"key_code": 0x03, "key_name": "VOL_DOWN", "short_func": "VOLUME_DOWN", "long_func": "VOLUME_MIN"},
+      {"key_code": 0x04, "key_name": "NEXT", "short_func": "NEXT_SONG", "long_func": "NONE"},
+      {"key_code": 0x05, "key_name": "PREV", "short_func": "PREV_SONG", "long_func": "NONE"}
+    ]
+  },
+  "subwoofer": {
+    "key_debounce_time_ms": 20,
+    "long_press_time_ms": 1500,
+    "key_map": [
+      {"key_code": 0x01, "key_name": "PAIR", "short_func": "NONE", "long_func": "BT_PAIR_START"}
+    ]
+  }
+}

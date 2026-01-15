@@ -1,0 +1,18 @@
+{
+  "subwoofer_global": {
+    "bt_pair_name": "AML_SUBWOOFER",
+    "bt_pair_code": "0000",
+    "bt_mesh_enable": true,
+    "mesh_network_id": 0x1234,
+    "bass_freq_range": [20, 200],
+    "bass_volume_sync": true,
+    "volume_sync_delay_ms": 100,
+    "sub_bt_reconnect": true,
+    "reconnect_timeout_ms": 15000,
+    "reconnect_retry_cnt": 5,
+    "sub_power_save": false,
+    "sub_amp_gain": 18,
+    "sub_mute_threshold": 3,
+    "pair_led_flash_freq": 500
+  }
+}

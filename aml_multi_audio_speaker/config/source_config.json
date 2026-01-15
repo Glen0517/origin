@@ -1,0 +1,54 @@
+{
+  "high_end_soundbar": {
+    "source_priority": ["HDMI_ARC", "SPDIF", "BLUETOOTH", "USB", "AUX", "WIFI"],
+    "enable_source_list": ["HDMI_ARC", "SPDIF", "BLUETOOTH", "USB", "AUX", "WIFI"],
+    "default_source": "HDMI_ARC",
+    "source_switch_strategy": "SEAMLESS",
+    "switch_mute_time": 200,
+    "hdmi_arc_auto_switch": true,
+    "spdif_auto_detect": true,
+    "bt_auto_connect": true,
+    "usb_scan_timeout": 3,
+    "wifi_media_timeout": 10,
+    "aux_mute_when_other": true
+  },
+  "mid_end_soundbar": {
+    "source_priority": ["HDMI_ARC", "SPDIF", "BLUETOOTH", "USB", "AUX"],
+    "enable_source_list": ["HDMI_ARC", "SPDIF", "BLUETOOTH", "USB", "AUX"],
+    "default_source": "HDMI_ARC",
+    "source_switch_strategy": "SEAMLESS",
+    "switch_mute_time": 200,
+    "hdmi_arc_auto_switch": true,
+    "spdif_auto_detect": true,
+    "bt_auto_connect": true,
+    "usb_scan_timeout": 3,
+    "wifi_media_timeout": 0,
+    "aux_mute_when_other": true
+  },
+  "low_end_bt_speaker": {
+    "source_priority": ["BLUETOOTH", "USB"],
+    "enable_source_list": ["BLUETOOTH", "USB"],
+    "default_source": "BLUETOOTH",
+    "source_switch_strategy": "MUTE",
+    "switch_mute_time": 100,
+    "hdmi_arc_auto_switch": false,
+    "spdif_auto_detect": false,
+    "bt_auto_connect": true,
+    "usb_scan_timeout": 3,
+    "wifi_media_timeout": 0,
+    "aux_mute_when_other": false
+  },
+  "subwoofer": {
+    "source_priority": ["BLUETOOTH_BASS"],
+    "enable_source_list": ["BLUETOOTH_BASS"],
+    "default_source": "BLUETOOTH_BASS",
+    "source_switch_strategy": "NONE",
+    "switch_mute_time": 0,
+    "hdmi_arc_auto_switch": false,
+    "spdif_auto_detect": false,
+    "bt_auto_connect": true,
+    "usb_scan_timeout": 0,
+    "wifi_media_timeout": 0,
+    "aux_mute_when_other": false
+  }
+}

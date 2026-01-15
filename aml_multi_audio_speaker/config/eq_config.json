@@ -1,0 +1,45 @@
+{
+  "high_end_soundbar": {
+    "eq_list": ["CINEMA", "MUSIC", "GAME", "NEWS", "CUSTOM"],
+    "default_eq": "CINEMA",
+    "gain_range": [-12, 12],
+    "freq_band": [20, 60, 150, 400, 1000, 2400, 6000, 15000, 20000],
+    "eq_preset": {
+      "CINEMA": [8, 10, 12, 10, 8, 6, 4, 2, 0],
+      "MUSIC": [6, 8, 10, 12, 10, 8, 6, 4, 2],
+      "GAME": [10, 8, 6, 4, 6, 8, 10, 12, 8],
+      "NEWS": [0, 2, 4, 8, 12, 10, 6, 4, 2],
+      "CUSTOM": [0, 0, 0, 0, 0, 0, 0, 0, 0]
+    }
+  },
+  "mid_end_soundbar": {
+    "eq_list": ["CINEMA", "MUSIC", "CUSTOM"],
+    "default_eq": "CINEMA",
+    "gain_range": [-12, 12],
+    "freq_band": [20, 60, 150, 400, 1000, 2400, 6000, 15000, 20000],
+    "eq_preset": {
+      "CINEMA": [6, 8, 10, 8, 6, 4, 2, 0, 0],
+      "MUSIC": [4, 6, 8, 10, 8, 6, 4, 2, 0],
+      "CUSTOM": [0, 0, 0, 0, 0, 0, 0, 0, 0]
+    }
+  },
+  "low_end_bt_speaker": {
+    "eq_list": ["NORMAL", "BASS"],
+    "default_eq": "NORMAL",
+    "gain_range": [-6, 6],
+    "freq_band": [20, 100, 500, 1000, 5000, 20000],
+    "eq_preset": {
+      "NORMAL": [0, 0, 0, 0, 0, 0],
+      "BASS": [6, 4, 2, 0, 0, 0]
+    }
+  },
+  "subwoofer": {
+    "eq_list": ["BASS_ONLY"],
+    "default_eq": "BASS_ONLY",
+    "gain_range": [0, 20],
+    "freq_band": [20, 50, 80, 120, 160, 200],
+    "eq_preset": {
+      "BASS_ONLY": [20, 18, 15, 12, 8, 4]
+    }
+  }
+}

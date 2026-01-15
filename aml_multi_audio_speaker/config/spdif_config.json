@@ -1,0 +1,14 @@
+{
+  "spdif_global": {
+    "sample_rate_support": [48000, 96000],
+    "default_sample_rate": 48000,
+    "audio_format_support": ["PCM", "Dolby Digital", "DTS"],
+    "channel_num": 2,
+    "spdif_auto_detect": true,
+    "detect_timeout_ms": 2000,
+    "spdif_mute_when_no_signal": true,
+    "no_signal_timeout_ms": 3000,
+    "spdif_err_recover": true,
+    "recover_retry_cnt": 3
+  }
+}

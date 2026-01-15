@@ -1,0 +1,35 @@
+{
+    "log_system": {
+        "version": "1.0.0",
+        "description": "AML Audio Speaker Log Config - Product Level Log Rule",
+        "global": {
+            "log_file_path": "./log/aml_audio.log",
+            "max_file_size_mb": 8,
+            "max_backup_count": 5,
+            "print_console": true,
+            "print_file": true
+        },
+        "product_level_config": {
+            "1": {
+                "product_type": "HIGH_END_SPEAKER",
+                "log_level": "DEBUG",
+                "enable_module_log": ["audio", "bt", "hdmi", "spdif", "key", "wifi", "effect"]
+            },
+            "2": {
+                "product_type": "MID_END_SPEAKER",
+                "log_level": "WARN",
+                "enable_module_log": ["audio", "bt", "hdmi", "spdif", "key"]
+            },
+            "3": {
+                "product_type": "LOW_END_SPEAKER",
+                "log_level": "ERROR",
+                "enable_module_log": ["audio", "bt", "key"]
+            },
+            "4": {
+                "product_type": "SUBWOOFER",
+                "log_level": "ERROR",
+                "enable_module_log": ["audio", "bt_mesh"]
+            }
+        }
+    }
+}
