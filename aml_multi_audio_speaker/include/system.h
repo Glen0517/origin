@@ -11,4 +11,7 @@ int system_api_ota_upgrade(const char *file_path);
 int system_api_factory_reset(void);
 int system_api_restart(void);
 
+// 系统状态管理函数
+int system_set_state(SysState_e state);
+
 #endif // __SYSTEM_API_H__

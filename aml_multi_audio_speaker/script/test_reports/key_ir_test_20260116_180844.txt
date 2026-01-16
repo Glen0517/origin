@@ -1,0 +1,36 @@
+============================================================
+Key/IR Module Test Report
+============================================================
+Report generated at: 2026-01-16 18:08:44
+
+Test: key_ir_init
+Status: PASS
+Timestamp: 2026-01-16 18:08:36
+Message: Key/IR module initialized successfully
+----------------------------------------
+Test: key_ir_event_poll
+Status: PASS
+Timestamp: 2026-01-16 18:08:39
+Message: Event polling completed successfully
+----------------------------------------
+Test: key_ir_get_event
+Status: PASS
+Timestamp: 2026-01-16 18:08:40
+Message: Event retrieval completed successfully
+----------------------------------------
+Test: key_ir_ir_learn
+Status: PASS
+Timestamp: 2026-01-16 18:08:44
+Message: IR learning function tested successfully
+----------------------------------------
+Test: key_ir_deinit
+Status: PASS
+Timestamp: 2026-01-16 18:08:44
+Message: Key/IR module deinitialized successfully
+----------------------------------------
+
+Summary:
+Total tests: 5
+Passed: 5
+Failed: 0
+Pass rate: 100.0%

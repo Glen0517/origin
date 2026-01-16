@@ -29,6 +29,41 @@ void system_deinit(void)
     }
 }
 
+/**
+ * @brief 设置系统状态
+ * @param state 系统状态
+ * @return SUCCESS表示成功，FAILURE表示失败
+ */
+int system_set_state(SysState_e state) {
+    LOG_INFO("Setting system state to: %d", state);
+    
+    // 验证状态值
+    if (state < SYS_STATE_IDLE || state > SYS_STATE_ERROR) {
+        LOG_ERROR("Invalid system state: %d", state);
+        return FAILURE;
+    }
+    
+    // 处理特殊状态 - 待机状态
+    if (state == SYS_STATE_STANDBY) {
+        LOG_INFO("System entering standby state");
+        // 执行待机操作
+        led_ctrl_set_state(LED_SYSTEM, LED_STATE_OFF);
+        lcd_display_text(0, 0, "System: Standby");
+        event_notify(EVENT_SYSTEM_STANDBY, NULL);
+        return SUCCESS;
+    }
+    
+    // 调用系统API设置状态
+    int ret = system_api_set_state(state);
+    if (ret != SUCCESS) {
+        LOG_ERROR("Failed to set system state: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_INFO("System state set to: %d successfully", state);
+    return SUCCESS;
+}
+
 void system_event_poll(void)
 {
     if (!g_sys_cfg.init_ok) return;

@@ -4,12 +4,32 @@
 
 #include <aml_dolby.h>       // 晶晨Dolby SDK
 #include <aml_dts.h>         // 晶晨DTS SDK
+#include <aml_dolby_atmos.h> // 晶晨Dolby Atmos SDK
+#include <aml_dts_x.h>       // 晶晨DTS:X SDK
+#include <aml_3d_audio.h>    // 晶晨3D Audio SDK
 
 #ifdef CONFIG_ENABLE_DOLBY_DTS
 
 static bool g_dolby_enabled = false;
 static bool g_dts_enabled = false;
 static bool g_dolby_dts_init = false;
+
+// 高端游戏音响功能支持
+#ifdef CONFIG_ENABLE_DOLBY_ATMOS
+static bool g_dolby_atmos_enabled = false;
+#endif
+
+#ifdef CONFIG_ENABLE_DTS_X
+static bool g_dts_x_enabled = false;
+#endif
+
+#ifdef CONFIG_ENABLE_3D_AUDIO
+static bool g_3d_audio_enabled = false;
+#endif
+
+#ifdef CONFIG_ENABLE_HRTF
+static bool g_hrtf_enabled = false;
+#endif
 
 /**
  * @brief Dolby状态回调函数
@@ -50,11 +70,65 @@ int dolby_dts_init(void)
         LOG_INFO("DTS module init success");
     }
     
+    // 高端游戏音响功能初始化
+    #ifdef CONFIG_ENABLE_DOLBY_ATMOS
+    if (aml_dolby_atmos_init() != 0) {
+        LOG_ERROR("Dolby Atmos init failed");
+    } else {
+        g_dolby_atmos_enabled = true;
+        LOG_INFO("Dolby Atmos module init success");
+    }
+    #endif
+    
+    #ifdef CONFIG_ENABLE_DTS_X
+    if (aml_dts_x_init() != 0) {
+        LOG_ERROR("DTS:X init failed");
+    } else {
+        g_dts_x_enabled = true;
+        LOG_INFO("DTS:X module init success");
+    }
+    #endif
+    
+    #ifdef CONFIG_ENABLE_3D_AUDIO
+    if (aml_3d_audio_init() != 0) {
+        LOG_ERROR("3D Audio init failed");
+    } else {
+        g_3d_audio_enabled = true;
+        LOG_INFO("3D Audio module init success");
+    }
+    #endif
+    
+    #ifdef CONFIG_ENABLE_HRTF
+    if (aml_hrtf_init() != 0) {
+        LOG_ERROR("HRTF init failed");
+    } else {
+        g_hrtf_enabled = true;
+        LOG_INFO("HRTF module init success");
+    }
+    #endif
+    
     g_dolby_dts_init = true;
     
     LOG_INFO("Sound: Dolby/DTS decode enhance init success (HIGH END)");
     LOG_INFO("  Dolby enabled: %s", g_dolby_enabled ? "YES" : "NO");
     LOG_INFO("  DTS enabled: %s", g_dts_enabled ? "YES" : "NO");
+    
+    // 高端游戏音响功能状态日志
+    #ifdef CONFIG_ENABLE_DOLBY_ATMOS
+    LOG_INFO("  Dolby Atmos enabled: %s", g_dolby_atmos_enabled ? "YES" : "NO");
+    #endif
+    
+    #ifdef CONFIG_ENABLE_DTS_X
+    LOG_INFO("  DTS:X enabled: %s", g_dts_x_enabled ? "YES" : "NO");
+    #endif
+    
+    #ifdef CONFIG_ENABLE_3D_AUDIO
+    LOG_INFO("  3D Audio enabled: %s", g_3d_audio_enabled ? "YES" : "NO");
+    #endif
+    
+    #ifdef CONFIG_ENABLE_HRTF
+    LOG_INFO("  HRTF enabled: %s", g_hrtf_enabled ? "YES" : "NO");
+    #endif
     
     return 0;
 }
@@ -73,6 +147,39 @@ void dolby_dts_deinit(void)
             aml_dolby_deinit();
             g_dolby_enabled = false;
         }
+        
+        // 高端游戏音响功能反初始化
+        #ifdef CONFIG_ENABLE_DOLBY_ATMOS
+        if (g_dolby_atmos_enabled) {
+            aml_dolby_atmos_deinit();
+            g_dolby_atmos_enabled = false;
+            LOG_INFO("Dolby Atmos module deinit success");
+        }
+        #endif
+        
+        #ifdef CONFIG_ENABLE_DTS_X
+        if (g_dts_x_enabled) {
+            aml_dts_x_deinit();
+            g_dts_x_enabled = false;
+            LOG_INFO("DTS:X module deinit success");
+        }
+        #endif
+        
+        #ifdef CONFIG_ENABLE_3D_AUDIO
+        if (g_3d_audio_enabled) {
+            aml_3d_audio_deinit();
+            g_3d_audio_enabled = false;
+            LOG_INFO("3D Audio module deinit success");
+        }
+        #endif
+        
+        #ifdef CONFIG_ENABLE_HRTF
+        if (g_hrtf_enabled) {
+            aml_hrtf_deinit();
+            g_hrtf_enabled = false;
+            LOG_INFO("HRTF module deinit success");
+        }
+        #endif
         
         g_dolby_dts_init = false;
         
@@ -129,7 +236,48 @@ int dolby_dts_process(uint8_t *input_data, int input_len, uint8_t *output_data, 
     
     int processed_len = 0;
     
-    // 根据当前启用的音效处理音频数据
+    // 高端游戏音响功能处理
+    #ifdef CONFIG_ENABLE_DOLBY_ATMOS
+    if (g_dolby_atmos_enabled) {
+        processed_len = aml_dolby_atmos_process(input_data, input_len, output_data, *output_len);
+        if (processed_len > 0) {
+            *output_len = processed_len;
+            return 0;
+        }
+    }
+    #endif
+    
+    #ifdef CONFIG_ENABLE_DTS_X
+    if (g_dts_x_enabled) {
+        processed_len = aml_dts_x_process(input_data, input_len, output_data, *output_len);
+        if (processed_len > 0) {
+            *output_len = processed_len;
+            return 0;
+        }
+    }
+    #endif
+    
+    #ifdef CONFIG_ENABLE_3D_AUDIO
+    if (g_3d_audio_enabled) {
+        processed_len = aml_3d_audio_process(input_data, input_len, output_data, *output_len);
+        if (processed_len > 0) {
+            *output_len = processed_len;
+            return 0;
+        }
+    }
+    #endif
+    
+    #ifdef CONFIG_ENABLE_HRTF
+    if (g_hrtf_enabled) {
+        processed_len = aml_hrtf_process(input_data, input_len, output_data, *output_len);
+        if (processed_len > 0) {
+            *output_len = processed_len;
+            return 0;
+        }
+    }
+    #endif
+    
+    // 基础Dolby/DTS处理
     if (g_dolby_enabled) {
         processed_len = aml_dolby_process(input_data, input_len, output_data, *output_len);
     } else if (g_dts_enabled) {

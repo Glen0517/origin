@@ -32,6 +32,9 @@ static int sound_field_switch_mode(SoundMode_e mode) {
         case SOUND_MODE_NORMAL:
             // 关闭虚拟5.1和其他特殊音效，使用标准立体声
             aml_sound_field_set_virtual_5_1(false);
+            #ifdef CONFIG_ENABLE_VIRTUAL_7_1
+            aml_sound_field_set_virtual_7_1(false);
+            #endif
             aml_sound_field_set_bass_boost(false);
             aml_sound_field_set_treble_boost(false);
             
@@ -42,6 +45,9 @@ static int sound_field_switch_mode(SoundMode_e mode) {
         case SOUND_MODE_CINEMA:
             // 开启虚拟5.1环绕音效
             aml_sound_field_set_virtual_5_1(true);
+            #ifdef CONFIG_ENABLE_VIRTUAL_7_1
+            aml_sound_field_set_virtual_7_1(false);
+            #endif
             aml_sound_field_set_bass_boost(true);
             aml_sound_field_set_treble_boost(false);
             
@@ -52,6 +58,9 @@ static int sound_field_switch_mode(SoundMode_e mode) {
         case SOUND_MODE_MUSIC:
             // 关闭虚拟5.1，优化音乐播放
             aml_sound_field_set_virtual_5_1(false);
+            #ifdef CONFIG_ENABLE_VIRTUAL_7_1
+            aml_sound_field_set_virtual_7_1(false);
+            #endif
             aml_sound_field_set_bass_boost(true);
             aml_sound_field_set_treble_boost(true);
             
@@ -60,8 +69,13 @@ static int sound_field_switch_mode(SoundMode_e mode) {
             break;
             
         case SOUND_MODE_GAME:
-            // 开启虚拟5.1和低音增强
+            // 开启虚拟7.1或虚拟5.1环绕音效
+            #ifdef CONFIG_ENABLE_VIRTUAL_7_1
+            aml_sound_field_set_virtual_7_1(true);
+            aml_sound_field_set_virtual_5_1(false);
+            #else
             aml_sound_field_set_virtual_5_1(true);
+            #endif
             aml_sound_field_set_bass_boost(true);
             aml_sound_field_set_treble_boost(true);
             
@@ -72,6 +86,9 @@ static int sound_field_switch_mode(SoundMode_e mode) {
         case SOUND_MODE_NEWS:
             // 关闭虚拟5.1，增强人声
             aml_sound_field_set_virtual_5_1(false);
+            #ifdef CONFIG_ENABLE_VIRTUAL_7_1
+            aml_sound_field_set_virtual_7_1(false);
+            #endif
             aml_sound_field_set_bass_boost(false);
             aml_sound_field_set_treble_boost(false);
             
@@ -82,6 +99,9 @@ static int sound_field_switch_mode(SoundMode_e mode) {
         case SOUND_MODE_BASS_ONLY:
             // 关闭虚拟5.1，只保留低音
             aml_sound_field_set_virtual_5_1(false);
+            #ifdef CONFIG_ENABLE_VIRTUAL_7_1
+            aml_sound_field_set_virtual_7_1(false);
+            #endif
             aml_sound_field_set_bass_boost(true);
             aml_sound_field_set_treble_boost(false);
             

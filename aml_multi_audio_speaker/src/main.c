@@ -45,6 +45,9 @@
 #ifdef CONFIG_ENABLE_BT_MESH
 #include "subwoofer_comm.h"     // 低音炮通信
 #endif
+#ifdef CONFIG_ENABLE_VOICE_NOISE_REDUCTION
+#include "voice_noise_reduction.h" // 语音降噪功能
+#endif
 
 #include "prod_test.h"          // 生产测试模块
 
@@ -112,20 +115,64 @@ static int module_init_all(void) {
         .mic_mute_en = true         // 启用麦克风静音功能
     };
     
-    // 5. 初始化基础核心模块
+    // 5. 根据产品类型调整配置
+    switch (CURRENT_PRODUCT_TYPE) {
+        case PRODUCT_GAME_HIGH_END:
+            // 高端游戏音响配置
+            LOG_INFO("=== Initializing HIGH END GAME SPEAKER ===");
+            audio_cfg.pcm_buffer_size = 8192; // 增大缓冲区，支持复杂音效
+            audio_cfg.dolby_dts_en = true;   // 启用杜比DTS解码
+            peri_cfg.ir_learn_en = true;      // 启用红外学习
+            break;
+        
+        case PRODUCT_GAME_MID_END:
+            // 中端游戏音响配置
+            LOG_INFO("=== Initializing MID END GAME SPEAKER ===");
+            audio_cfg.pcm_buffer_size = 4096; // 标准缓冲区大小
+            audio_cfg.dolby_dts_en = false;  // 禁用杜比DTS解码
+            peri_cfg.ir_learn_en = false;     // 禁用红外学习
+            break;
+        
+        case PRODUCT_GAME_LOW_END:
+            // 低端游戏音响配置
+            LOG_INFO("=== Initializing LOW END GAME SPEAKER ===");
+            audio_cfg.pcm_buffer_size = 2048; // 减小缓冲区，降低资源占用
+            audio_cfg.dolby_dts_en = false;  // 禁用杜比DTS解码
+            peri_cfg.ir_learn_en = false;     // 禁用红外学习
+            peri_cfg.mic_mute_en = false;     // 禁用麦克风静音功能
+            break;
+        
+        default:
+            // 其他产品类型保持默认配置
+            break;
+    }
+    
+    // 6. 初始化基础核心模块
     // 初始化顺序：存储 -> 外设 -> 蓝牙 -> 音频核心 -> 音频源 -> 音量控制 -> 播放控制 -> MCU通信 -> 系统 -> 生产测试
-    ret |= storage_init();                  // 存储管理模块，负责U盘挂载和媒体扫描
-    ret |= peripheral_init(&peri_cfg);       // 外设管理模块，负责按键、红外等
-    ret |= bluetooth_init();                // 蓝牙模块，负责蓝牙连接和音频传输
-    ret |= audio_core_init(&audio_cfg);     // 音频核心模块，负责音频解码和输出
-    ret |= audio_source_init();             // 音频源模块，负责管理各种音频输入源
-    ret |= volume_ctrl_init();              // 音量控制模块，负责音量调节
-    ret |= play_ctrl_init();                // 播放控制模块，负责播放状态和音效
-    ret |= comm_mcu_init();                 // MCU通信模块，负责与外设MCU通信
-    ret |= system_init();                   // 系统管理模块，负责系统状态和异常处理
-    ret |= prod_test_init();                // 生产测试模块，负责生产过程中的测试
+    // 低端游戏音响极致裁剪，只保留核心模块
+    if (CURRENT_PRODUCT_TYPE != PRODUCT_GAME_LOW_END) {
+        ret |= storage_init();                  // 存储管理模块，负责U盘挂载和媒体扫描
+        ret |= peripheral_init(&peri_cfg);       // 外设管理模块，负责按键、红外等
+        ret |= bluetooth_init();                // 蓝牙模块，负责蓝牙连接和音频传输
+    } else {
+        // 低端游戏音响：仅初始化必要模块
+        ret |= audio_core_init(&audio_cfg);     // 音频核心模块，负责音频解码和输出
+        ret |= volume_ctrl_init();              // 音量控制模块，负责音量调节
+        ret |= system_init();                   // 系统管理模块，负责系统状态和异常处理
+    }
+    
+    // 非低端游戏音响初始化其他模块
+    if (CURRENT_PRODUCT_TYPE != PRODUCT_GAME_LOW_END) {
+        ret |= audio_core_init(&audio_cfg);     // 音频核心模块，负责音频解码和输出
+        ret |= audio_source_init();             // 音频源模块，负责管理各种音频输入源
+        ret |= volume_ctrl_init();              // 音量控制模块，负责音量调节
+        ret |= play_ctrl_init();                // 播放控制模块，负责播放状态和音效
+        ret |= comm_mcu_init();                 // MCU通信模块，负责与外设MCU通信
+        ret |= system_init();                   // 系统管理模块，负责系统状态和异常处理
+        ret |= prod_test_init();                // 生产测试模块，负责生产过程中的测试
+    }
 
-    // 6. 根据宏控配置初始化可选模块
+    // 7. 根据宏控配置初始化可选模块
     // 这些模块根据产品配置条件编译，实现不同产品的功能差异化
 #ifdef CONFIG_ENABLE_HDMI_ARC
     ret |= hdmi_arc_init(&hdmi_cfg);        // HDMI ARC模块，负责HDMI音频接收
@@ -135,6 +182,9 @@ static int module_init_all(void) {
 #endif
 #ifdef CONFIG_ENABLE_DOLBY_DTS
     ret |= sound_effects_init();           // 音效模块，负责杜比DTS解码和音效处理
+#endif
+#ifdef CONFIG_ENABLE_VOICE_NOISE_REDUCTION
+    ret |= voice_noise_reduction_init();   // 语音降噪模块，负责语音处理
 #endif
 #ifdef CONFIG_ENABLE_WIFI_MEDIA
     // WIFI媒体配置，用于DLNA和AirPlay功能
@@ -149,7 +199,7 @@ static int module_init_all(void) {
     ret |= subwoofer_comm_init();          // 低音炮通信模块，负责与低音炮的蓝牙通信
 #endif
 
-    // 7. 输出初始化结果
+    // 8. 输出初始化结果
     LOG_INFO("All modules init: Product Type=%d, Status=%s", 
              CURRENT_PRODUCT_TYPE, ret == 0 ? "SUCCESS" : "WARN");
     // 返回初始化结果，0表示成功，非0表示失败
@@ -173,6 +223,9 @@ static void module_deinit_all(void) {
 #ifdef CONFIG_ENABLE_DOLBY_DTS
     sound_effects_deinit();           // 音效模块
 #endif
+#ifdef CONFIG_ENABLE_VOICE_NOISE_REDUCTION
+    voice_noise_reduction_deinit();   // 语音降噪模块
+#endif
 #ifdef CONFIG_ENABLE_SPDIF
     spdif_optical_deinit();          // SPDIF模块
 #endif
@@ -182,16 +235,24 @@ static void module_deinit_all(void) {
 
     // 2. 然后反初始化基础核心模块
     // 反初始化顺序：生产测试 -> 系统 -> MCU通信 -> 播放控制 -> 音量控制 -> 音频源 -> 音频核心 -> 蓝牙 -> 外设 -> 存储
-    prod_test_deinit();               // 生产测试模块
-    system_deinit();                  // 系统管理模块
-    comm_mcu_deinit();                // MCU通信模块
-    play_ctrl_deinit();               // 播放控制模块
-    volume_ctrl_deinit();             // 音量控制模块
-    audio_source_deinit();            // 音频源模块
-    audio_core_deinit();              // 音频核心模块
-    bluetooth_deinit();               // 蓝牙模块
-    peripheral_deinit();             // 外设管理模块
-    storage_deinit();                // 存储管理模块
+    // 低端游戏音响极致裁剪，只反初始化核心模块
+    if (CURRENT_PRODUCT_TYPE != PRODUCT_GAME_LOW_END) {
+        prod_test_deinit();               // 生产测试模块
+        system_deinit();                  // 系统管理模块
+        comm_mcu_deinit();                // MCU通信模块
+        play_ctrl_deinit();               // 播放控制模块
+        volume_ctrl_deinit();             // 音量控制模块
+        audio_source_deinit();            // 音频源模块
+        audio_core_deinit();              // 音频核心模块
+        bluetooth_deinit();               // 蓝牙模块
+        peripheral_deinit();             // 外设管理模块
+        storage_deinit();                // 存储管理模块
+    } else {
+        // 低端游戏音响：仅反初始化必要模块
+        audio_core_deinit();              // 音频核心模块
+        volume_ctrl_deinit();             // 音量控制模块
+        system_deinit();                  // 系统管理模块
+    }
 
     LOG_INFO("✅ All modules deinit success");
 }
@@ -207,22 +268,28 @@ static void main_business_loop(void) {
     // 主循环，直到系统运行状态为0时退出
     while (g_sys_running) {
         // 轮询各个模块的事件
-        peripheral_event_poll();        // 外设事件：按键、红外等
-        bluetooth_event_poll();         // 蓝牙事件：连接、媒体流等
-        audio_source_event_poll();      // 音频源事件：源切换、状态变化等
-        play_ctrl_event_poll();         // 播放控制事件：播放状态、音效等
-        system_event_poll();            // 系统事件：系统状态、资源使用等
-        
-        // 轮询可选模块的事件
+        // 低端游戏音响极致裁剪，只轮询必要模块
+        if (CURRENT_PRODUCT_TYPE != PRODUCT_GAME_LOW_END) {
+            peripheral_event_poll();        // 外设事件：按键、红外等
+            bluetooth_event_poll();         // 蓝牙事件：连接、媒体流等
+            audio_source_event_poll();      // 音频源事件：源切换、状态变化等
+            play_ctrl_event_poll();         // 播放控制事件：播放状态、音效等
+            system_event_poll();            // 系统事件：系统状态、资源使用等
+            
+            // 轮询可选模块的事件
 #ifdef CONFIG_ENABLE_BT_MESH
-        subwoofer_comm_event_poll();    // 低音炮通信事件
+            subwoofer_comm_event_poll();    // 低音炮通信事件
 #endif
 #ifdef CONFIG_ENABLE_HDMI_ARC
-        hdmi_arc_event_poll();          // HDMI ARC事件：连接、音频流等
+            hdmi_arc_event_poll();          // HDMI ARC事件：连接、音频流等
 #endif
 #ifdef CONFIG_ENABLE_SPDIF
-        spdif_optical_event_poll();     // SPDIF事件：连接、音频流等
+            spdif_optical_event_poll();     // SPDIF事件：连接、音频流等
 #endif
+        } else {
+            // 低端游戏音响：仅轮询必要模块
+            system_event_poll();            // 系统事件：系统状态、资源使用等
+        }
         
         // 休眠10毫秒，降低CPU占用
         usleep(10 * 1000);

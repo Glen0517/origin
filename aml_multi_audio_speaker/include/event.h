@@ -31,6 +31,7 @@
 #define EVENT_SYSTEM_ERROR             5   // 系统错误
 #define EVENT_SYSTEM_STATUS_UPDATE     6   // 系统状态更新
 #define EVENT_SYSTEM_ERROR_LOG_CHECK   7   // 系统错误日志检查
+#define EVENT_SYSTEM_STANDBY           8   // 系统进入待机状态
 
 // USB相关事件（101-200）
 #define EVENT_USB_MOUNTED              101 // USB挂载成功

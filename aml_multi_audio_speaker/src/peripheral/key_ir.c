@@ -38,6 +38,11 @@ static void key_interrupt_callback(int pin, int value)
     // 再次读取按键状态
     int current_value = aml_gpio_get_value(pin);
     
+    if (current_value < 0) {
+        LOG_ERROR("Failed to read GPIO value for pin %d", pin);
+        return;
+    }
+    
     if (current_value != value) {
         return; // 状态变化，可能是抖动
     }
@@ -62,6 +67,7 @@ static void key_interrupt_callback(int pin, int value)
             event = KEY_EVENT_SOUND_MODE;
             break;
         default:
+            LOG_WARN("Unknown GPIO pin %d in interrupt callback", pin);
             break;
     }
     
@@ -143,7 +149,7 @@ int key_ir_init(void)
 {
     if (g_key_ir_init) {
         LOG_INFO("Key/IR already initialized");
-        return 0;
+        return SUCCESS;
     }
     
     g_key_ir_init = true;
@@ -156,54 +162,113 @@ int key_ir_init(void)
     LOG_INFO("Peripheral: Key init success (IR disable)");
     
     // 初始化按键GPIO
-    aml_gpio_set_direction(KEY_PLAY_PAUSE_PIN, GPIO_DIR_INPUT);
-    aml_gpio_set_direction(KEY_VOL_UP_PIN, GPIO_DIR_INPUT);
-    aml_gpio_set_direction(KEY_VOL_DOWN_PIN, GPIO_DIR_INPUT);
-    aml_gpio_set_direction(KEY_SOURCE_PIN, GPIO_DIR_INPUT);
+    if (aml_gpio_set_direction(KEY_PLAY_PAUSE_PIN, GPIO_DIR_INPUT) != 0) {
+        LOG_ERROR("Failed to set direction for KEY_PLAY_PAUSE_PIN");
+    }
+    if (aml_gpio_set_direction(KEY_VOL_UP_PIN, GPIO_DIR_INPUT) != 0) {
+        LOG_ERROR("Failed to set direction for KEY_VOL_UP_PIN");
+    }
+    if (aml_gpio_set_direction(KEY_VOL_DOWN_PIN, GPIO_DIR_INPUT) != 0) {
+        LOG_ERROR("Failed to set direction for KEY_VOL_DOWN_PIN");
+    }
+    if (aml_gpio_set_direction(KEY_SOURCE_PIN, GPIO_DIR_INPUT) != 0) {
+        LOG_ERROR("Failed to set direction for KEY_SOURCE_PIN");
+    }
     
     // 注册按键中断回调
-    aml_gpio_register_interrupt(KEY_PLAY_PAUSE_PIN, GPIO_INT_FALLING, key_interrupt_callback);
-    aml_gpio_register_interrupt(KEY_VOL_UP_PIN, GPIO_INT_FALLING, key_interrupt_callback);
-    aml_gpio_register_interrupt(KEY_VOL_DOWN_PIN, GPIO_INT_FALLING, key_interrupt_callback);
-    aml_gpio_register_interrupt(KEY_SOURCE_PIN, GPIO_INT_FALLING, key_interrupt_callback);
+    if (aml_gpio_register_interrupt(KEY_PLAY_PAUSE_PIN, GPIO_INT_FALLING, key_interrupt_callback) != 0) {
+        LOG_ERROR("Failed to register interrupt for KEY_PLAY_PAUSE_PIN");
+    }
+    if (aml_gpio_register_interrupt(KEY_VOL_UP_PIN, GPIO_INT_FALLING, key_interrupt_callback) != 0) {
+        LOG_ERROR("Failed to register interrupt for KEY_VOL_UP_PIN");
+    }
+    if (aml_gpio_register_interrupt(KEY_VOL_DOWN_PIN, GPIO_INT_FALLING, key_interrupt_callback) != 0) {
+        LOG_ERROR("Failed to register interrupt for KEY_VOL_DOWN_PIN");
+    }
+    if (aml_gpio_register_interrupt(KEY_SOURCE_PIN, GPIO_INT_FALLING, key_interrupt_callback) != 0) {
+        LOG_ERROR("Failed to register interrupt for KEY_SOURCE_PIN");
+    }
     
     // 启用按键中断
-    aml_gpio_enable_interrupt(KEY_PLAY_PAUSE_PIN, true);
-    aml_gpio_enable_interrupt(KEY_VOL_UP_PIN, true);
-    aml_gpio_enable_interrupt(KEY_VOL_DOWN_PIN, true);
-    aml_gpio_enable_interrupt(KEY_SOURCE_PIN, true);
+    if (aml_gpio_enable_interrupt(KEY_PLAY_PAUSE_PIN, true) != 0) {
+        LOG_ERROR("Failed to enable interrupt for KEY_PLAY_PAUSE_PIN");
+    }
+    if (aml_gpio_enable_interrupt(KEY_VOL_UP_PIN, true) != 0) {
+        LOG_ERROR("Failed to enable interrupt for KEY_VOL_UP_PIN");
+    }
+    if (aml_gpio_enable_interrupt(KEY_VOL_DOWN_PIN, true) != 0) {
+        LOG_ERROR("Failed to enable interrupt for KEY_VOL_DOWN_PIN");
+    }
+    if (aml_gpio_enable_interrupt(KEY_SOURCE_PIN, true) != 0) {
+        LOG_ERROR("Failed to enable interrupt for KEY_SOURCE_PIN");
+    }
     
 #elif (CURRENT_PRODUCT_TYPE == PRODUCT_MID_END) || (CURRENT_PRODUCT_TYPE == PRODUCT_HIGH_END)
     // 中/高端产品：物理按键+红外遥控全开
     LOG_INFO("Peripheral: Key + IR remote init success");
     
     // 初始化按键GPIO（同上）
-    aml_gpio_set_direction(KEY_PLAY_PAUSE_PIN, GPIO_DIR_INPUT);
-    aml_gpio_set_direction(KEY_VOL_UP_PIN, GPIO_DIR_INPUT);
-    aml_gpio_set_direction(KEY_VOL_DOWN_PIN, GPIO_DIR_INPUT);
-    aml_gpio_set_direction(KEY_SOURCE_PIN, GPIO_DIR_INPUT);
-    aml_gpio_set_direction(KEY_SOUND_MODE_PIN, GPIO_DIR_INPUT);
+    if (aml_gpio_set_direction(KEY_PLAY_PAUSE_PIN, GPIO_DIR_INPUT) != 0) {
+        LOG_ERROR("Failed to set direction for KEY_PLAY_PAUSE_PIN");
+    }
+    if (aml_gpio_set_direction(KEY_VOL_UP_PIN, GPIO_DIR_INPUT) != 0) {
+        LOG_ERROR("Failed to set direction for KEY_VOL_UP_PIN");
+    }
+    if (aml_gpio_set_direction(KEY_VOL_DOWN_PIN, GPIO_DIR_INPUT) != 0) {
+        LOG_ERROR("Failed to set direction for KEY_VOL_DOWN_PIN");
+    }
+    if (aml_gpio_set_direction(KEY_SOURCE_PIN, GPIO_DIR_INPUT) != 0) {
+        LOG_ERROR("Failed to set direction for KEY_SOURCE_PIN");
+    }
+    if (aml_gpio_set_direction(KEY_SOUND_MODE_PIN, GPIO_DIR_INPUT) != 0) {
+        LOG_ERROR("Failed to set direction for KEY_SOUND_MODE_PIN");
+    }
     
     // 注册按键中断回调
-    aml_gpio_register_interrupt(KEY_PLAY_PAUSE_PIN, GPIO_INT_FALLING, key_interrupt_callback);
-    aml_gpio_register_interrupt(KEY_VOL_UP_PIN, GPIO_INT_FALLING, key_interrupt_callback);
-    aml_gpio_register_interrupt(KEY_VOL_DOWN_PIN, GPIO_INT_FALLING, key_interrupt_callback);
-    aml_gpio_register_interrupt(KEY_SOURCE_PIN, GPIO_INT_FALLING, key_interrupt_callback);
-    aml_gpio_register_interrupt(KEY_SOUND_MODE_PIN, GPIO_INT_FALLING, key_interrupt_callback);
+    if (aml_gpio_register_interrupt(KEY_PLAY_PAUSE_PIN, GPIO_INT_FALLING, key_interrupt_callback) != 0) {
+        LOG_ERROR("Failed to register interrupt for KEY_PLAY_PAUSE_PIN");
+    }
+    if (aml_gpio_register_interrupt(KEY_VOL_UP_PIN, GPIO_INT_FALLING, key_interrupt_callback) != 0) {
+        LOG_ERROR("Failed to register interrupt for KEY_VOL_UP_PIN");
+    }
+    if (aml_gpio_register_interrupt(KEY_VOL_DOWN_PIN, GPIO_INT_FALLING, key_interrupt_callback) != 0) {
+        LOG_ERROR("Failed to register interrupt for KEY_VOL_DOWN_PIN");
+    }
+    if (aml_gpio_register_interrupt(KEY_SOURCE_PIN, GPIO_INT_FALLING, key_interrupt_callback) != 0) {
+        LOG_ERROR("Failed to register interrupt for KEY_SOURCE_PIN");
+    }
+    if (aml_gpio_register_interrupt(KEY_SOUND_MODE_PIN, GPIO_INT_FALLING, key_interrupt_callback) != 0) {
+        LOG_ERROR("Failed to register interrupt for KEY_SOUND_MODE_PIN");
+    }
     
     // 启用按键中断
-    aml_gpio_enable_interrupt(KEY_PLAY_PAUSE_PIN, true);
-    aml_gpio_enable_interrupt(KEY_VOL_UP_PIN, true);
-    aml_gpio_enable_interrupt(KEY_VOL_DOWN_PIN, true);
-    aml_gpio_enable_interrupt(KEY_SOURCE_PIN, true);
-    aml_gpio_enable_interrupt(KEY_SOUND_MODE_PIN, true);
+    if (aml_gpio_enable_interrupt(KEY_PLAY_PAUSE_PIN, true) != 0) {
+        LOG_ERROR("Failed to enable interrupt for KEY_PLAY_PAUSE_PIN");
+    }
+    if (aml_gpio_enable_interrupt(KEY_VOL_UP_PIN, true) != 0) {
+        LOG_ERROR("Failed to enable interrupt for KEY_VOL_UP_PIN");
+    }
+    if (aml_gpio_enable_interrupt(KEY_VOL_DOWN_PIN, true) != 0) {
+        LOG_ERROR("Failed to enable interrupt for KEY_VOL_DOWN_PIN");
+    }
+    if (aml_gpio_enable_interrupt(KEY_SOURCE_PIN, true) != 0) {
+        LOG_ERROR("Failed to enable interrupt for KEY_SOURCE_PIN");
+    }
+    if (aml_gpio_enable_interrupt(KEY_SOUND_MODE_PIN, true) != 0) {
+        LOG_ERROR("Failed to enable interrupt for KEY_SOUND_MODE_PIN");
+    }
     
     // 初始化红外接收器
     if (aml_ir_init() == 0) {
-        aml_ir_set_callback(ir_receive_callback);
-        aml_ir_enable(true);
-        g_ir_enabled = true;
-        LOG_INFO("IR receiver initialized");
+        if (aml_ir_set_callback(ir_receive_callback) != 0) {
+            LOG_ERROR("Failed to set IR callback");
+        }
+        if (aml_ir_enable(true) != 0) {
+            LOG_ERROR("Failed to enable IR receiver");
+        } else {
+            g_ir_enabled = true;
+            LOG_INFO("IR receiver initialized");
+        }
     } else {
         LOG_ERROR("IR receiver init failed");
     }
@@ -212,10 +277,10 @@ int key_ir_init(void)
     // 低音炮产品：无按键无红外
     LOG_INFO("Peripheral: Key/IR not supported for current product");
     g_key_ir_init = false;
-    return 0;
+    return SUCCESS;
 #endif
     
-    return 0;
+    return SUCCESS;
 }
 
 void key_ir_deinit(void)
@@ -225,28 +290,54 @@ void key_ir_deinit(void)
     }
     
     // 禁用并取消注册按键中断
-    aml_gpio_enable_interrupt(KEY_PLAY_PAUSE_PIN, false);
-    aml_gpio_enable_interrupt(KEY_VOL_UP_PIN, false);
-    aml_gpio_enable_interrupt(KEY_VOL_DOWN_PIN, false);
-    aml_gpio_enable_interrupt(KEY_SOURCE_PIN, false);
-    aml_gpio_enable_interrupt(KEY_SOUND_MODE_PIN, false);
+    if (aml_gpio_enable_interrupt(KEY_PLAY_PAUSE_PIN, false) != 0) {
+        LOG_ERROR("Failed to disable interrupt for KEY_PLAY_PAUSE_PIN");
+    }
+    if (aml_gpio_enable_interrupt(KEY_VOL_UP_PIN, false) != 0) {
+        LOG_ERROR("Failed to disable interrupt for KEY_VOL_UP_PIN");
+    }
+    if (aml_gpio_enable_interrupt(KEY_VOL_DOWN_PIN, false) != 0) {
+        LOG_ERROR("Failed to disable interrupt for KEY_VOL_DOWN_PIN");
+    }
+    if (aml_gpio_enable_interrupt(KEY_SOURCE_PIN, false) != 0) {
+        LOG_ERROR("Failed to disable interrupt for KEY_SOURCE_PIN");
+    }
+    if (aml_gpio_enable_interrupt(KEY_SOUND_MODE_PIN, false) != 0) {
+        LOG_ERROR("Failed to disable interrupt for KEY_SOUND_MODE_PIN");
+    }
     
-    aml_gpio_unregister_interrupt(KEY_PLAY_PAUSE_PIN);
-    aml_gpio_unregister_interrupt(KEY_VOL_UP_PIN);
-    aml_gpio_unregister_interrupt(KEY_VOL_DOWN_PIN);
-    aml_gpio_unregister_interrupt(KEY_SOURCE_PIN);
-    aml_gpio_unregister_interrupt(KEY_SOUND_MODE_PIN);
+    if (aml_gpio_unregister_interrupt(KEY_PLAY_PAUSE_PIN) != 0) {
+        LOG_ERROR("Failed to unregister interrupt for KEY_PLAY_PAUSE_PIN");
+    }
+    if (aml_gpio_unregister_interrupt(KEY_VOL_UP_PIN) != 0) {
+        LOG_ERROR("Failed to unregister interrupt for KEY_VOL_UP_PIN");
+    }
+    if (aml_gpio_unregister_interrupt(KEY_VOL_DOWN_PIN) != 0) {
+        LOG_ERROR("Failed to unregister interrupt for KEY_VOL_DOWN_PIN");
+    }
+    if (aml_gpio_unregister_interrupt(KEY_SOURCE_PIN) != 0) {
+        LOG_ERROR("Failed to unregister interrupt for KEY_SOURCE_PIN");
+    }
+    if (aml_gpio_unregister_interrupt(KEY_SOUND_MODE_PIN) != 0) {
+        LOG_ERROR("Failed to unregister interrupt for KEY_SOUND_MODE_PIN");
+    }
     
     // 反初始化红外接收器
     if (g_ir_enabled) {
-        aml_ir_enable(false);
-        aml_ir_deinit();
+        if (aml_ir_enable(false) != 0) {
+            LOG_ERROR("Failed to disable IR receiver");
+        }
+        if (aml_ir_deinit() != 0) {
+            LOG_ERROR("Failed to deinitialize IR receiver");
+        }
         g_ir_enabled = false;
     }
     
     // 停止红外学习
     if (g_ir_learning) {
-        key_ir_ir_learn_stop();
+        if (key_ir_ir_learn_stop() != 0) {
+            LOG_ERROR("Failed to stop IR learning");
+        }
     }
     
     g_key_ir_init = false;
@@ -266,7 +357,9 @@ void key_ir_event_poll(void)
     
     // 轮询红外事件
     if (g_ir_enabled) {
-        aml_ir_event_poll();
+        if (aml_ir_event_poll() != 0) {
+            LOG_ERROR("Failed to poll IR events");
+        }
     }
     
     // 通过UART接收MCU发送的按键/红外状态指令
@@ -274,6 +367,8 @@ void key_ir_event_poll(void)
     int recv_len = uart_mcu_recv_data(rx_buf, MAX_PACKET_LEN, 10); // 10ms超时
     
     if (recv_len > 0) {
+        LOG_DEBUG("Received %d bytes from MCU", recv_len);
+        
         // 解析接收到的数据包
         uint8_t cmd = 0;
         uint8_t data[MAX_PACKET_LEN] = {0};
@@ -286,36 +381,44 @@ void key_ir_event_poll(void)
         }
         
         // 处理按键/红外状态响应
-        if (cmd == CMD_KEY_STATUS_RESP && data_len >= 1) {
-            uint8_t key_state = data[0];
-            LOG_DEBUG("Received key state from MCU: 0x%02X", key_state);
-            
-            // 解析按键状态并转换为事件
-            KeyEvent_e event = KEY_EVENT_NONE;
-            
-            if (key_state & KEY_BIT_PLAY_PAUSE) {
-                event = KEY_EVENT_PLAY_PAUSE;
-            } else if (key_state & KEY_BIT_VOL_UP) {
-                event = KEY_EVENT_VOL_UP;
-            } else if (key_state & KEY_BIT_VOL_DOWN) {
-                event = KEY_EVENT_VOL_DOWN;
-            } else if (key_state & KEY_BIT_SOURCE_SWITCH) {
-                event = KEY_EVENT_SOURCE_SWITCH;
-            } else if (key_state & KEY_BIT_SOUND_MODE) {
-                event = KEY_EVENT_SOUND_MODE;
-            } else if (key_state & KEY_BIT_BASS_UP) {
-                event = KEY_EVENT_BASS_UP;
-            } else if (key_state & KEY_BIT_TREBLE_UP) {
-                event = KEY_EVENT_TREBLE_UP;
-            } else if (key_state & KEY_BIT_IR_LEARN) {
-                event = KEY_EVENT_IR_LEARN;
+        if (cmd == CMD_KEY_STATUS_RESP) {
+            if (data_len >= 1) {
+                uint8_t key_state = data[0];
+                LOG_DEBUG("Received key state from MCU: 0x%02X", key_state);
+                
+                // 解析按键状态并转换为事件
+                KeyEvent_e event = KEY_EVENT_NONE;
+                
+                if (key_state & KEY_BIT_PLAY_PAUSE) {
+                    event = KEY_EVENT_PLAY_PAUSE;
+                } else if (key_state & KEY_BIT_VOL_UP) {
+                    event = KEY_EVENT_VOL_UP;
+                } else if (key_state & KEY_BIT_VOL_DOWN) {
+                    event = KEY_EVENT_VOL_DOWN;
+                } else if (key_state & KEY_BIT_SOURCE_SWITCH) {
+                    event = KEY_EVENT_SOURCE_SWITCH;
+                } else if (key_state & KEY_BIT_SOUND_MODE) {
+                    event = KEY_EVENT_SOUND_MODE;
+                } else if (key_state & KEY_BIT_BASS_UP) {
+                    event = KEY_EVENT_BASS_UP;
+                } else if (key_state & KEY_BIT_TREBLE_UP) {
+                    event = KEY_EVENT_TREBLE_UP;
+                } else if (key_state & KEY_BIT_IR_LEARN) {
+                    event = KEY_EVENT_IR_LEARN;
+                }
+                
+                if (event != KEY_EVENT_NONE) {
+                    g_last_key_event = event;
+                    LOG_INFO("Key event from MCU: %d", event);
+                }
+            } else {
+                LOG_ERROR("Invalid data length for CMD_KEY_STATUS_RESP: %d", data_len);
             }
-            
-            if (event != KEY_EVENT_NONE) {
-                g_last_key_event = event;
-                LOG_INFO("Key event from MCU: %d", event);
-            }
+        } else {
+            LOG_WARN("Unexpected command from MCU: 0x%02X", cmd);
         }
+    } else if (recv_len < 0) {
+        LOG_ERROR("Failed to receive data from MCU: %d", recv_len);
     }
     
     // 备用：轮询本地GPIO按键状态（当MCU通信失败时使用）
@@ -323,11 +426,17 @@ void key_ir_event_poll(void)
     uint8_t current_gpio_state = 0;
     
     // 读取所有按键GPIO状态
-    current_gpio_state |= (aml_gpio_get_value(KEY_PLAY_PAUSE_PIN) << 0);
-    current_gpio_state |= (aml_gpio_get_value(KEY_VOL_UP_PIN) << 1);
-    current_gpio_state |= (aml_gpio_get_value(KEY_VOL_DOWN_PIN) << 2);
-    current_gpio_state |= (aml_gpio_get_value(KEY_SOURCE_PIN) << 3);
-    current_gpio_state |= (aml_gpio_get_value(KEY_SOUND_MODE_PIN) << 4);
+    int play_pause_val = aml_gpio_get_value(KEY_PLAY_PAUSE_PIN);
+    int vol_up_val = aml_gpio_get_value(KEY_VOL_UP_PIN);
+    int vol_down_val = aml_gpio_get_value(KEY_VOL_DOWN_PIN);
+    int source_val = aml_gpio_get_value(KEY_SOURCE_PIN);
+    int sound_mode_val = aml_gpio_get_value(KEY_SOUND_MODE_PIN);
+    
+    if (play_pause_val >= 0) current_gpio_state |= (play_pause_val << 0);
+    if (vol_up_val >= 0) current_gpio_state |= (vol_up_val << 1);
+    if (vol_down_val >= 0) current_gpio_state |= (vol_down_val << 2);
+    if (source_val >= 0) current_gpio_state |= (source_val << 3);
+    if (sound_mode_val >= 0) current_gpio_state |= (sound_mode_val << 4);
     
     // 检测按键状态变化（下降沿触发）
     uint8_t key_changed = last_gpio_state & (~current_gpio_state);
@@ -338,11 +447,17 @@ void key_ir_event_poll(void)
         
         // 再次读取状态确认
         uint8_t confirm_state = 0;
-        confirm_state |= (aml_gpio_get_value(KEY_PLAY_PAUSE_PIN) << 0);
-        confirm_state |= (aml_gpio_get_value(KEY_VOL_UP_PIN) << 1);
-        confirm_state |= (aml_gpio_get_value(KEY_VOL_DOWN_PIN) << 2);
-        confirm_state |= (aml_gpio_get_value(KEY_SOURCE_PIN) << 3);
-        confirm_state |= (aml_gpio_get_value(KEY_SOUND_MODE_PIN) << 4);
+        play_pause_val = aml_gpio_get_value(KEY_PLAY_PAUSE_PIN);
+        vol_up_val = aml_gpio_get_value(KEY_VOL_UP_PIN);
+        vol_down_val = aml_gpio_get_value(KEY_VOL_DOWN_PIN);
+        source_val = aml_gpio_get_value(KEY_SOURCE_PIN);
+        sound_mode_val = aml_gpio_get_value(KEY_SOUND_MODE_PIN);
+        
+        if (play_pause_val >= 0) confirm_state |= (play_pause_val << 0);
+        if (vol_up_val >= 0) confirm_state |= (vol_up_val << 1);
+        if (vol_down_val >= 0) confirm_state |= (vol_down_val << 2);
+        if (source_val >= 0) confirm_state |= (source_val << 3);
+        if (sound_mode_val >= 0) confirm_state |= (sound_mode_val << 4);
         
         // 确认按键确实被按下
         key_changed = last_gpio_state & (~confirm_state);

@@ -1,0 +1,56 @@
+============================================================
+Bluetooth Module Test Report
+============================================================
+Report generated at: 2026-01-16 18:37:15
+
+Test: bluetooth_init
+Status: PASS
+Timestamp: 2026-01-16 18:37:05
+Message: Bluetooth module initialized successfully
+----------------------------------------
+Test: bluetooth_start_pair
+Status: PASS
+Timestamp: 2026-01-16 18:37:06
+Message: Bluetooth pairing started successfully
+----------------------------------------
+Test: bluetooth_stop_pair
+Status: PASS
+Timestamp: 2026-01-16 18:37:07
+Message: Bluetooth pairing stopped successfully
+----------------------------------------
+Test: bluetooth_connect
+Status: PASS
+Timestamp: 2026-01-16 18:37:08
+Message: Bluetooth device connected successfully
+----------------------------------------
+Test: bluetooth_start_audio_stream
+Status: PASS
+Timestamp: 2026-01-16 18:37:09
+Message: Bluetooth audio stream started successfully
+----------------------------------------
+Test: bluetooth_play_control
+Status: PASS
+Timestamp: 2026-01-16 18:37:11
+Message: Bluetooth play control tested successfully
+----------------------------------------
+Test: bluetooth_volume_control
+Status: PASS
+Timestamp: 2026-01-16 18:37:13
+Message: Bluetooth volume control tested successfully
+----------------------------------------
+Test: bluetooth_disconnect
+Status: PASS
+Timestamp: 2026-01-16 18:37:14
+Message: Bluetooth device disconnected successfully
+----------------------------------------
+Test: bluetooth_deinit
+Status: PASS
+Timestamp: 2026-01-16 18:37:15
+Message: Bluetooth module deinitialized successfully
+----------------------------------------
+
+Summary:
+Total tests: 9
+Passed: 9
+Failed: 0
+Pass rate: 100.0%

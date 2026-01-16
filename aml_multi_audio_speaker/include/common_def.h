@@ -81,7 +81,8 @@ typedef enum {
     SYS_STATE_OTA,
     SYS_STATE_CALIB,
     SYS_STATE_AGE_TEST,
-    SYS_STATE_ERROR
+    SYS_STATE_ERROR,
+    SYS_STATE_STANDBY    // 待机状态
 } SysState_e;
 
 // LED状态枚举
