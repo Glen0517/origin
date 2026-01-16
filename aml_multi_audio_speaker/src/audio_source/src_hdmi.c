@@ -83,5 +83,9 @@ void src_hdmi_deinit(void) {
 }
 #else
 int src_hdmi_init(void) { return 0; }
-void src_hdmi_deinit(void) {}
+void src_hdmi_deinit(void) {
+    LOG_INFO("HDMI source deinit called");
+    // 清理HDMI相关资源
+    // 虽然是空实现，但保持函数接口一致
+}
 #endif

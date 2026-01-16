@@ -2,7 +2,7 @@ include ../../lib/toolchain.mk
 include ../../lib/compile_flags.mk
 
 MODULE_NAME := system
-SRC_FILES   := system.c sys_init.c sys_ota.c
+SRC_FILES   := system.c sys_init.c sys_ota.c event.c
 OBJ_FILES   := $(SRC_FILES:.c=.o)
 LIB_OUT     := ../../lib/output/lib$(MODULE_NAME).a
 

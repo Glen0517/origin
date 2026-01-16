@@ -202,6 +202,8 @@ int prod_test_age_get_remaining(void)
         return 0;
     }
     
-    // TODO: 实现获取剩余老化测试时间的逻辑
-    return g_aging_test_hours;
+    // 实现获取剩余老化测试时间的逻辑
+    // 从硬件校准模块获取剩余老化测试时间
+    extern int g_aging_test_remaining;
+    return g_aging_test_remaining;
 }

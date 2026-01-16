@@ -2,6 +2,11 @@
 #include "logger.h"
 #include "product_type.h"
 #include "common_def.h"
+#include "system.h"
+#include "volume_ctrl.h"
+#include "audio_source.h"
+#include "play_ctrl.h"
+#include "audio_core.h"
 
 #if CONFIG_ENABLE_HDMI_ARC
 
@@ -50,28 +55,99 @@ static void cec_event_callback(int event, int device_id, int command)
     switch (event) {
         case CEC_EVENT_DEVICE_DETECTED:
             LOG_INFO("CEC device detected: %d", device_id);
+            // 设备检测事件处理
+            // 可以在这里添加设备信息存储或显示
             break;
         case CEC_EVENT_POWER_ON:
-            LOG_INFO("CEC power on command received");
+            LOG_INFO("CEC power on command received from device %d", device_id);
             // 处理电源开启命令
-            system_api_set_state(SYS_STATE_WORKING);
+            system_set_state(SYS_STATE_WORKING);
+            // 同时可以切换到HDMI ARC音源
+            audio_source_switch(SOURCE_HDMI_ARC);
+            LOG_INFO("System powered on via CEC, switched to HDMI ARC source");
             break;
         case CEC_EVENT_POWER_OFF:
-            LOG_INFO("CEC power off command received");
+            LOG_INFO("CEC power off command received from device %d", device_id);
             // 处理电源关闭命令
-            system_api_set_state(SYS_STATE_STANDBY);
+            system_set_state(SYS_STATE_STANDBY);
+            LOG_INFO("System powered off via CEC");
             break;
         case CEC_EVENT_VOLUME_UP:
-            LOG_INFO("CEC volume up command received");
+            LOG_INFO("CEC volume up command received from device %d", device_id);
             // 处理音量增加命令
             volume_ctrl_increase();
+            LOG_INFO("Volume increased via CEC");
             break;
         case CEC_EVENT_VOLUME_DOWN:
-            LOG_INFO("CEC volume down command received");
+            LOG_INFO("CEC volume down command received from device %d", device_id);
             // 处理音量减少命令
             volume_ctrl_decrease();
+            LOG_INFO("Volume decreased via CEC");
+            break;
+        case CEC_EVENT_MUTE:
+            LOG_INFO("CEC mute command received from device %d", device_id);
+            // 处理静音命令
+            volume_ctrl_set_mute(true);
+            LOG_INFO("System muted via CEC");
+            break;
+        case CEC_EVENT_UNMUTE:
+            LOG_INFO("CEC unmute command received from device %d", device_id);
+            // 处理取消静音命令
+            volume_ctrl_set_mute(false);
+            LOG_INFO("System unmuted via CEC");
+            break;
+        case CEC_EVENT_SOURCE_SWITCH:
+            LOG_INFO("CEC source switch command received from device %d", device_id);
+            // 处理音源切换命令
+            audio_source_switch(SOURCE_HDMI_ARC);
+            LOG_INFO("Source switched to HDMI ARC via CEC");
+            break;
+        case CEC_EVENT_USER_CONTROL_PRESSED:
+            LOG_INFO("CEC user control pressed: command %d from device %d", command, device_id);
+            // 处理用户控制按键事件
+            // 可以根据command值映射到不同的功能
+            switch (command) {
+                case CEC_USER_CTRL_PLAY:
+                    LOG_INFO("CEC play command received");
+                    // 处理播放命令
+                    play_ctrl_play();
+                    LOG_INFO("Playback started via CEC");
+                    break;
+                case CEC_USER_CTRL_PAUSE:
+                    LOG_INFO("CEC pause command received");
+                    // 处理暂停命令
+                    play_ctrl_pause();
+                    LOG_INFO("Playback paused via CEC");
+                    break;
+                case CEC_USER_CTRL_STOP:
+                    LOG_INFO("CEC stop command received");
+                    // 处理停止命令
+                    audio_core_stop();
+                    LOG_INFO("Playback stopped via CEC");
+                    break;
+                case CEC_USER_CTRL_NEXT:
+                    LOG_INFO("CEC next command received");
+                    // 处理下一曲命令
+                    play_ctrl_next_song();
+                    LOG_INFO("Next song triggered via CEC");
+                    break;
+                case CEC_USER_CTRL_PREV:
+                    LOG_INFO("CEC previous command received");
+                    // 处理上一曲命令
+                    play_ctrl_prev_song();
+                    LOG_INFO("Previous song triggered via CEC");
+                    break;
+                default:
+                    LOG_DEBUG("Unknown CEC user control command: %d", command);
+                    break;
+            }
+            break;
+        case CEC_EVENT_USER_CONTROL_RELEASED:
+            LOG_INFO("CEC user control released from device %d", device_id);
+            // 处理用户控制按键释放事件
             break;
         default:
+            LOG_DEBUG("Unknown CEC event: %d from device %d", event, device_id);
             break;
     }
 }

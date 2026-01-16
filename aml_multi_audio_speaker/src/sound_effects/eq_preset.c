@@ -22,5 +22,9 @@ void eq_preset_deinit(void)
 }
 #else
 int eq_preset_init(void) { return 0; }
-void eq_preset_deinit(void) {}
+void eq_preset_deinit(void) {
+    LOG_INFO("EQ preset deinit called");
+    // 清理EQ预设相关资源
+    // 虽然是空实现，但保持函数接口一致
+}
 #endif

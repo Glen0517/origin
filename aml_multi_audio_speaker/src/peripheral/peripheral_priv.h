@@ -4,6 +4,10 @@
 #include "peripheral.h"
 #include "product_type.h"
 
+// 外部变量声明
+extern bool g_key_ir_init;
+extern KeyEvent_e g_last_key_event;
+
 // 内部私有函数声明 - 单一职责拆分
 int key_ir_init(void);
 void key_ir_deinit(void);

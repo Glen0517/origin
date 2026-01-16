@@ -1,192 +1,240 @@
+/**
+ * @file main.c
+ * @brief 系统主程序入口
+ * @details 负责系统的初始化、模块管理、业务主循环和优雅退出
+ * @author AML Audio Team
+ * @date 2026-01-15
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
 #include <string.h>
 
-#include "product_type.h"
-#include "common_def.h"
-#include "logger.h"
-#include "res_manager.h"
+#include "product_type.h"      // 产品类型定义
+#include "common_def.h"         // 通用定义
+#include "logger.h"            // 日志系统
+#include "res_manager.h"        // 资源管理器
+#include "event.h"             // 事件系统
 
-// 公共对外头文件
-#include "audio_core.h"
-#include "audio_source.h"
-#include "play_ctrl.h"
-#include "volume_ctrl.h"
-#include "peripheral.h"
-#include "storage.h"
-#include "bluetooth.h"
-#include "system.h"
-#include "comm_mcu.h"  
+// 公共对外头文件 - 核心功能模块
+#include "audio_core.h"        // 音频核心处理
+#include "audio_source.h"      // 音频源管理
+#include "play_ctrl.h"         // 播放控制
+#include "volume_ctrl.h"       // 音量控制
+#include "peripheral.h"        // 外设管理
+#include "storage.h"           // 存储管理
+#include "bluetooth.h"         // 蓝牙模块
+#include "system.h"            // 系统管理
+#include "comm_mcu.h"          // MCU通信  
 
-// 宏控按需加载头文件
+// 宏控按需加载头文件 - 根据产品配置加载相应功能模块
 #ifdef CONFIG_ENABLE_WIFI_MEDIA
-#include "wifi_media.h"
+#include "wifi_media.h"         // WIFI媒体功能（DLNA、AirPlay）
 #endif
 #ifdef CONFIG_ENABLE_DOLBY_DTS
-#include "sound_effects.h"
+#include "sound_effects.h"      // 音效处理（杜比、DTS）
 #endif
 #ifdef CONFIG_ENABLE_HDMI_ARC
-#include "hdmi_arc.h"
+#include "hdmi_arc.h"           // HDMI ARC功能
 #endif
 #ifdef CONFIG_ENABLE_SPDIF
-#include "spdif_optical.h"
+#include "spdif_optical.h"      // SPDIF光纤输入
 #endif
 #ifdef CONFIG_ENABLE_BT_MESH
-#include "subwoofer_comm.h"
+#include "subwoofer_comm.h"     // 低音炮通信
 #endif
 
-#include "prod_test.h"
+#include "prod_test.h"          // 生产测试模块
 
+/**
+ * @brief 系统运行状态标志
+ * @details 用于控制主循环的运行，0表示退出，1表示继续运行
+ */
 static int g_sys_running = 1;
 
 /**
- * @brief 信号处理：优雅退出
+ * @brief 信号处理函数
+ * @details 处理系统信号，实现优雅退出
+ * @param sig 接收到的信号类型
+ * @return 无
  */
 static void sig_handler(int sig) {
+    // 处理中断信号和终止信号
     if (sig == SIGINT || sig == SIGTERM) {
         LOG_INFO("System receive exit signal [%d], start deinit...", sig);
+        // 设置系统运行状态为退出
         g_sys_running = 0;
     }
 }
 
 /**
- * @brief 模块初始化总入口（宏控适配所有产品）
+ * @brief 模块初始化总入口
+ * @details 根据宏控配置初始化所有启用的模块，适配不同产品类型
+ * @return 初始化结果，0表示成功，非0表示失败
  */
 static int module_init_all(void) {
     int ret = 0;
     
-    // 创建并初始化音频核心配置
+    // 1. 创建并初始化音频核心配置
+    // 音频核心负责音频解码、混音和输出，是系统的核心组件
     AudioCoreConfig_t audio_cfg = {
-        .sample_rate = 48000,
-        .channel_num = 2,
-        .pcm_buffer_size = 4096,
-        .hw_decode_en = true,
-        .dolby_dts_en = false
+        .sample_rate = 48000,       // 采样率：48kHz
+        .channel_num = 2,           // 声道数：立体声
+        .pcm_buffer_size = 4096,    // PCM缓冲区大小：4KB
+        .hw_decode_en = true,       // 启用硬件解码
+        .dolby_dts_en = false       // 默认禁用杜比DTS解码
     };
     
-    // 创建并初始化HDMI ARC配置
+    // 2. 创建并初始化HDMI ARC配置
+    // HDMI ARC用于接收电视的音频输出
     HdmiArcConfig_t hdmi_cfg = {
-        .cec_en = true,
-        .auto_switch_en = true,
-        .sample_rate = 48000
+        .cec_en = true,            // 启用CEC控制
+        .auto_switch_en = true,     // 启用自动切换
+        .sample_rate = 48000        // 采样率：48kHz
     };
     
-    // 创建并初始化SPDIF配置
+    // 3. 创建并初始化SPDIF配置
+    // SPDIF用于接收光纤/同轴数字音频输入
     SpdifConfig_t spdif_cfg = {
-        .auto_switch_en = true,
-        .sample_rate = 48000,
-        .bits_per_sample = 16
+        .auto_switch_en = true,     // 启用自动切换
+        .sample_rate = 48000,       // 采样率：48kHz
+        .bits_per_sample = 16       // 位深度：16位
     };
     
-    // 创建并初始化外设配置
+    // 4. 创建并初始化外设配置
+    // 外设包括按键、红外、LED、LCD等
     PeripheralConfig_t peri_cfg = {
-        .key_debounce_ms = 50,
-        .long_press_ms = 1000,
-        .ir_learn_en = true,
-        .mic_mute_en = true
+        .key_debounce_ms = 50,       // 按键防抖时间：50ms
+        .long_press_ms = 1000,       // 长按时间：1秒
+        .ir_learn_en = true,        // 启用红外学习
+        .mic_mute_en = true         // 启用麦克风静音功能
     };
     
-    // 基础核心模块
-    ret |= storage_init();
-    ret |= peripheral_init(&peri_cfg);
-    ret |= bluetooth_init();
-    ret |= audio_core_init(&audio_cfg);
-    ret |= audio_source_init();
-    ret |= volume_ctrl_init();
-    ret |= play_ctrl_init();
-    ret |= comm_mcu_init();  // 适配截图：原uart_mcu_comm_init
-    ret |= system_init();
-    ret |= prod_test_init();
+    // 5. 初始化基础核心模块
+    // 初始化顺序：存储 -> 外设 -> 蓝牙 -> 音频核心 -> 音频源 -> 音量控制 -> 播放控制 -> MCU通信 -> 系统 -> 生产测试
+    ret |= storage_init();                  // 存储管理模块，负责U盘挂载和媒体扫描
+    ret |= peripheral_init(&peri_cfg);       // 外设管理模块，负责按键、红外等
+    ret |= bluetooth_init();                // 蓝牙模块，负责蓝牙连接和音频传输
+    ret |= audio_core_init(&audio_cfg);     // 音频核心模块，负责音频解码和输出
+    ret |= audio_source_init();             // 音频源模块，负责管理各种音频输入源
+    ret |= volume_ctrl_init();              // 音量控制模块，负责音量调节
+    ret |= play_ctrl_init();                // 播放控制模块，负责播放状态和音效
+    ret |= comm_mcu_init();                 // MCU通信模块，负责与外设MCU通信
+    ret |= system_init();                   // 系统管理模块，负责系统状态和异常处理
+    ret |= prod_test_init();                // 生产测试模块，负责生产过程中的测试
 
-    // 宏控加载模块
+    // 6. 根据宏控配置初始化可选模块
+    // 这些模块根据产品配置条件编译，实现不同产品的功能差异化
 #ifdef CONFIG_ENABLE_HDMI_ARC
-    ret |= hdmi_arc_init(&hdmi_cfg);
+    ret |= hdmi_arc_init(&hdmi_cfg);        // HDMI ARC模块，负责HDMI音频接收
 #endif
 #ifdef CONFIG_ENABLE_SPDIF
-    ret |= spdif_optical_init(&spdif_cfg);
+    ret |= spdif_optical_init(&spdif_cfg); // SPDIF模块，负责光纤/同轴音频接收
 #endif
 #ifdef CONFIG_ENABLE_DOLBY_DTS
-    ret |= sound_effects_init();
+    ret |= sound_effects_init();           // 音效模块，负责杜比DTS解码和音效处理
 #endif
 #ifdef CONFIG_ENABLE_WIFI_MEDIA
+    // WIFI媒体配置，用于DLNA和AirPlay功能
     WifiMediaConfig_t wifi_cfg = {
-        .wifi_name = "Aml_Soundbar",
-        .dlna_en = true,
-        .airplay_en = true
+        .wifi_name = "Aml_Soundbar",      // 设备名称
+        .dlna_en = true,                   // 启用DLNA
+        .airplay_en = true                 // 启用AirPlay
     };
-    ret |= wifi_media_init(&wifi_cfg);
+    ret |= wifi_media_init(&wifi_cfg);     // WIFI媒体模块，负责DLNA和AirPlay
 #endif
 #ifdef CONFIG_ENABLE_BT_MESH
-    ret |= subwoofer_comm_init();
+    ret |= subwoofer_comm_init();          // 低音炮通信模块，负责与低音炮的蓝牙通信
 #endif
 
+    // 7. 输出初始化结果
     LOG_INFO("All modules init: Product Type=%d, Status=%s", 
              CURRENT_PRODUCT_TYPE, ret == 0 ? "SUCCESS" : "WARN");
+    // 返回初始化结果，0表示成功，非0表示失败
     return ret == 0 ? 0 : -1;
 }
 
 /**
  * @brief 模块反初始化总入口
+ * @details 按照与初始化相反的顺序反初始化所有模块，确保资源正确释放
+ * @return 无
  */
 static void module_deinit_all(void) {
+    // 1. 首先反初始化可选模块
+    // 反初始化顺序与初始化顺序相反
 #ifdef CONFIG_ENABLE_BT_MESH
-    subwoofer_comm_deinit();
+    subwoofer_comm_deinit();          // 低音炮通信模块
 #endif
 #ifdef CONFIG_ENABLE_WIFI_MEDIA
-    wifi_media_deinit();
+    wifi_media_deinit();             // WIFI媒体模块
 #endif
 #ifdef CONFIG_ENABLE_DOLBY_DTS
-    sound_effects_deinit();
+    sound_effects_deinit();           // 音效模块
 #endif
 #ifdef CONFIG_ENABLE_SPDIF
-    spdif_optical_deinit();
+    spdif_optical_deinit();          // SPDIF模块
 #endif
 #ifdef CONFIG_ENABLE_HDMI_ARC
-    hdmi_arc_deinit();
+    hdmi_arc_deinit();                // HDMI ARC模块
 #endif
 
-    prod_test_deinit();
-    system_deinit();
-    comm_mcu_deinit(); 
-    play_ctrl_deinit();
-    volume_ctrl_deinit();
-    audio_source_deinit();
-    audio_core_deinit();
-    bluetooth_deinit();
-    peripheral_deinit();
-    storage_deinit();
+    // 2. 然后反初始化基础核心模块
+    // 反初始化顺序：生产测试 -> 系统 -> MCU通信 -> 播放控制 -> 音量控制 -> 音频源 -> 音频核心 -> 蓝牙 -> 外设 -> 存储
+    prod_test_deinit();               // 生产测试模块
+    system_deinit();                  // 系统管理模块
+    comm_mcu_deinit();                // MCU通信模块
+    play_ctrl_deinit();               // 播放控制模块
+    volume_ctrl_deinit();             // 音量控制模块
+    audio_source_deinit();            // 音频源模块
+    audio_core_deinit();              // 音频核心模块
+    bluetooth_deinit();               // 蓝牙模块
+    peripheral_deinit();             // 外设管理模块
+    storage_deinit();                // 存储管理模块
 
     LOG_INFO("✅ All modules deinit success");
 }
 
 /**
  * @brief 业务主循环
+ * @details 定期轮询各个模块的事件，处理系统的核心业务逻辑
+ * @return 无
  */
 static void main_business_loop(void) {
     LOG_INFO("Enter business loop...");
+    
+    // 主循环，直到系统运行状态为0时退出
     while (g_sys_running) {
-        peripheral_event_poll();
-        bluetooth_event_poll();
-        audio_source_event_poll();
-        play_ctrl_event_poll();
-        system_event_poll();
+        // 轮询各个模块的事件
+        peripheral_event_poll();        // 外设事件：按键、红外等
+        bluetooth_event_poll();         // 蓝牙事件：连接、媒体流等
+        audio_source_event_poll();      // 音频源事件：源切换、状态变化等
+        play_ctrl_event_poll();         // 播放控制事件：播放状态、音效等
+        system_event_poll();            // 系统事件：系统状态、资源使用等
+        
+        // 轮询可选模块的事件
 #ifdef CONFIG_ENABLE_BT_MESH
-        subwoofer_comm_event_poll();
+        subwoofer_comm_event_poll();    // 低音炮通信事件
 #endif
 #ifdef CONFIG_ENABLE_HDMI_ARC
-        hdmi_arc_event_poll();
+        hdmi_arc_event_poll();          // HDMI ARC事件：连接、音频流等
 #endif
 #ifdef CONFIG_ENABLE_SPDIF
-        spdif_optical_event_poll();
+        spdif_optical_event_poll();     // SPDIF事件：连接、音频流等
 #endif
+        
+        // 休眠10毫秒，降低CPU占用
         usleep(10 * 1000);
     }
 }
 
 /**
- * @brief 主函数
+ * @brief 系统主函数
+ * @details 系统的入口函数，负责初始化系统、启动业务循环和优雅退出
+ * @param argc 命令行参数数量
+ * @param argv 命令行参数数组
+ * @return 系统退出码，0表示成功，非0表示失败
  */
 int main(int argc, char *argv[]) {
     int ret = 0;
@@ -197,9 +245,20 @@ int main(int argc, char *argv[]) {
 
     // 基础初始化
     ret = log_system_init();
-    if (ret != 0) { fprintf(stderr, "Log init failed: %d\n", ret); return ret; }
+    if (ret != 0) {
+        LOG_ERROR("Log init failed: %d", ret);
+        return ret;
+    }
     ret = res_manager_init();
-    if (ret != 0) { LOG_ERROR("Res manager init failed: %d", ret); return ret; }
+    if (ret != 0) {
+        LOG_ERROR("Res manager init failed: %d", ret);
+        return ret;
+    }
+    ret = event_system_init();
+    if (ret != 0) {
+        LOG_ERROR("Event system init failed: %d", ret);
+        return ret;
+    }
 
     // 启动信息
     LOG_INFO("=====================================================");
@@ -226,6 +285,7 @@ int main(int argc, char *argv[]) {
 
 exit_sys:
     module_deinit_all();
+    event_system_deinit();
     res_manager_deinit();
     log_system_deinit();
 

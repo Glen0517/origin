@@ -8,5 +8,12 @@ int usb_mount_init(void);
 void usb_mount_deinit(void);
 int file_reader_init(void);
 void file_reader_deinit(void);
+int file_reader_play_file(const char *file_path);
+int file_reader_pause(void);
+int file_reader_resume(void);
+int file_reader_stop(void);
+int media_scan_init(void);
+void media_scan_deinit(void);
+int media_scan_scan_path(const char *path);
 
 #endif // __STORAGE_PRIV_H__

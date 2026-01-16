@@ -155,7 +155,11 @@ SoundMode_e sound_field_get_mode(void) {
 
 #else
 int sound_field_init(void) { return 0; }
-void sound_field_deinit(void) {}
+void sound_field_deinit(void) {
+    LOG_INFO("Sound field deinit called");
+    // 清理声场相关资源
+    // 虽然是空实现，但保持函数接口一致
+}
 int sound_field_set_mode(SoundMode_e mode) { return 0; }
 SoundMode_e sound_field_get_mode(void) { return SOUND_MODE_NORMAL; }
 #endif

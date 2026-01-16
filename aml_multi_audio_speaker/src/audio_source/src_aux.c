@@ -88,5 +88,9 @@ void src_aux_deinit(void) {
 }
 #else
 int src_aux_init(void) { return 0; }
-void src_aux_deinit(void) {}
+void src_aux_deinit(void) {
+    LOG_INFO("AUX source deinit called");
+    // 清理AUX相关资源
+    // 虽然是空实现，但保持函数接口一致
+}
 #endif

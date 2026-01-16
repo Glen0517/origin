@@ -3,6 +3,8 @@
 #include "logger.h"
 #include "product_type.h"
 
+#include "hal.h"  // 硬件抽象层
+
 static AudioCoreConfig_t g_audio_cfg = {0};
 
 int audio_core_init(AudioCoreConfig_t *cfg) {
@@ -22,17 +24,17 @@ int audio_core_init(AudioCoreConfig_t *cfg) {
         g_audio_cfg.dolby_dts_en = false;
     }
     
-    // 1. 初始化Amlogic音频SDK
-    if (aml_audio_init() != 0) {
-        LOG_ERROR("Amlogic audio SDK init failed");
+    // 1. 初始化音频硬件（通过HAL层）
+    if (hal_audio_init() != 0) {
+        LOG_ERROR("HAL audio init failed");
         return FAILURE;
     }
     
-    // 2. 配置音频参数
-    aml_audio_set_sample_rate(g_audio_cfg.sample_rate);
-    aml_audio_set_channels(g_audio_cfg.channel_num);
-    aml_audio_set_hw_decode(g_audio_cfg.hw_decode_en);
-    aml_audio_set_dolby_dts(g_audio_cfg.dolby_dts_en);
+    // 2. 配置音频参数（通过HAL层）
+    hal_audio_set_sample_rate(g_audio_cfg.sample_rate);
+    hal_audio_set_channels(g_audio_cfg.channel_num);
+    hal_audio_set_hw_decode(g_audio_cfg.hw_decode_en);
+    hal_audio_set_dolby_dts(g_audio_cfg.dolby_dts_en);
     
     // 3. 调用内部子功能初始化
     audio_decode_init();
@@ -50,16 +52,16 @@ int audio_core_init(AudioCoreConfig_t *cfg) {
 
 int audio_core_deinit(void) {
     if (g_audio_cfg.init_ok) {
-        // 停止当前音频播放
-        aml_audio_stop();
+        // 停止当前音频播放（通过HAL层）
+        hal_audio_stop();
         
         // 反初始化内部子功能
         audio_ringbuf_deinit();
         audio_mixer_deinit();
         audio_decode_deinit();
         
-        // 反初始化Amlogic音频SDK
-        aml_audio_deinit();
+        // 反初始化音频硬件（通过HAL层）
+        hal_audio_deinit();
         
         g_audio_cfg.init_ok = 0;
         LOG_INFO("Audio core deinit success!");
@@ -79,17 +81,14 @@ int audio_core_play_pcm(uint8_t *pcm_buf, int buf_len) {
     return SUCCESS;
 }
 
-// 导入Amlogic音频SDK头文件
-#include <aml_audio.h>
-
 int audio_core_pause(void) {
     if (!g_audio_cfg.init_ok) {
         LOG_ERROR("Pause failed: audio core not initialized");
         return FAILURE;
     }
     
-    // 使用Amlogic音频SDK暂停音频播放
-    if (aml_audio_pause() != 0) {
+    // 使用HAL层暂停音频播放
+    if (hal_audio_pause() != 0) {
         LOG_ERROR("Audio pause failed");
         return FAILURE;
     }
@@ -104,8 +103,8 @@ int audio_core_resume(void) {
         return FAILURE;
     }
     
-    // 使用Amlogic音频SDK恢复音频播放
-    if (aml_audio_resume() != 0) {
+    // 使用HAL层恢复音频播放
+    if (hal_audio_resume() != 0) {
         LOG_ERROR("Audio resume failed");
         return FAILURE;
     }
@@ -120,8 +119,8 @@ int audio_core_stop(void) {
         return FAILURE;
     }
     
-    // 使用Amlogic音频SDK停止音频播放
-    if (aml_audio_stop() != 0) {
+    // 使用HAL层停止音频播放
+    if (hal_audio_stop() != 0) {
         LOG_ERROR("Audio stop failed");
         return FAILURE;
     }
@@ -142,8 +141,8 @@ int audio_core_err_recover(void) {
     
     LOG_INFO("Audio error recovery started");
     
-    // 1. 停止当前音频播放
-    aml_audio_stop();
+    // 1. 停止当前音频播放（通过HAL层）
+    hal_audio_stop();
     
     // 2. 清空环形缓冲区
     audio_ringbuf_deinit();
@@ -157,9 +156,9 @@ int audio_core_err_recover(void) {
     audio_mixer_deinit();
     audio_mixer_init();
     
-    // 5. 重启音频驱动
-    aml_audio_deinit();
-    aml_audio_init();
+    // 5. 重启音频驱动（通过HAL层）
+    hal_audio_deinit();
+    hal_audio_init();
     
     LOG_INFO("Audio error recovery completed");
     return SUCCESS;
@@ -175,8 +174,8 @@ int audio_core_set_volume(int vol) {
         return FAILURE;
     }
     
-    // 使用Amlogic音频SDK设置音量
-    if (aml_audio_set_volume(vol) != 0) {
+    // 使用HAL层设置音量
+    if (hal_audio_set_volume(vol) != 0) {
         LOG_ERROR("Set volume failed");
         return FAILURE;
     }

@@ -216,8 +216,24 @@ int lcd_display_init(void) {
     LOG_INFO("LCD display not enabled in config");
     return 0; 
 }
-void lcd_display_deinit(void) {}
-void lcd_display_event_poll(void) {}
+
+void lcd_display_deinit(void) {
+    LOG_INFO("LCD display deinit called (not enabled)");
+    // 虽然未启用，但保持函数接口一致
+}
+
+/**
+ * @brief LCD事件轮询
+ */
+void lcd_display_event_poll(void) {
+    // 虽然未启用，但保持函数接口一致
+    // 可以添加简单的状态检查逻辑
+    static bool init_warn_logged = false;
+    if (!init_warn_logged) {
+        LOG_DEBUG("LCD display not enabled, event poll skipped");
+        init_warn_logged = true;
+    }
+}
 int lcd_display_text(int row, int col, const char *text) { return -1; }
 int lcd_display_clear(void) { return -1; }
 #endif

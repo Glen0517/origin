@@ -149,7 +149,11 @@ int dolby_dts_process(uint8_t *input_data, int input_len, uint8_t *output_data, 
 
 #else
 int dolby_dts_init(void) { return 0; }
-void dolby_dts_deinit(void) {}
+void dolby_dts_deinit(void) {
+    LOG_INFO("Dolby/DTS deinit called");
+    // 清理Dolby/DTS相关资源
+    // 虽然是空实现，但保持函数接口一致
+}
 int dolby_dts_set_dolby(bool en) { return 0; }
 int dolby_dts_set_dts(bool en) { return 0; }
 int dolby_dts_process(uint8_t *input_data, int input_len, uint8_t *output_data, int *output_len) { return 0; }

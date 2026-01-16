@@ -1,6 +1,8 @@
 #include "system.h"
 #include "system_priv.h"
 #include "logger.h"
+#include "event.h"
+#include "pal.h"  // 平台抽象层
 
 static SystemCfg_t g_sys_cfg = {0};
 
@@ -88,9 +90,14 @@ void system_event_poll(void)
     if (current_time - last_check_time > 5000) { // 每5秒检查一次
         last_check_time = current_time;
         
-        // 系统资源检查的简化实现
-        // 这里可以添加实际的CPU、内存、温度等检查代码
-        LOG_DEBUG("System status check - CPU: 25%%, Mem: 40%%, Temp: 45°C");
+        // 使用PAL层系统服务获取实际的CPU和内存使用率
+        int cpu_usage = 0;
+        int mem_usage = 0;
+        
+        pal_system_get_cpu_usage(&cpu_usage);
+        pal_system_get_memory_usage(&mem_usage);
+        
+        LOG_DEBUG("System status check - CPU: %d%%, Mem: %d%%", cpu_usage, mem_usage);
         
         // 发送系统状态事件
         // 这里可以根据实际需要发送更详细的系统状态信息

@@ -1,3 +1,6 @@
+#ifndef __PROD_TEST_PRIV_H__
+#define __PROD_TEST_PRIV_H__
+
 #include "prod_test.h"
 #include "product_type.h"
 

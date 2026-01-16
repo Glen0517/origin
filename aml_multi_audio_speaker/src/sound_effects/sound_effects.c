@@ -28,5 +28,9 @@ void sound_effects_deinit(void)
 #else
 // 宏控裁剪：中低端无音效模块 空实现
 int sound_effects_init(void) { return 0; }
-void sound_effects_deinit(void) {}
+void sound_effects_deinit(void) {
+    LOG_INFO("Sound effects deinit called");
+    // 清理音效相关资源
+    // 虽然是空实现，但保持函数接口一致
+}
 #endif

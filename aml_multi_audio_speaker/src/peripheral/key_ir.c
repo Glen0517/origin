@@ -6,10 +6,12 @@
 #include <aml_ir.h>          // 晶晨红外SDK
 #include <aml_timer.h>       // 晶晨定时器SDK
 
-static bool g_key_ir_init = false;
+#include "comm_mcu.h"        // MCU通信接口
+
+bool g_key_ir_init = false;
 static bool g_ir_enabled = false;
 static bool g_ir_learning = false;
-static KeyEvent_e g_last_key_event = KEY_EVENT_NONE;
+KeyEvent_e g_last_key_event = KEY_EVENT_NONE;
 
 // 按键GPIO定义（示例值，实际需根据硬件调整）
 #define KEY_PLAY_PAUSE_PIN   14     // 播放/暂停键
@@ -267,11 +269,107 @@ void key_ir_event_poll(void)
         aml_ir_event_poll();
     }
     
-    // 轮询按键状态（备用，主要通过中断处理）
-    // 这里实现按键状态轮询作为中断方式的备用方案
-    // 注意：实际应用中需要根据硬件定义GPIO引脚和按键映射
-    // 目前仅作为框架实现
-    LOG_DEBUG("Key status poll");
+    // 通过UART接收MCU发送的按键/红外状态指令
+    uint8_t rx_buf[MAX_PACKET_LEN] = {0};
+    int recv_len = uart_mcu_recv_data(rx_buf, MAX_PACKET_LEN, 10); // 10ms超时
+    
+    if (recv_len > 0) {
+        // 解析接收到的数据包
+        uint8_t cmd = 0;
+        uint8_t data[MAX_PACKET_LEN] = {0};
+        int data_len = 0;
+        
+        int ret = uart_unpack_data(rx_buf, recv_len, &cmd, data, &data_len);
+        if (ret != UART_ERR_NONE) {
+            LOG_ERROR("Failed to unpack key/IR data: %d", ret);
+            return;
+        }
+        
+        // 处理按键/红外状态响应
+        if (cmd == CMD_KEY_STATUS_RESP && data_len >= 1) {
+            uint8_t key_state = data[0];
+            LOG_DEBUG("Received key state from MCU: 0x%02X", key_state);
+            
+            // 解析按键状态并转换为事件
+            KeyEvent_e event = KEY_EVENT_NONE;
+            
+            if (key_state & KEY_BIT_PLAY_PAUSE) {
+                event = KEY_EVENT_PLAY_PAUSE;
+            } else if (key_state & KEY_BIT_VOL_UP) {
+                event = KEY_EVENT_VOL_UP;
+            } else if (key_state & KEY_BIT_VOL_DOWN) {
+                event = KEY_EVENT_VOL_DOWN;
+            } else if (key_state & KEY_BIT_SOURCE_SWITCH) {
+                event = KEY_EVENT_SOURCE_SWITCH;
+            } else if (key_state & KEY_BIT_SOUND_MODE) {
+                event = KEY_EVENT_SOUND_MODE;
+            } else if (key_state & KEY_BIT_BASS_UP) {
+                event = KEY_EVENT_BASS_UP;
+            } else if (key_state & KEY_BIT_TREBLE_UP) {
+                event = KEY_EVENT_TREBLE_UP;
+            } else if (key_state & KEY_BIT_IR_LEARN) {
+                event = KEY_EVENT_IR_LEARN;
+            }
+            
+            if (event != KEY_EVENT_NONE) {
+                g_last_key_event = event;
+                LOG_INFO("Key event from MCU: %d", event);
+            }
+        }
+    }
+    
+    // 备用：轮询本地GPIO按键状态（当MCU通信失败时使用）
+    static uint8_t last_gpio_state = 0xFF;
+    uint8_t current_gpio_state = 0;
+    
+    // 读取所有按键GPIO状态
+    current_gpio_state |= (aml_gpio_get_value(KEY_PLAY_PAUSE_PIN) << 0);
+    current_gpio_state |= (aml_gpio_get_value(KEY_VOL_UP_PIN) << 1);
+    current_gpio_state |= (aml_gpio_get_value(KEY_VOL_DOWN_PIN) << 2);
+    current_gpio_state |= (aml_gpio_get_value(KEY_SOURCE_PIN) << 3);
+    current_gpio_state |= (aml_gpio_get_value(KEY_SOUND_MODE_PIN) << 4);
+    
+    // 检测按键状态变化（下降沿触发）
+    uint8_t key_changed = last_gpio_state & (~current_gpio_state);
+    
+    if (key_changed != 0) {
+        // 防抖处理
+        aml_timer_delay_ms(KEY_DEBOUNCE_MS);
+        
+        // 再次读取状态确认
+        uint8_t confirm_state = 0;
+        confirm_state |= (aml_gpio_get_value(KEY_PLAY_PAUSE_PIN) << 0);
+        confirm_state |= (aml_gpio_get_value(KEY_VOL_UP_PIN) << 1);
+        confirm_state |= (aml_gpio_get_value(KEY_VOL_DOWN_PIN) << 2);
+        confirm_state |= (aml_gpio_get_value(KEY_SOURCE_PIN) << 3);
+        confirm_state |= (aml_gpio_get_value(KEY_SOUND_MODE_PIN) << 4);
+        
+        // 确认按键确实被按下
+        key_changed = last_gpio_state & (~confirm_state);
+        
+        if (key_changed != 0) {
+            KeyEvent_e event = KEY_EVENT_NONE;
+            
+            if (key_changed & (1 << 0)) {
+                event = KEY_EVENT_PLAY_PAUSE;
+            } else if (key_changed & (1 << 1)) {
+                event = KEY_EVENT_VOL_UP;
+            } else if (key_changed & (1 << 2)) {
+                event = KEY_EVENT_VOL_DOWN;
+            } else if (key_changed & (1 << 3)) {
+                event = KEY_EVENT_SOURCE_SWITCH;
+            } else if (key_changed & (1 << 4)) {
+                event = KEY_EVENT_SOUND_MODE;
+            }
+            
+            if (event != KEY_EVENT_NONE) {
+                g_last_key_event = event;
+                LOG_INFO("Key event (local GPIO): %d", event);
+            }
+        }
+    }
+    
+    last_gpio_state = current_gpio_state;
 }
 
 /**

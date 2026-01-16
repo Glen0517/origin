@@ -273,6 +273,18 @@ int subwoofer_comm_get_bass_gain(void) { return 0; }
 int subwoofer_comm_sync_volume(int master_vol, bool is_mute) { return 0; }
 int subwoofer_comm_set_power(bool power_on) { return 0; }
 int subwoofer_comm_play_audio(SubwooferAudioData_t *audio_data) { return 0; }
-void subwoofer_comm_event_poll(void) {}
+/**
+ * @brief 轮询处理低音炮事件
+ */
+void subwoofer_comm_event_poll(void) {
+    LOG_DEBUG("Subwoofer comm event poll called (BT MESH not enabled)");
+    // 虽然蓝牙MESH未启用，但保持函数接口一致
+    // 可以添加简单的状态检查逻辑
+    static bool init_warn_logged = false;
+    if (!init_warn_logged) {
+        LOG_INFO("Subwoofer BT MESH not enabled, event poll skipped");
+        init_warn_logged = true;
+    }
+}
 
 #endif

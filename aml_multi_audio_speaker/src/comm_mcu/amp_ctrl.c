@@ -13,7 +13,11 @@ int amp_ctrl_init(void) {
     return 0;
 }
 
-void amp_ctrl_deinit(void) {}
+void amp_ctrl_deinit(void) {
+    LOG_INFO("Amp control deinit called");
+    // 清理功放控制相关资源
+    // 虽然是空实现，但保持函数接口一致
+}
 
 #else
 
