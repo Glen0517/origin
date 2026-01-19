@@ -92,19 +92,23 @@ static int module_init_all(void) {
     
     // 2. 创建并初始化HDMI ARC配置
     // HDMI ARC用于接收电视的音频输出
+#ifdef CONFIG_ENABLE_HDMI_ARC
     HdmiArcConfig_t hdmi_cfg = {
         .cec_en = true,            // 启用CEC控制
         .auto_switch_en = true,     // 启用自动切换
         .sample_rate = 48000        // 采样率：48kHz
     };
+#endif
     
     // 3. 创建并初始化SPDIF配置
     // SPDIF用于接收光纤/同轴数字音频输入
+#ifdef CONFIG_ENABLE_SPDIF
     SpdifConfig_t spdif_cfg = {
         .auto_switch_en = true,     // 启用自动切换
         .sample_rate = 48000,       // 采样率：48kHz
         .bits_per_sample = 16       // 位深度：16位
     };
+#endif
     
     // 4. 创建并初始化外设配置
     // 外设包括按键、红外、LED、LCD等

@@ -223,6 +223,12 @@ int bluetooth_get_reconnect_params(int *max_attempts, int *interval);
  */
 int bluetooth_cleanup_connection(void);
 
+/**
+ * @brief  蓝牙事件轮询
+ * @return 无
+ */
+void bluetooth_event_poll(void);
+
 #if CONFIG_ENABLE_BT_MESH
 /**
  * @brief  蓝牙MESH组网(高端+低音炮专属)

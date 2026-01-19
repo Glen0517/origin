@@ -10,8 +10,10 @@
 #include "logger.h"
 #include <sys/statvfs.h>
 #include <sys/mount.h>
+#include <sys/stat.h>
 #include <dirent.h>
 #include <string.h>
+#include <errno.h>
 
 static bool g_storage_init = false;
 
@@ -67,12 +69,26 @@ int pal_storage_mount(const char *dev_path, const char *mount_point) {
     
     LOG_INFO("Mounting device %s to %s", dev_path, mount_point);
     
-    // 实际实现中，这里应该调用系统API来挂载设备
-    // 例如：
-    // if (mount(dev_path, mount_point, "vfat", 0, NULL) != 0) {
-    //     LOG_ERROR("Mount device failed: %s", strerror(errno));
-    //     return FAILURE;
-    // }
+    // 确保挂载点目录存在
+    struct stat st;
+    if (stat(mount_point, &st) != 0) {
+        if (mkdir(mount_point, 0755) != 0) {
+            LOG_ERROR("Create mount point failed: %s", strerror(errno));
+            return FAILURE;
+        }
+        LOG_INFO("Created mount point directory: %s", mount_point);
+    }
+    
+    // 尝试挂载设备（支持vfat和ext4文件系统）
+    if (mount(dev_path, mount_point, "vfat", 0, NULL) != 0) {
+        if (mount(dev_path, mount_point, "ext4", 0, NULL) != 0) {
+            LOG_ERROR("Mount device failed: %s", strerror(errno));
+            return FAILURE;
+        }
+        LOG_INFO("Mounted as ext4 filesystem");
+    } else {
+        LOG_INFO("Mounted as vfat filesystem");
+    }
     
     LOG_INFO("Device mounted successfully");
     return SUCCESS;
@@ -97,12 +113,15 @@ int pal_storage_unmount(const char *mount_point) {
     
     LOG_INFO("Unmounting device from %s", mount_point);
     
-    // 实际实现中，这里应该调用系统API来卸载设备
-    // 例如：
-    // if (umount(mount_point) != 0) {
-    //     LOG_ERROR("Unmount device failed: %s", strerror(errno));
-    //     return FAILURE;
-    // }
+    // 尝试卸载设备
+    if (umount(mount_point) != 0) {
+        // 如果失败，尝试强制卸载
+        if (umount2(mount_point, MNT_FORCE) != 0) {
+            LOG_ERROR("Unmount device failed: %s", strerror(errno));
+            return FAILURE;
+        }
+        LOG_WARN("Forced unmount successful");
+    }
     
     LOG_INFO("Device unmounted successfully");
     return SUCCESS;

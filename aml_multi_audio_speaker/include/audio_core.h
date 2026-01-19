@@ -70,4 +70,12 @@ int audio_core_err_recover(void);
  */
 int audio_core_set_volume(int vol);
 
+/**
+ * @brief  播放提示音
+ * @param  tone_data 提示音数据缓冲区
+ * @param  tone_size 提示音数据长度
+ * @return SUCCESS/FAILURE
+ */
+int audio_core_play_tone(unsigned char *tone_data, unsigned int tone_size);
+
 #endif // __AUDIO_CORE_H__

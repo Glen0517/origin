@@ -54,4 +54,10 @@ AudioSourceType_e audio_source_get_current(void);
  */
 bool audio_source_detect(AudioSourceType_e source);
 
+/**
+ * @brief  音源事件轮询
+ * @return 无
+ */
+void audio_source_event_poll(void);
+
 #endif // __AUDIO_SOURCE_H__

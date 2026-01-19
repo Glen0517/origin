@@ -184,10 +184,22 @@ int audio_core_set_volume(int vol) {
     return SUCCESS;
 }
 
-// 内部使用的函数，不需要对外暴露
-static int audio_core_play_tone(unsigned char *tone_data, unsigned int tone_size) {
-    if (!g_audio_cfg.init_ok || !tone_data || tone_size == 0) return -1;
-    return audio_ringbuf_write(tone_data, tone_size);
+/**
+ * @brief  播放提示音
+ * @param  tone_data 提示音数据缓冲区
+ * @param  tone_size 提示音数据长度
+ * @return SUCCESS/FAILURE
+ */
+int audio_core_play_tone(unsigned char *tone_data, unsigned int tone_size) {
+    if (!g_audio_cfg.init_ok || !tone_data || tone_size == 0) {
+        LOG_ERROR("Play tone failed: invalid parameters or not initialized");
+        return FAILURE;
+    }
+    unsigned int written = audio_ringbuf_write(tone_data, tone_size);
+    if (written != tone_size) {
+        LOG_WARN("Play tone: buffer full, only wrote %u bytes", written);
+    }
+    return SUCCESS;
 }
 
 // 内部使用的函数，不需要对外暴露

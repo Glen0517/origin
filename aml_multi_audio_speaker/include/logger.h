@@ -35,9 +35,9 @@ typedef enum {
  * 低端产品：仅打印ERROR日志，极致精简；高端产品：全开DEBUG日志，调试便利
  * 无需手动修改，编译时自动根据PRODUCT_TYPE切换
  ******************************************************************************************/
-#if (CURRENT_PRODUCT_TYPE == PRODUCT_LOW_END) || (CURRENT_PRODUCT_TYPE == PRODUCT_SUBWOOFER)
+#if (CURRENT_PRODUCT_TYPE == PRODUCT_LOW_END_BT_SPEAKER) || (CURRENT_PRODUCT_TYPE == PRODUCT_SUBWOOFER) || (CURRENT_PRODUCT_TYPE == PRODUCT_GAME_LOW_END)
     #define SYS_LOG_LEVEL         LOG_LEVEL_ERROR
-#elif (CURRENT_PRODUCT_TYPE == PRODUCT_MID_END)
+#elif (CURRENT_PRODUCT_TYPE == PRODUCT_MID_END_SOUNDBAR) || (CURRENT_PRODUCT_TYPE == PRODUCT_GAME_MID_END)
     #define SYS_LOG_LEVEL         LOG_LEVEL_WARN
 #else
     #define SYS_LOG_LEVEL         LOG_LEVEL_DEBUG

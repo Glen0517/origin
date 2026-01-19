@@ -1,5 +1,5 @@
-#ifndef __PROD_TEST_H__
-#define __PROD_TEST_H__
+#ifndef __MAIN_H__
+#define __MAIN_H__
 
 #include "common_def.h"
 
@@ -14,4 +14,4 @@ int prod_test_calib_eq(void);
 
 #endif
 
-#endif // __PROD_TEST_H__
+#endif // __MAIN_H__

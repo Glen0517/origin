@@ -16,6 +16,12 @@ int hdmi_arc_deinit(void);
 bool hdmi_arc_detect_signal(void);
 int hdmi_arc_set_audio_format(int fmt);
 
+/**
+ * @brief  HDMI ARC事件轮询
+ * @return 无
+ */
+void hdmi_arc_event_poll(void);
+
 #endif
 
 #endif // __HDMI_ARC_H__

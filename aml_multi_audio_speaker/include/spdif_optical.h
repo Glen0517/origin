@@ -53,7 +53,7 @@ bool spdif_optical_detect_signal(void);
 int spdif_optical_set_format(SpdifFormat_e format);
 
 /**
- * @brief 获取当前SPDIF状态
+ * @brief  获取当前SPDIF状态
  * @return SPDIF状态，信号存在返回true，否则返回false
  */
 bool spdif_optical_get_status(void);

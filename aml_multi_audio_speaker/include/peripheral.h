@@ -59,6 +59,12 @@ int peripheral_set_led(int led_idx, LedState_e state);
  */
 KeyEvent_e peripheral_get_key_event(void);
 
+/**
+ * @brief  外设事件轮询
+ * @return 无
+ */
+void peripheral_event_poll(void);
+
 #if CONFIG_ENABLE_IR_LEARN
 /**
  * @brief  红外学习开始

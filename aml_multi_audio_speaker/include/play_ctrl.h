@@ -67,4 +67,10 @@ int play_ctrl_next_song(void);
  */
 int play_ctrl_prev_song(void);
 
+/**
+ * @brief  播放控制事件轮询
+ * @return 无
+ */
+void play_ctrl_event_poll(void);
+
 #endif // __PLAY_CTRL_H__
