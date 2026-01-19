@@ -21,6 +21,7 @@
 typedef struct {
     int event_type;      // 事件类型
     void *event_data;    // 事件数据
+    bool need_free;      // 事件数据是否需要释放
 } Event_t;
 
 /**
@@ -30,17 +31,26 @@ typedef struct {
     EventCallback_t callback;  // 事件回调函数
     void *user_data;          // 用户自定义数据
     bool is_valid;            // 订阅是否有效
+    int priority;             // 回调优先级（0-9，数字越小优先级越高）
 } EventSubscription_t;
+
+/**
+ * @brief 事件队列节点
+ */
+typedef struct EventQueueNode {
+    Event_t event;
+    struct EventQueueNode *next;
+} EventQueueNode_t;
 
 /******************************************************************************************
  * 事件系统全局变量
  ******************************************************************************************/
 
-// 事件队列
-static Event_t g_event_queue[MAX_EVENT_QUEUE_SIZE];
-static int g_queue_head = 0;         // 队列头指针
-static int g_queue_tail = 0;         // 队列尾指针
+// 事件队列（改为链表实现）
+static EventQueueNode_t *g_event_queue_head = NULL;
+static EventQueueNode_t *g_event_queue_tail = NULL;
 static int g_queue_size = 0;         // 当前队列大小
+static int g_max_queue_size = MAX_EVENT_QUEUE_SIZE;  // 最大队列大小
 
 // 事件注册中心：[事件类型][订阅者索引] -> 订阅信息
 static EventSubscription_t g_event_subscriptions[MAX_EVENT_TYPE][MAX_SUBSCRIBERS_PER_EVENT];
@@ -51,6 +61,7 @@ static pthread_mutex_t g_event_mutex = PTHREAD_MUTEX_INITIALIZER;  // 保护事�
 static pthread_cond_t g_event_cond = PTHREAD_COND_INITIALIZER;    // 事件条件变量
 static pthread_t g_event_thread;                                  // 事件处理线程
 static bool g_event_thread_running = false;                       // 事件线程运行标志
+static int g_event_thread_priority = 0;                           // 事件线程优先级
 
 /******************************************************************************************
  * 事件系统内部函数
@@ -69,7 +80,7 @@ static bool event_queue_is_empty(void) {
  * @return true-已满，false-未满
  */
 static bool event_queue_is_full(void) {
-    return g_queue_size >= MAX_EVENT_QUEUE_SIZE;
+    return g_queue_size >= g_max_queue_size;
 }
 
 /**
@@ -80,14 +91,47 @@ static bool event_queue_is_full(void) {
 static int event_queue_push(Event_t *event) {
     if (event_queue_is_full()) {
         LOG_WARN("Event queue is full, dropping event: %d", event->event_type);
+        // 尝试清理队列头部的事件以腾出空间
+        if (g_event_queue_head) {
+            EventQueueNode_t *temp = g_event_queue_head;
+            g_event_queue_head = g_event_queue_head->next;
+            if (!g_event_queue_head) {
+                g_event_queue_tail = NULL;
+            }
+            // 释放事件数据（如果需要）
+            if (temp->event.need_free && temp->event.event_data) {
+                free(temp->event.event_data);
+            }
+            free(temp);
+            g_queue_size--;
+            LOG_WARN("Event queue cleaned, freed 1 event");
+        } else {
+            return FAILURE;
+        }
+    }
+
+    // 创建新的队列节点
+    EventQueueNode_t *node = (EventQueueNode_t *)malloc(sizeof(EventQueueNode_t));
+    if (!node) {
+        LOG_ERROR("Failed to allocate event queue node");
         return FAILURE;
     }
 
-    // 将事件加入队列尾部
-    g_event_queue[g_queue_tail] = *event;
-    g_queue_tail = (g_queue_tail + 1) % MAX_EVENT_QUEUE_SIZE;
-    g_queue_size++;
+    // 复制事件数据
+    node->event = *event;
+    node->next = NULL;
 
+    // 将节点加入队列尾部
+    if (!g_event_queue_head) {
+        g_event_queue_head = node;
+        g_event_queue_tail = node;
+    } else {
+        g_event_queue_tail->next = node;
+        g_event_queue_tail = node;
+    }
+
+    g_queue_size++;
+    LOG_DEBUG("Event pushed: %d, queue size: %d", event->event_type, g_queue_size);
     return SUCCESS;
 }
 
@@ -101,12 +145,50 @@ static int event_queue_pop(Event_t *event) {
         return FAILURE;
     }
 
-    // 从队列头部取出事件
-    *event = g_event_queue[g_queue_head];
-    g_queue_head = (g_queue_head + 1) % MAX_EVENT_QUEUE_SIZE;
+    // 取出队列头部节点
+    EventQueueNode_t *temp = g_event_queue_head;
+    *event = temp->event;
+
+    // 更新队列头指针
+    g_event_queue_head = g_event_queue_head->next;
+    if (!g_event_queue_head) {
+        g_event_queue_tail = NULL;
+    }
+
+    // 释放节点内存
+    free(temp);
     g_queue_size--;
 
+    LOG_DEBUG("Event popped: %d, queue size: %d", event->event_type, g_queue_size);
     return SUCCESS;
+}
+
+/**
+ * @brief 清理事件队列
+ * @return 清理的事件数量
+ */
+static int event_queue_clear(void) {
+    int count = 0;
+    EventQueueNode_t *current = g_event_queue_head;
+    EventQueueNode_t *next = NULL;
+
+    while (current) {
+        next = current->next;
+        // 释放事件数据（如果需要）
+        if (current->event.need_free && current->event.event_data) {
+            free(current->event.event_data);
+        }
+        free(current);
+        current = next;
+        count++;
+    }
+
+    g_event_queue_head = NULL;
+    g_event_queue_tail = NULL;
+    g_queue_size = 0;
+
+    LOG_INFO("Event queue cleared, %d events freed", count);
+    return count;
 }
 
 /**
@@ -116,9 +198,14 @@ static int event_queue_pop(Event_t *event) {
  */
 static void *event_process_thread(void *arg) {
     Event_t event;
-    int i, j;
+    int i;
 
     LOG_INFO("Event processing thread started");
+
+    // 设置线程优先级
+    struct sched_param param;
+    param.sched_priority = 50;  // 设置中等优先级
+    pthread_setschedparam(pthread_self(), SCHED_RR, &param);
 
     while (g_event_thread_running) {
         pthread_mutex_lock(&g_event_mutex);
@@ -146,19 +233,29 @@ static void *event_process_thread(void *arg) {
 
             // 遍历该事件类型的所有订阅者
             int subscriber_count = g_subscriber_counts[event.event_type];
-            for (i = 0; i < subscriber_count; i++) {
-                EventSubscription_t *sub = &g_event_subscriptions[event.event_type][i];
-                if (sub->is_valid && sub->callback != NULL) {
-                    // 解锁，避免回调函数中再次调用event_notify时死锁
-                    pthread_mutex_unlock(&g_event_mutex);
+            // 按优先级排序回调函数
+            for (int priority = 0; priority <= 9; priority++) {
+                for (i = 0; i < subscriber_count; i++) {
+                    EventSubscription_t *sub = &g_event_subscriptions[event.event_type][i];
+                    if (sub->is_valid && sub->callback != NULL && sub->priority == priority) {
+                        // 解锁，避免回调函数中再次调用event_notify时死锁
+                        pthread_mutex_unlock(&g_event_mutex);
 
-                    // 调用回调函数
-                    LOG_DEBUG("Calling callback for event: %d, subscriber: %d", event.event_type, i);
-                    sub->callback(event.event_type, event.event_data, sub->user_data);
+                        // 调用回调函数
+                        LOG_DEBUG("Calling callback for event: %d, subscriber: %d, priority: %d", 
+                                 event.event_type, i, priority);
+                        sub->callback(event.event_type, event.event_data, sub->user_data);
 
-                    // 重新加锁
-                    pthread_mutex_lock(&g_event_mutex);
+                        // 重新加锁
+                        pthread_mutex_lock(&g_event_mutex);
+                    }
                 }
+            }
+
+            // 释放事件数据（如果需要）
+            if (event.need_free && event.event_data) {
+                free(event.event_data);
+                LOG_DEBUG("Freed event data for event: %d", event.event_type);
             }
         }
 
@@ -219,10 +316,10 @@ int event_system_init(void) {
     LOG_INFO("Initializing event system...");
 
     // 1. 初始化事件队列
-    memset(g_event_queue, 0, sizeof(g_event_queue));
-    g_queue_head = 0;
-    g_queue_tail = 0;
+    g_event_queue_head = NULL;
+    g_event_queue_tail = NULL;
     g_queue_size = 0;
+    g_max_queue_size = MAX_EVENT_QUEUE_SIZE;
 
     // 2. 初始化事件注册中心
     for (i = 0; i < MAX_EVENT_TYPE; i++) {
@@ -231,6 +328,7 @@ int event_system_init(void) {
             g_event_subscriptions[i][j].callback = NULL;
             g_event_subscriptions[i][j].user_data = NULL;
             g_event_subscriptions[i][j].is_valid = false;
+            g_event_subscriptions[i][j].priority = 5;  // 默认优先级
         }
     }
 
@@ -266,10 +364,7 @@ int event_system_deinit(void) {
     }
 
     // 3. 清理事件队列
-    memset(g_event_queue, 0, sizeof(g_event_queue));
-    g_queue_head = 0;
-    g_queue_tail = 0;
-    g_queue_size = 0;
+    event_queue_clear();
 
     // 4. 清理事件注册中心
     for (int i = 0; i < MAX_EVENT_TYPE; i++) {
@@ -278,6 +373,7 @@ int event_system_deinit(void) {
             g_event_subscriptions[i][j].callback = NULL;
             g_event_subscriptions[i][j].user_data = NULL;
             g_event_subscriptions[i][j].is_valid = false;
+            g_event_subscriptions[i][j].priority = 5;
         }
     }
 
@@ -286,6 +382,18 @@ int event_system_deinit(void) {
 }
 
 int event_subscribe(int event_type, EventCallback_t callback, void *user_data) {
+    return event_subscribe_with_priority(event_type, callback, user_data, 5);  // 默认优先级
+}
+
+/**
+ * @brief 订阅事件（带优先级）
+ * @param event_type 事件类型
+ * @param callback 事件回调函数
+ * @param user_data 用户自定义数据
+ * @param priority 回调优先级（0-9，数字越小优先级越高）
+ * @return SUCCESS/FAILURE/INVALID_PARAM
+ */
+int event_subscribe_with_priority(int event_type, EventCallback_t callback, void *user_data, int priority) {
     int i;
 
     if (event_type <= 0 || event_type >= MAX_EVENT_TYPE) {
@@ -298,12 +406,19 @@ int event_subscribe(int event_type, EventCallback_t callback, void *user_data) {
         return INVALID_PARAM;
     }
 
+    if (priority < 0 || priority > 9) {
+        LOG_WARN("Invalid priority: %d, using default", priority);
+        priority = 5;
+    }
+
     pthread_mutex_lock(&g_event_mutex);
 
     // 检查是否已经订阅过该事件
     for (i = 0; i < g_subscriber_counts[event_type]; i++) {
         if (g_event_subscriptions[event_type][i].callback == callback) {
             LOG_WARN("Callback already subscribed to event: %d", event_type);
+            // 更新优先级
+            g_event_subscriptions[event_type][i].priority = priority;
             pthread_mutex_unlock(&g_event_mutex);
             return SUCCESS;  // 已经订阅，直接返回成功
         }
@@ -322,10 +437,11 @@ int event_subscribe(int event_type, EventCallback_t callback, void *user_data) {
     g_event_subscriptions[event_type][subscriber_idx].callback = callback;
     g_event_subscriptions[event_type][subscriber_idx].user_data = user_data;
     g_event_subscriptions[event_type][subscriber_idx].is_valid = true;
+    g_event_subscriptions[event_type][subscriber_idx].priority = priority;
     g_subscriber_counts[event_type]++;
 
-    LOG_INFO("Subscribed to event: %d, subscriber count: %d", 
-             event_type, g_subscriber_counts[event_type]);
+    LOG_INFO("Subscribed to event: %d, subscriber count: %d, priority: %d", 
+             event_type, g_subscriber_counts[event_type], priority);
 
     pthread_mutex_unlock(&g_event_mutex);
     return SUCCESS;
@@ -385,6 +501,17 @@ int event_unsubscribe(int event_type, EventCallback_t callback) {
 }
 
 int event_notify(int event_type, void *data) {
+    return event_notify_with_free(event_type, data, false);
+}
+
+/**
+ * @brief 发布事件（可指定是否需要释放数据）
+ * @param event_type 事件类型
+ * @param data 事件数据
+ * @param need_free 事件数据是否需要自动释放
+ * @return SUCCESS/FAILURE/INVALID_PARAM
+ */
+int event_notify_with_free(int event_type, void *data, bool need_free) {
     Event_t event;
     int ret;
 
@@ -397,6 +524,7 @@ int event_notify(int event_type, void *data) {
     // 填充事件结构体
     event.event_type = event_type;
     event.event_data = data;
+    event.need_free = need_free;
 
     pthread_mutex_lock(&g_event_mutex);
 
@@ -405,12 +533,16 @@ int event_notify(int event_type, void *data) {
     if (ret == SUCCESS) {
         // 通知事件处理线程有新事件
         pthread_cond_signal(&g_event_cond);
+    } else if (need_free && data) {
+        // 如果事件入队失败且需要释放数据，手动释放
+        free(data);
+        LOG_DEBUG("Freed event data after queue failure: %d", event_type);
     }
 
     pthread_mutex_unlock(&g_event_mutex);
 
-    LOG_DEBUG("Event notified: %d, data: %p, queue size: %d", 
-             event_type, data, g_queue_size);
+    LOG_DEBUG("Event notified: %d, data: %p, need_free: %d, queue size: %d", 
+             event_type, data, need_free, g_queue_size);
 
     return ret;
 }
@@ -438,5 +570,25 @@ int event_get_queue_status(int *queue_size) {
     *queue_size = g_queue_size;
     pthread_mutex_unlock(&g_event_mutex);
 
+    return SUCCESS;
+}
+
+/**
+ * @brief 设置事件队列最大大小
+ * @details 用于动态调整事件队列大小
+ * @param max_size 最大队列大小
+ * @return SUCCESS/FAILURE
+ */
+int event_set_max_queue_size(int max_size) {
+    if (max_size <= 0) {
+        LOG_ERROR("Invalid max queue size: %d", max_size);
+        return FAILURE;
+    }
+
+    pthread_mutex_lock(&g_event_mutex);
+    g_max_queue_size = max_size;
+    pthread_mutex_unlock(&g_event_mutex);
+
+    LOG_INFO("Event queue max size set to: %d", max_size);
     return SUCCESS;
 }

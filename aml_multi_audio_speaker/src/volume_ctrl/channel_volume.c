@@ -6,9 +6,9 @@ static int g_chan_init = 0;
 
 int channel_volume_init(void) {
     extern VolumeCtrl_t g_vol_cfg;
-#if (CURRENT_PRODUCT_TYPE == PRODUCT_LOW_END) || (CURRENT_PRODUCT_TYPE == PRODUCT_SUBWOOFER)
+#if (CURRENT_PRODUCT_TYPE == PRODUCT_LOW_END_BT_SPEAKER) || (CURRENT_PRODUCT_TYPE == PRODUCT_SUBWOOFER)
     g_vol_cfg.track = VOLUME_TRACK_SINGLE;
-#elif (CURRENT_PRODUCT_TYPE == PRODUCT_MID_END)
+#elif (CURRENT_PRODUCT_TYPE == PRODUCT_MID_END_SOUNDBAR)
     g_vol_cfg.track = VOLUME_TRACK_DOUBLE;
     g_vol_cfg.left = VOLUME_DEFAULT;
     g_vol_cfg.right = VOLUME_DEFAULT;

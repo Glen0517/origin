@@ -11,13 +11,19 @@ static const int g_base_src[] = {AUDIO_SOURCE_BT, AUDIO_SOURCE_USB};
 /**
  * @brief 音频源模块初始化
  * @details 初始化所有配置的音频源，设置默认音频源为蓝牙
+ * @param cfg 音源配置结构体指针
  * @return 初始化结果：0表示成功，非0表示失败
  */
-int audio_source_init(void) {
+int audio_source_init(AudioSourceConfig_t *cfg) {
     memset(&g_audio_src, 0, sizeof(AudioSource_t));
     g_audio_src.cur_source = AUDIO_SOURCE_BT;                      // 默认音频源为蓝牙
     g_audio_src.src_count = sizeof(g_base_src)/sizeof(int);        // 计算基础音频源数量
     memcpy(g_audio_src.support_src, g_base_src, sizeof(g_base_src)); // 复制基础音频源列表
+    
+    // 如果提供了配置，使用配置中的设置
+    if (cfg) {
+        g_audio_src.auto_switch_en = cfg->auto_switch_en;
+    }
 
     // 基础音源（必加载）
     src_bt_init();       // 初始化蓝牙音频源
@@ -51,7 +57,7 @@ int audio_source_init(void) {
     return 0;
 }
 
-void audio_source_deinit(void) {
+int audio_source_deinit(void) {
     if (g_audio_src.init_ok) {
 #ifdef CONFIG_ENABLE_WIFI_MEDIA
         src_wifi_deinit();
@@ -73,13 +79,15 @@ void audio_source_deinit(void) {
         g_audio_src.init_ok = 0;
         LOG_INFO("Audio source deinit success");
     }
+    return SUCCESS;
 }
 
-int audio_source_switch(int source) {
-    if (!g_audio_src.init_ok || source < AUDIO_SOURCE_BT || source > AUDIO_SOURCE_WIFI) {
-        LOG_ERROR("Source switch failed: invalid source=%d", source);
-        return -1;
+int audio_source_switch(AudioSourceType_e source) {
+    if (!g_audio_src.init_ok) {
+        LOG_ERROR("Source switch failed: not initialized");
+        return FAILURE;
     }
+    
     // 校验是否支持
     int i;
     for (i = 0; i < g_audio_src.src_count; i++) {
@@ -87,11 +95,11 @@ int audio_source_switch(int source) {
     }
     if (i >= g_audio_src.src_count) {
         LOG_ERROR("Source %d not supported", source);
-        return -1;
+        return NOT_SUPPORT;
     }
     g_audio_src.cur_source = source;
     LOG_INFO("Switch source to: %d", source);
-    return 0;
+    return SUCCESS;
 }
 
 /**
@@ -243,8 +251,59 @@ void audio_source_event_poll(void) {
     }
 }
 
-int audio_source_get_current(void) {
+AudioSourceType_e audio_source_get_current(void) {
     return g_audio_src.init_ok ? g_audio_src.cur_source : AUDIO_SOURCE_BT;
+}
+
+/**
+ * @brief 切换到下一个音源(按优先级)
+ * @return 切换后的音源类型
+ */
+AudioSourceType_e audio_source_switch_next(void) {
+    if (!g_audio_src.init_ok) {
+        return AUDIO_SOURCE_BT;
+    }
+    
+    // 找到当前音源在支持列表中的位置
+    int current_idx = -1;
+    for (int i = 0; i < g_audio_src.src_count; i++) {
+        if (g_audio_src.support_src[i] == g_audio_src.cur_source) {
+            current_idx = i;
+            break;
+        }
+    }
+    
+    // 计算下一个音源的索引
+    int next_idx = (current_idx + 1) % g_audio_src.src_count;
+    
+    // 切换到下一个音源
+    audio_source_switch(g_audio_src.support_src[next_idx]);
+    
+    return g_audio_src.cur_source;
+}
+
+/**
+ * @brief 音源状态检测
+ * @param source 音源类型
+ * @return TRUE-有信号 FALSE-无信号
+ */
+bool audio_source_detect(AudioSourceType_e source) {
+    if (!g_audio_src.init_ok) {
+        return FALSE;
+    }
+    
+    // 检查音源是否在支持列表中
+    int i;
+    for (i = 0; i < g_audio_src.src_count; i++) {
+        if (g_audio_src.support_src[i] == source) break;
+    }
+    if (i >= g_audio_src.src_count) {
+        LOG_ERROR("Source %d not supported", source);
+        return FALSE;
+    }
+    
+    // 返回音源状态
+    return g_audio_src.source_status[source] ? TRUE : FALSE;
 }
 
 /**
@@ -256,7 +315,7 @@ static void audio_source_auto_switch(void) {
     }
     
     // 音源优先级列表（从高到低）
-    AudioSource_e priority_list[] = {
+    int priority_list[] = {
         AUDIO_SOURCE_HDMI,
         AUDIO_SOURCE_SPDIF,
         AUDIO_SOURCE_UAC,
@@ -270,14 +329,14 @@ static void audio_source_auto_switch(void) {
     
     // 查找最高优先级的可用音源
     for (int i = 0; i < priority_count; i++) {
-        AudioSource_e source = priority_list[i];
+        int source = priority_list[i];
         
         // 检查音源是否可用
         if (g_audio_src.source_status[source]) {
             // 检查是否需要切换
             if (g_audio_src.cur_source != source) {
                 LOG_INFO("Auto switch to source: %d (priority %d)", source, i+1);
-                audio_source_switch(source);
+                audio_source_switch((AudioSourceType_e)source);
             }
             return;
         }

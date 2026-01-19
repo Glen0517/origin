@@ -2,6 +2,7 @@
 #define __SPDIF_OPTICAL_H__
 
 #include "common_def.h"
+#include "product_type.h"
 
 // 仅高/中端编译
 #if CONFIG_ENABLE_SPDIF

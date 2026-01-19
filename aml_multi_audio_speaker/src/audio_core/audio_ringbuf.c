@@ -9,6 +9,7 @@ static unsigned int g_size = 0;
 static unsigned int g_wr_idx = 0;
 static unsigned int g_rd_idx = 0;
 static pthread_mutex_t g_ringbuf_mutex = PTHREAD_MUTEX_INITIALIZER;
+static bool g_ringbuf_init = false;
 
 int audio_ringbuf_init(unsigned int size) {
     if (size == 0) {
@@ -16,20 +17,33 @@ int audio_ringbuf_init(unsigned int size) {
         return -1;
     }
     
-    g_ringbuf = (unsigned char *)malloc(size);
+    // 检查是否已经初始化
+    if (g_ringbuf_init) {
+        LOG_WARN("Ringbuf already initialized, reinitializing");
+        audio_ringbuf_deinit();
+    }
+    
+    // 确保大小是2的幂，以优化取模操作
+    unsigned int aligned_size = 1;
+    while (aligned_size < size) {
+        aligned_size <<= 1;
+    }
+    
+    g_ringbuf = (unsigned char *)malloc(aligned_size);
     if (!g_ringbuf) {
         LOG_ERROR("Ringbuf malloc failed");
         return -1;
     }
     
     MUTEX_LOCK_LOCK(g_ringbuf_mutex);
-    g_size = size;
+    g_size = aligned_size;
     g_wr_idx = 0;
     g_rd_idx = 0;
     memset(g_ringbuf, 0, g_size);
+    g_ringbuf_init = true;
     MUTEX_LOCK_UNLOCK(g_ringbuf_mutex);
     
-    LOG_INFO("Ringbuf init: %dKB", size/1024);
+    LOG_INFO("Ringbuf init: %dKB (aligned to %dKB)", size/1024, aligned_size/1024);
     return 0;
 }
 
@@ -40,9 +54,70 @@ void audio_ringbuf_deinit(void) {
         g_ringbuf = NULL;
     }
     g_size = g_wr_idx = g_rd_idx = 0;
+    g_ringbuf_init = false;
     MUTEX_LOCK_UNLOCK(g_ringbuf_mutex);
     
     MUTEX_LOCK_DESTROY(g_ringbuf_mutex);
+}
+
+/**
+ * @brief 调整环形缓冲区大小
+ * @param size 新的缓冲区大小
+ * @return 操作结果：0表示成功，非0表示失败
+ */
+int audio_ringbuf_resize(unsigned int size) {
+    if (size == 0) {
+        LOG_ERROR("Ringbuf size invalid");
+        return -1;
+    }
+    
+    // 确保大小是2的幂，以优化取模操作
+    unsigned int aligned_size = 1;
+    while (aligned_size < size) {
+        aligned_size <<= 1;
+    }
+    
+    unsigned char *new_buf = (unsigned char *)malloc(aligned_size);
+    if (!new_buf) {
+        LOG_ERROR("Ringbuf resize malloc failed");
+        return -1;
+    }
+    
+    MUTEX_LOCK_LOCK(g_ringbuf_mutex);
+    
+    // 复制现有数据到新缓冲区
+    unsigned int used_space = (g_wr_idx >= g_rd_idx) ? (g_wr_idx - g_rd_idx) : (g_size - g_rd_idx + g_wr_idx);
+    unsigned int copy_size = (used_space < aligned_size) ? used_space : (aligned_size - 1);
+    
+    if (copy_size > 0) {
+        if (g_wr_idx >= g_rd_idx) {
+            // 数据在缓冲区的连续部分
+            memcpy(new_buf, g_ringbuf + g_rd_idx, copy_size);
+        } else {
+            // 数据环绕缓冲区
+            unsigned int part1 = g_size - g_rd_idx;
+            unsigned int part2 = copy_size - part1;
+            memcpy(new_buf, g_ringbuf + g_rd_idx, part1);
+            memcpy(new_buf + part1, g_ringbuf, part2);
+        }
+    }
+    
+    // 释放旧缓冲区
+    if (g_ringbuf) {
+        free(g_ringbuf);
+    }
+    
+    // 更新缓冲区信息
+    g_ringbuf = new_buf;
+    g_size = aligned_size;
+    g_wr_idx = copy_size;
+    g_rd_idx = 0;
+    
+    MUTEX_LOCK_UNLOCK(g_ringbuf_mutex);
+    
+    LOG_INFO("Ringbuf resized: %dKB (aligned to %dKB), preserved %d bytes", 
+             size/1024, aligned_size/1024, copy_size);
+    return 0;
 }
 
 unsigned int audio_ringbuf_write(unsigned char *data, unsigned int len) {

@@ -1,16 +1,9 @@
 #ifndef __LOGGER_H__
 #define __LOGGER_H__
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdarg.h>
-#include <time.h>
-#include <pthread.h>
-#include <errno.h>
-
-// 先包含 product_type.h，因为它不包含日志级别宏
+#include "common_def.h"
 #include "product_type.h"
+#include <stdarg.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,9 +21,6 @@ typedef enum {
     LOG_LEVEL_DEBUG   = 4     // 调试日志：详细调试信息（如函数入参出参、循环状态、寄存器值）
 } LogLevel_e;
 
-// 现在包含 common_def.h，因为枚举已经定义完成
-#include "common_def.h"
-
 /******************************************************************************************
  * 全局日志配置 - 与log_config.json联动，宏控适配4类产品，无需手动修改
  ******************************************************************************************/
@@ -45,9 +35,9 @@ typedef enum {
  * 低端产品：仅打印ERROR日志，极致精简；高端产品：全开DEBUG日志，调试便利
  * 无需手动修改，编译时自动根据PRODUCT_TYPE切换
  ******************************************************************************************/
-#if (CURRENT_PRODUCT_TYPE == PRODUCT_LOW_END_BT_SPEAKER) || (CURRENT_PRODUCT_TYPE == PRODUCT_SUBWOOFER) || (CURRENT_PRODUCT_TYPE == PRODUCT_GAME_LOW_END)
+#if (CURRENT_PRODUCT_TYPE == PRODUCT_LOW_END) || (CURRENT_PRODUCT_TYPE == PRODUCT_SUBWOOFER)
     #define SYS_LOG_LEVEL         LOG_LEVEL_ERROR
-#elif (CURRENT_PRODUCT_TYPE == PRODUCT_MID_END_SOUNDBAR) || (CURRENT_PRODUCT_TYPE == PRODUCT_GAME_MID_END)
+#elif (CURRENT_PRODUCT_TYPE == PRODUCT_MID_END)
     #define SYS_LOG_LEVEL         LOG_LEVEL_WARN
 #else
     #define SYS_LOG_LEVEL         LOG_LEVEL_DEBUG
@@ -78,6 +68,88 @@ typedef enum {
 #endif
 
 /******************************************************************************************
+ * 【日志模块对外接口】- 标准化工业级实现
+ ******************************************************************************************/
+
+/**
+ * @brief  日志模块初始化
+ * @param  level 日志级别
+ * @param  log_path 日志文件路径，NULL则只输出到控制台
+ * @return SUCCESS/FAILURE
+ */
+int log_init(int level, const char *log_path);
+
+/**
+ * @brief  日志模块反初始化
+ * @return SUCCESS/FAILURE
+ */
+int log_deinit(void);
+
+/**
+ * @brief  设置日志级别
+ * @param  level 日志级别
+ * @return SUCCESS/FAILURE
+ */
+int log_set_level(int level);
+
+/**
+ * @brief  获取当前日志级别
+ * @return 日志级别
+ */
+int log_get_level(void);
+
+/**
+ * @brief  调试日志
+ * @param  func 函数名
+ * @param  line 行号
+ * @param  fmt 格式化字符串
+ * @param  ... 可变参数
+ */
+void log_debug(const char *func, int line, const char *fmt, ...);
+
+/**
+ * @brief  信息日志
+ * @param  func 函数名
+ * @param  line 行号
+ * @param  fmt 格式化字符串
+ * @param  ... 可变参数
+ */
+void log_info(const char *func, int line, const char *fmt, ...);
+
+/**
+ * @brief  警告日志
+ * @param  func 函数名
+ * @param  line 行号
+ * @param  fmt 格式化字符串
+ * @param  ... 可变参数
+ */
+void log_warn(const char *func, int line, const char *fmt, ...);
+
+/**
+ * @brief  错误日志
+ * @param  func 函数名
+ * @param  line 行号
+ * @param  fmt 格式化字符串
+ * @param  ... 可变参数
+ */
+void log_error(const char *func, int line, const char *fmt, ...);
+
+/**
+ * @brief  日志核心打印函数（被日志宏封装，src无需直接调用）
+ */
+void log_print(LogLevel_e level, const char *file, int line, const char *func, const char *fmt, ...);
+
+/**
+ * @brief  日志系统初始化：创建日志目录、初始化互斥锁、加载日志配置，在main.c中调用一次即可
+ */
+int log_system_init(void);
+
+/**
+ * @brief  日志系统反初始化：关闭日志文件、释放锁资源，程序退出时调用
+ */
+void log_system_deinit(void);
+
+/******************************************************************************************
  * 日志格式化宏：自动拼接【时间+模块+等级+文件名+行号】，一键定位问题，无需手动拼接
  * 核心：src业务层直接调用以下宏即可，无需调用任何函数，极致简洁！
  ******************************************************************************************/
@@ -98,22 +170,23 @@ typedef enum {
 #define LOG_STORAGE(fmt, ...)      LOG_DEBUG("[STORAGE] " fmt, ##__VA_ARGS__)
 
 /******************************************************************************************
- * 日志系统核心接口声明（无需src业务层调用，日志宏自动封装）
+ * 兼容原有日志宏，保持向后兼容
  ******************************************************************************************/
-/**
- * @brief 日志系统初始化：创建日志目录、初始化互斥锁、加载日志配置，在main.c中调用一次即可
- */
-int log_system_init(void);
+#ifndef LOG_LEVEL_DEBUG
+#define LOG_LEVEL_DEBUG     4
+#endif
 
-/**
- * @brief 日志系统反初始化：关闭日志文件、释放锁资源，程序退出时调用
- */
-void log_system_deinit(void);
+#ifndef LOG_LEVEL_INFO
+#define LOG_LEVEL_INFO      3
+#endif
 
-/**
- * @brief 日志核心打印函数（被日志宏封装，src无需直接调用）
- */
-void log_print(LogLevel_e level, const char *file, int line, const char *func, const char *fmt, ...);
+#ifndef LOG_LEVEL_WARN
+#define LOG_LEVEL_WARN      2
+#endif
+
+#ifndef LOG_LEVEL_ERROR
+#define LOG_LEVEL_ERROR     1
+#endif
 
 #ifdef __cplusplus
 }

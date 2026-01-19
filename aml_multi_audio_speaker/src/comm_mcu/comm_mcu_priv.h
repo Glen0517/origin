@@ -51,6 +51,12 @@
 #define LED_STATE_BLINK         2
 #define LED_STATE_BREATH        3
 
+// 通信MCU配置结构体
+typedef struct {
+    int baud;               // 波特率
+    int init_ok;            // 初始化状态
+} CommMcuCfg_t;
+
 // 温度湿度数据结构体
 typedef struct {
     int temperature;        // 温度值（摄氏度）

@@ -1,4 +1,4 @@
-#include "logger.h"
+#include "../include/logger.h"
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -164,7 +164,7 @@ static int log_create_dir(const char *path)
             *p = '\0';
             if (access(dir_buf, F_OK) != 0)
             {
-                if (mkdir(dir_buf, 0755) != 0)
+                if (mkdir(dir_buf) != 0)
                 {
                     return -1;
                 }
@@ -176,7 +176,7 @@ static int log_create_dir(const char *path)
 
     if (access(dir_buf, F_OK) != 0)
     {
-        if (mkdir(dir_buf, 0755) != 0)
+        if (mkdir(dir_buf) != 0)
         {
             return -1;
         }

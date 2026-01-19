@@ -1,4 +1,4 @@
-#include "bluetooth.h"
+#include "bt.h"
 #include "bluetooth_priv.h"
 #include "logger.h"
 #include "event.h"
@@ -879,45 +879,45 @@ void bluetooth_event_poll(void)
             g_bt_cfg.bt_connected = conn_status;
             
             if (conn_status) {
-                    LOG_INFO("Bluetooth connected");
-                    
-                    // 获取连接的设备信息
-                    if (hal_bt_get_connected_dev_addr(g_connected_dev_addr, sizeof(g_connected_dev_addr)) == 0) {
-                        LOG_INFO("Connected device address: %s", g_connected_dev_addr);
-                    }
-                    
-                    if (hal_bt_get_connected_dev_name(g_connected_dev_name, sizeof(g_connected_dev_name)) == 0) {
-                        LOG_INFO("Connected device name: %s", g_connected_dev_name);
-                    }
-                    
-                    if (hal_bt_get_connected_dev_type(&g_connected_dev_type) == 0) {
-                        LOG_INFO("Connected device type: %d", g_connected_dev_type);
-                    }
-                    
-                    // 更新LED状态
-                    led_ctrl_set_state(LED_BLUETOOTH, LED_STATE_ON);
-                    
-                    // 更新LCD显示
-                    char lcd_msg[32] = {0};
-                    if (strlen(g_connected_dev_name) > 0) {
-                        snprintf(lcd_msg, sizeof(lcd_msg), "BT: %s", g_connected_dev_name);
-                    } else {
-                        snprintf(lcd_msg, sizeof(lcd_msg), "BT: Connected");
-                    }
-                    lcd_display_text(0, 0, lcd_msg);
-                    
-                    // 发送蓝牙连接事件
-                    event_notify(EVENT_BT_CONNECTED, NULL);
-                    event_notify(EVENT_SOURCE_BT_CONNECTED, NULL);
-                    
-                    // 重置重连尝试次数
-                    g_reconnect_attempts = 0;
-                    
-                    // 自动开始A2DP音频流
-                    if (g_bt_cfg.bt_media_enable) {
-                        bt_a2dp_start_stream();
-                    }
+                LOG_INFO("Bluetooth connected");
+                
+                // 获取连接的设备信息
+                if (hal_bt_get_connected_dev_addr(g_connected_dev_addr, sizeof(g_connected_dev_addr)) == 0) {
+                    LOG_INFO("Connected device address: %s", g_connected_dev_addr);
+                }
+                
+                if (hal_bt_get_connected_dev_name(g_connected_dev_name, sizeof(g_connected_dev_name)) == 0) {
+                    LOG_INFO("Connected device name: %s", g_connected_dev_name);
+                }
+                
+                if (hal_bt_get_connected_dev_type(&g_connected_dev_type) == 0) {
+                    LOG_INFO("Connected device type: %d", g_connected_dev_type);
+                }
+                
+                // 更新LED状态
+                led_ctrl_set_state(LED_BLUETOOTH, LED_STATE_ON);
+                
+                // 更新LCD显示
+                char lcd_msg[32] = {0};
+                if (strlen(g_connected_dev_name) > 0) {
+                    snprintf(lcd_msg, sizeof(lcd_msg), "BT: %s", g_connected_dev_name);
                 } else {
+                    snprintf(lcd_msg, sizeof(lcd_msg), "BT: Connected");
+                }
+                lcd_display_text(0, 0, lcd_msg);
+                
+                // 发送蓝牙连接事件
+                event_notify(EVENT_BT_CONNECTED, NULL);
+                event_notify(EVENT_SOURCE_BT_CONNECTED, NULL);
+                
+                // 重置重连尝试次数
+                g_reconnect_attempts = 0;
+                
+                // 自动开始A2DP音频流
+                if (g_bt_cfg.bt_media_enable) {
+                    bt_a2dp_start_stream();
+                }
+            } else {
                 LOG_INFO("Bluetooth disconnected");
                 
                 // 获取断连原因
@@ -1028,3 +1028,107 @@ void bluetooth_event_poll(void)
         hal_bt_event_poll();
     }
 }
+
+#if CONFIG_ENABLE_BT_MESH
+/**
+ * @brief  蓝牙MESH组网(高端+低音炮专属)
+ * @return SUCCESS/FAILURE
+ */
+int bluetooth_mesh_create_network(void)
+{
+    if (!g_bt_cfg.init_ok) {
+        LOG_ERROR("Bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    if (!g_bt_cfg.mesh_en) {
+        LOG_ERROR("Bluetooth MESH not enabled");
+        return FAILURE;
+    }
+    
+    LOG_INFO("Creating Bluetooth MESH network...");
+    
+    // 创建蓝牙MESH网络
+    if (hal_bt_mesh_create_network() != 0) {
+        LOG_ERROR("Failed to create Bluetooth MESH network");
+        return FAILURE;
+    }
+    
+    // 更新LED状态
+    led_ctrl_set_state(LED_BLUETOOTH, LED_STATE_BLINK);
+    
+    // 更新LCD显示
+    lcd_display_text(0, 0, "BT: MESH Network Created");
+    
+    LOG_INFO("Bluetooth MESH network created successfully");
+    return SUCCESS;
+}
+
+/**
+ * @brief  蓝牙MESH配对(高端+低音炮专属)
+ * @return SUCCESS/FAILURE
+ */
+int bluetooth_mesh_pair(void)
+{
+    if (!g_bt_cfg.init_ok) {
+        LOG_ERROR("Bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    if (!g_bt_cfg.mesh_en) {
+        LOG_ERROR("Bluetooth MESH not enabled");
+        return FAILURE;
+    }
+    
+    LOG_INFO("Starting Bluetooth MESH pairing...");
+    
+    // 开始蓝牙MESH配对
+    if (hal_bt_mesh_pair() != 0) {
+        LOG_ERROR("Failed to start Bluetooth MESH pairing");
+        return FAILURE;
+    }
+    
+    // 更新LED状态
+    led_ctrl_set_state(LED_BLUETOOTH, LED_STATE_BLINK);
+    
+    // 更新LCD显示
+    lcd_display_text(0, 0, "BT: MESH Pairing");
+    
+    LOG_INFO("Bluetooth MESH pairing started");
+    return SUCCESS;
+}
+
+/**
+ * @brief  蓝牙MESH音量同步(高端+低音炮专属)
+ * @param  vol 音量值
+ * @return SUCCESS/FAILURE
+ */
+int bluetooth_mesh_sync_volume(int vol)
+{
+    if (!g_bt_cfg.init_ok) {
+        LOG_ERROR("Bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    if (!g_bt_cfg.mesh_en) {
+        LOG_ERROR("Bluetooth MESH not enabled");
+        return FAILURE;
+    }
+    
+    if (vol < 0 || vol > 100) {
+        LOG_ERROR("Invalid volume value: %d", vol);
+        return FAILURE;
+    }
+    
+    LOG_INFO("Syncing Bluetooth MESH volume to %d", vol);
+    
+    // 同步蓝牙MESH音量
+    if (hal_bt_mesh_sync_volume(vol) != 0) {
+        LOG_ERROR("Failed to sync Bluetooth MESH volume");
+        return FAILURE;
+    }
+    
+    LOG_INFO("Bluetooth MESH volume synced successfully");
+    return SUCCESS;
+}
+#endif

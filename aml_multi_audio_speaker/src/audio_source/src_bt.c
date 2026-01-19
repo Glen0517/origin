@@ -1,7 +1,7 @@
 #include "audio_source_priv.h"
 #include "logger.h"
 #include "audio_core.h"
-#include "bluetooth.h"
+#include "bt.h"
 #include "peripheral.h"
 #include "peripheral_priv.h"
 #include "event.h"

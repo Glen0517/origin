@@ -1,0 +1,12 @@
+{
+    "files.associations": {
+        "product_type.h": "c",
+        "audio_source.h": "c",
+        "common_def.h": "c",
+        "audio_source_priv.h": "c",
+        "peripheral_priv.h": "c",
+        "hdmi_arc.h": "c",
+        "bt.h": "c",
+        "logger.h": "c"
+    }
+}

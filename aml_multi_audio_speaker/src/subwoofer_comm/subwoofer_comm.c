@@ -1,7 +1,7 @@
 #include "subwoofer_comm.h"
 #include "logger.h"
 #include "product_type.h"
-#include "bluetooth.h"
+#include "bt.h"
 #include "audio_core.h"
 #include "common_def.h"
 

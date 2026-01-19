@@ -12,6 +12,7 @@ typedef struct {
     int pcm_buffer_size;// PCM缓冲区大小
     bool hw_decode_en;  // 是否开启硬件解码
     bool dolby_dts_en;  // 是否开启杜比DTS
+    int init_ok;        // 初始化状态 0-未初始化 1-已初始化
 } AudioCoreConfig_t;
 
 /******************************************************************************************

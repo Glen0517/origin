@@ -140,6 +140,17 @@ int event_system_deinit(void);
 int event_subscribe(int event_type, EventCallback_t callback, void *user_data);
 
 /**
+ * @brief 订阅事件（带优先级）
+ * @details 注册事件回调函数，当指定事件发生时，将调用该回调函数
+ * @param event_type 事件类型
+ * @param callback 事件回调函数
+ * @param user_data 用户自定义数据，回调时传入
+ * @param priority 回调优先级（0-9，数字越小优先级越高）
+ * @return SUCCESS/FAILURE/INVALID_PARAM
+ */
+int event_subscribe_with_priority(int event_type, EventCallback_t callback, void *user_data, int priority);
+
+/**
  * @brief 取消订阅事件
  * @details 移除已注册的事件回调函数
  * @param event_type 事件类型
@@ -158,6 +169,16 @@ int event_unsubscribe(int event_type, EventCallback_t callback);
 int event_notify(int event_type, void *data);
 
 /**
+ * @brief 发布事件（可指定是否需要释放数据）
+ * @details 发送事件到事件队列，由事件系统异步分发
+ * @param event_type 事件类型
+ * @param data 事件数据，根据事件类型不同而不同
+ * @param need_free 事件数据是否需要自动释放
+ * @return SUCCESS/FAILURE/INVALID_PARAM
+ */
+int event_notify_with_free(int event_type, void *data, bool need_free);
+
+/**
  * @brief 发布同步事件
  * @details 立即分发事件，阻塞直到所有订阅者处理完成
  * @param event_type 事件类型
@@ -173,5 +194,13 @@ int event_notify_sync(int event_type, void *data);
  * @return SUCCESS/FAILURE/INVALID_PARAM
  */
 int event_get_queue_status(int *queue_size);
+
+/**
+ * @brief 设置事件队列最大大小
+ * @details 用于动态调整事件队列大小
+ * @param max_size 最大队列大小
+ * @return SUCCESS/FAILURE
+ */
+int event_set_max_queue_size(int max_size);
 
 #endif // __EVENT_H__

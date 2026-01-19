@@ -3,6 +3,12 @@
 #include "logger.h"
 #include "event.h"
 #include "pal.h"  // 平台抽象层
+#include "peripheral.h"  // 外设管理
+#include "common_def.h"  // 通用定义
+#include <time.h>  // 时间函数
+
+// LED索引定义
+#define LED_SYSTEM            0     // 系统指示灯
 
 static SystemCfg_t g_sys_cfg = {0};
 
@@ -13,6 +19,8 @@ int system_init(void)
     sys_init_core();
     // 宏控加载：OTA升级功能 分级裁剪
     sys_ota_init();
+    // 初始化系统API
+    system_api_init();
     g_sys_cfg.init_ok = 1;
     LOG_INFO("System module init success (OTA: %d)", CONFIG_ENABLE_DUAL_OTA);
     return 0;
@@ -24,6 +32,8 @@ void system_deinit(void)
     {
         sys_ota_deinit();
         sys_init_deinit();
+        // 反初始化系统API
+        system_api_deinit();
         g_sys_cfg.init_ok = 0;
         LOG_INFO("System module deinit success");
     }
@@ -38,7 +48,7 @@ int system_set_state(SysState_e state) {
     LOG_INFO("Setting system state to: %d", state);
     
     // 验证状态值
-    if (state < SYS_STATE_IDLE || state > SYS_STATE_ERROR) {
+    if (state < SYS_STATE_IDLE || state > SYS_STATE_STANDBY) {
         LOG_ERROR("Invalid system state: %d", state);
         return FAILURE;
     }

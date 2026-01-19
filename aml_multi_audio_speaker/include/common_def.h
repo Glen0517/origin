@@ -39,6 +39,7 @@
 #define JSON_CONFIG_PATH            "/etc/aml_soundbar/config/" // 量产配置路径
 #define DEV_CONFIG_PATH             "./config/"                 // 开发配置路径
 #define FLASH_CALIB_ADDR            0x000E0000                  // FLASH校准分区地址
+#define SYSTEM_VERSION              "1.0.0"                    // 系统版本号
 
 /******************************************************************************************
  * 【全局枚举定义】- 所有模块共用，统一规范，无零散枚举
@@ -94,6 +95,18 @@ typedef enum {
     LED_STATE_BREATH
 } LedState_e;
 
+// LED状态兼容别名
+#define LED_STATE_BLINK        LED_STATE_FLASH_SLOW
+#define LED_STATE_BLINK_SLOW    LED_STATE_FLASH_SLOW
+#define LED_STATE_BLINK_FAST    LED_STATE_FLASH_FAST
+
+// LED索引常量定义
+#define LED_BLUETOOTH     0   // 蓝牙LED
+#define LED_PLAY         1   // 播放状态LED
+#define LED_SYSTEM       2   // 系统LED
+#define LED_SOURCE       3   // 音源LED
+#define LED_VOLUME       4   // 音量LED
+
 /******************************************************************************************
  * 【全局结构体定义】- 通用结构体，所有模块共用
  ******************************************************************************************/
@@ -117,17 +130,17 @@ typedef struct {
 /******************************************************************************************
  * 【日志宏定义】- 分级日志，量产关闭DEBUG，开发开启，一键切换
  ******************************************************************************************/
-#define LOG_LEVEL_DEBUG     1
-#define LOG_LEVEL_INFO      2
-#define LOG_LEVEL_WARN      3
-#define LOG_LEVEL_ERROR     4
+#define LOG_LEVEL_DEBUG     4
+#define LOG_LEVEL_INFO      3
+#define LOG_LEVEL_WARN      2
+#define LOG_LEVEL_ERROR     1
 
 #ifndef LOG_LEVEL
 #define LOG_LEVEL           LOG_LEVEL_INFO // 默认日志级别
 #endif
 
 #define LOG_PRINT(level, fmt, ...) do { \
-    if (level >= LOG_LEVEL) { \
+    if (level <= LOG_LEVEL) { \
         printf("[%s][%s:%d] "fmt"\n", #level, __func__, __LINE__, ##__VA_ARGS__); \
     } \
 } while(0)

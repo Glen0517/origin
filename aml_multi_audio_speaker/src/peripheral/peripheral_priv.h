@@ -24,6 +24,8 @@ int led_ctrl_set_state(int led_idx, LedState_e state);
 int lcd_display_init(void);
 void lcd_display_deinit(void);
 void lcd_display_event_poll(void);
+int lcd_display_text(int row, int col, const char *text);
+int lcd_display_clear(void);
 
 int prompt_sound_init(void);
 void prompt_sound_deinit(void);

@@ -178,3 +178,710 @@ int hal_bt_mesh_event_poll(void) {
     return SUCCESS;
     #endif
 }
+
+/**
+ * @brief 设置蓝牙设备名称
+ * @details 设置蓝牙设备的显示名称
+ * @param name 设备名称字符串
+ * @return 设置结果：0表示成功，非0表示失败
+ */
+int hal_bt_set_device_name(const char *name) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    if (!name) {
+        LOG_ERROR("Invalid device name");
+        return FAILURE;
+    }
+    
+    int ret = aml_bt_set_device_name(name);
+    if (ret != 0) {
+        LOG_ERROR("Amlogic bluetooth set device name failed: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_INFO("HAL bluetooth device name set to: %s", name);
+    return SUCCESS;
+}
+
+/**
+ * @brief 设置蓝牙配对码
+ * @details 设置蓝牙设备的配对码
+ * @param pin 配对码字符串
+ * @return 设置结果：0表示成功，非0表示失败
+ */
+int hal_bt_set_pin_code(const char *pin) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    if (!pin) {
+        LOG_ERROR("Invalid pin code");
+        return FAILURE;
+    }
+    
+    int ret = aml_bt_set_pin_code(pin);
+    if (ret != 0) {
+        LOG_ERROR("Amlogic bluetooth set pin code failed: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_INFO("HAL bluetooth pin code set successfully");
+    return SUCCESS;
+}
+
+/**
+ * @brief 设置蓝牙可发现模式
+ * @details 设置蓝牙设备是否可被其他设备发现
+ * @param discoverable 是否可发现
+ * @return 设置结果：0表示成功，非0表示失败
+ */
+int hal_bt_set_discoverable(bool discoverable) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    int ret = aml_bt_set_discoverable(discoverable);
+    if (ret != 0) {
+        LOG_ERROR("Amlogic bluetooth set discoverable failed: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_INFO("HAL bluetooth discoverable set to: %d", discoverable);
+    return SUCCESS;
+}
+
+/**
+ * @brief 设置蓝牙可配对模式
+ * @details 设置蓝牙设备是否可被其他设备配对
+ * @param pairable 是否可配对
+ * @return 设置结果：0表示成功，非0表示失败
+ */
+int hal_bt_set_pairable(bool pairable) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    int ret = aml_bt_set_pairable(pairable);
+    if (ret != 0) {
+        LOG_ERROR("Amlogic bluetooth set pairable failed: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_INFO("HAL bluetooth pairable set to: %d", pairable);
+    return SUCCESS;
+}
+
+/**
+ * @brief 设置蓝牙可配对超时时间
+ * @details 设置蓝牙设备可配对模式的超时时间
+ * @param timeout 超时时间（秒）
+ * @return 设置结果：0表示成功，非0表示失败
+ */
+int hal_bt_set_pairable_timeout(int timeout) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    if (timeout < 0) {
+        LOG_ERROR("Invalid timeout value: %d", timeout);
+        return FAILURE;
+    }
+    
+    int ret = aml_bt_set_pairable_timeout(timeout);
+    if (ret != 0) {
+        LOG_ERROR("Amlogic bluetooth set pairable timeout failed: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_INFO("HAL bluetooth pairable timeout set to: %d seconds", timeout);
+    return SUCCESS;
+}
+
+/**
+ * @brief 获取已连接蓝牙设备名称
+ * @details 获取当前已连接的蓝牙设备名称
+ * @param name 设备名称缓冲区
+ * @param len 缓冲区长度
+ * @return 获取结果：0表示成功，非0表示失败
+ */
+int hal_bt_get_connected_dev_name(char *name, int len) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    if (!name || len <= 0) {
+        LOG_ERROR("Invalid parameters");
+        return FAILURE;
+    }
+    
+    int ret = aml_bt_get_connected_dev_name(name, len);
+    if (ret != 0) {
+        LOG_ERROR("Amlogic bluetooth get connected device name failed: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_DEBUG("HAL bluetooth connected device name: %s", name);
+    return SUCCESS;
+}
+
+/**
+ * @brief 获取已连接蓝牙设备地址
+ * @details 获取当前已连接的蓝牙设备地址
+ * @param addr 设备地址缓冲区
+ * @param len 缓冲区长度
+ * @return 获取结果：0表示成功，非0表示失败
+ */
+int hal_bt_get_connected_dev_addr(char *addr, int len) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    if (!addr || len <= 0) {
+        LOG_ERROR("Invalid parameters");
+        return FAILURE;
+    }
+    
+    int ret = aml_bt_get_connected_dev_addr(addr, len);
+    if (ret != 0) {
+        LOG_ERROR("Amlogic bluetooth get connected device address failed: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_DEBUG("HAL bluetooth connected device address: %s", addr);
+    return SUCCESS;
+}
+
+/**
+ * @brief 获取已连接蓝牙设备类型
+ * @details 获取当前已连接的蓝牙设备类型
+ * @param type 设备类型指针
+ * @return 获取结果：0表示成功，非0表示失败
+ */
+int hal_bt_get_connected_dev_type(int *type) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    if (!type) {
+        LOG_ERROR("Invalid parameters");
+        return FAILURE;
+    }
+    
+    int ret = aml_bt_get_connected_dev_type(type);
+    if (ret != 0) {
+        LOG_ERROR("Amlogic bluetooth get connected device type failed: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_DEBUG("HAL bluetooth connected device type: %d", *type);
+    return SUCCESS;
+}
+
+/**
+ * @brief 获取蓝牙断连原因
+ * @details 获取蓝牙断开连接的原因
+ * @return 断连原因：0表示未知，1表示正常断开，2表示信号丢失，3表示设备电量低，4表示其他
+ */
+int hal_bt_get_disconnect_reason(void) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return 0;
+    }
+    
+    int reason = aml_bt_get_disconnect_reason();
+    LOG_DEBUG("HAL bluetooth disconnect reason: %d", reason);
+    return reason;
+}
+
+/**
+ * @brief 连接蓝牙设备
+ * @details 连接指定地址的蓝牙设备
+ * @param addr 蓝牙设备地址
+ * @return 连接结果：0表示成功，非0表示失败
+ */
+int hal_bt_connect(const char *addr) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    if (!addr || strlen(addr) != 17) {
+        LOG_ERROR("Invalid Bluetooth device address: %s", addr);
+        return FAILURE;
+    }
+    
+    int ret = aml_bt_connect(addr);
+    if (ret != 0) {
+        LOG_ERROR("Amlogic bluetooth connect failed: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_INFO("HAL bluetooth connect initiated to: %s", addr);
+    return SUCCESS;
+}
+
+/**
+ * @brief 断开蓝牙连接
+ * @details 断开当前蓝牙设备的连接
+ * @return 断开结果：0表示成功，非0表示失败
+ */
+int hal_bt_disconnect(void) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    int ret = aml_bt_disconnect();
+    if (ret != 0) {
+        LOG_ERROR("Amlogic bluetooth disconnect failed: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_INFO("HAL bluetooth disconnect initiated");
+    return SUCCESS;
+}
+
+/**
+ * @brief 初始化蓝牙A2DP功能
+ * @details 初始化蓝牙A2DP协议相关的功能
+ * @return 初始化结果：0表示成功，非0表示失败
+ */
+int hal_bt_a2dp_init(void) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    int ret = aml_bt_a2dp_init();
+    if (ret != 0) {
+        LOG_ERROR("Amlogic bluetooth A2DP init failed: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_INFO("HAL bluetooth A2DP init success");
+    return SUCCESS;
+}
+
+/**
+ * @brief 反初始化蓝牙A2DP功能
+ * @details 反初始化蓝牙A2DP协议相关的功能
+ * @return 反初始化结果：0表示成功，非0表示失败
+ */
+int hal_bt_a2dp_deinit(void) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    int ret = aml_bt_a2dp_deinit();
+    if (ret != 0) {
+        LOG_ERROR("Amlogic bluetooth A2DP deinit failed: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_INFO("HAL bluetooth A2DP deinit success");
+    return SUCCESS;
+}
+
+/**
+ * @brief 开始蓝牙A2DP音频流
+ * @details 开始蓝牙A2DP音频流的传输
+ * @return 操作结果：0表示成功，非0表示失败
+ */
+int hal_bt_a2dp_start_stream(void) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    int ret = aml_bt_a2dp_start_stream();
+    if (ret != 0) {
+        LOG_ERROR("Amlogic bluetooth A2DP start stream failed: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_INFO("HAL bluetooth A2DP stream started");
+    return SUCCESS;
+}
+
+/**
+ * @brief 停止蓝牙A2DP音频流
+ * @details 停止蓝牙A2DP音频流的传输
+ * @return 操作结果：0表示成功，非0表示失败
+ */
+int hal_bt_a2dp_stop_stream(void) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    int ret = aml_bt_a2dp_stop_stream();
+    if (ret != 0) {
+        LOG_ERROR("Amlogic bluetooth A2DP stop stream failed: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_INFO("HAL bluetooth A2DP stream stopped");
+    return SUCCESS;
+}
+
+/**
+ * @brief 设置蓝牙A2DP音量
+ * @details 设置蓝牙A2DP音频流的音量
+ * @param volume 音量值（0-100）
+ * @return 设置结果：0表示成功，非0表示失败
+ */
+int hal_bt_a2dp_set_volume(int volume) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    if (volume < 0 || volume > 100) {
+        LOG_ERROR("Invalid A2DP volume: %d", volume);
+        return FAILURE;
+    }
+    
+    int ret = aml_bt_a2dp_set_volume(volume);
+    if (ret != 0) {
+        LOG_ERROR("Amlogic bluetooth A2DP set volume failed: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_INFO("HAL bluetooth A2DP volume set to: %d", volume);
+    return SUCCESS;
+}
+
+/**
+ * @brief 获取蓝牙A2DP音量
+ * @details 获取蓝牙A2DP音频流的当前音量
+ * @return 音量值（0-100），失败返回-1
+ */
+int hal_bt_a2dp_get_volume(void) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return -1;
+    }
+    
+    int volume = aml_bt_a2dp_get_volume();
+    if (volume < 0) {
+        LOG_ERROR("Amlogic bluetooth A2DP get volume failed");
+        return -1;
+    }
+    
+    LOG_DEBUG("HAL bluetooth A2DP volume: %d", volume);
+    return volume;
+}
+
+/**
+ * @brief 设置蓝牙A2DP音频参数
+ * @details 设置蓝牙A2DP音频流的参数
+ * @param sample_rate 采样率
+ * @param channels 声道数
+ * @param bit_depth 比特深度
+ * @return 设置结果：0表示成功，非0表示失败
+ */
+int hal_bt_a2dp_set_audio_params(int sample_rate, int channels, int bit_depth) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    if (sample_rate <= 0 || channels <= 0 || bit_depth <= 0) {
+        LOG_ERROR("Invalid A2DP audio parameters");
+        return FAILURE;
+    }
+    
+    int ret = aml_bt_a2dp_set_audio_params(sample_rate, channels, bit_depth);
+    if (ret != 0) {
+        LOG_ERROR("Amlogic bluetooth A2DP set audio parameters failed: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_INFO("HAL bluetooth A2DP audio parameters set: sample_rate=%d, channels=%d, bit_depth=%d", 
+             sample_rate, channels, bit_depth);
+    return SUCCESS;
+}
+
+/**
+ * @brief 蓝牙A2DP播放控制：播放
+ * @details 控制蓝牙A2DP音频流开始播放
+ * @return 操作结果：0表示成功，非0表示失败
+ */
+int hal_bt_a2dp_play(void) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    int ret = aml_bt_a2dp_play();
+    if (ret != 0) {
+        LOG_ERROR("Amlogic bluetooth A2DP play failed: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_INFO("HAL bluetooth A2DP play command sent");
+    return SUCCESS;
+}
+
+/**
+ * @brief 蓝牙A2DP播放控制：暂停
+ * @details 控制蓝牙A2DP音频流暂停播放
+ * @return 操作结果：0表示成功，非0表示失败
+ */
+int hal_bt_a2dp_pause(void) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    int ret = aml_bt_a2dp_pause();
+    if (ret != 0) {
+        LOG_ERROR("Amlogic bluetooth A2DP pause failed: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_INFO("HAL bluetooth A2DP pause command sent");
+    return SUCCESS;
+}
+
+/**
+ * @brief 蓝牙A2DP播放控制：停止
+ * @details 控制蓝牙A2DP音频流停止播放
+ * @return 操作结果：0表示成功，非0表示失败
+ */
+int hal_bt_a2dp_stop(void) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    int ret = aml_bt_a2dp_stop();
+    if (ret != 0) {
+        LOG_ERROR("Amlogic bluetooth A2DP stop failed: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_INFO("HAL bluetooth A2DP stop command sent");
+    return SUCCESS;
+}
+
+/**
+ * @brief 蓝牙A2DP播放控制：下一曲
+ * @details 控制蓝牙A2DP音频流播放下一曲
+ * @return 操作结果：0表示成功，非0表示失败
+ */
+int hal_bt_a2dp_next(void) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    int ret = aml_bt_a2dp_next();
+    if (ret != 0) {
+        LOG_ERROR("Amlogic bluetooth A2DP next failed: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_INFO("HAL bluetooth A2DP next command sent");
+    return SUCCESS;
+}
+
+/**
+ * @brief 蓝牙A2DP播放控制：上一曲
+ * @details 控制蓝牙A2DP音频流播放上一曲
+ * @return 操作结果：0表示成功，非0表示失败
+ */
+int hal_bt_a2dp_prev(void) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    int ret = aml_bt_a2dp_prev();
+    if (ret != 0) {
+        LOG_ERROR("Amlogic bluetooth A2DP prev failed: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_INFO("HAL bluetooth A2DP prev command sent");
+    return SUCCESS;
+}
+
+/**
+ * @brief 蓝牙A2DP音量控制：增加音量
+ * @details 控制蓝牙A2DP音频流增加音量
+ * @return 操作结果：0表示成功，非0表示失败
+ */
+int hal_bt_a2dp_volume_up(void) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    int ret = aml_bt_a2dp_volume_up();
+    if (ret != 0) {
+        LOG_ERROR("Amlogic bluetooth A2DP volume up failed: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_INFO("HAL bluetooth A2DP volume up command sent");
+    return SUCCESS;
+}
+
+/**
+ * @brief 蓝牙A2DP音量控制：减少音量
+ * @details 控制蓝牙A2DP音频流减少音量
+ * @return 操作结果：0表示成功，非0表示失败
+ */
+int hal_bt_a2dp_volume_down(void) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    int ret = aml_bt_a2dp_volume_down();
+    if (ret != 0) {
+        LOG_ERROR("Amlogic bluetooth A2DP volume down failed: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_INFO("HAL bluetooth A2DP volume down command sent");
+    return SUCCESS;
+}
+
+/**
+ * @brief 蓝牙A2DP音量控制：静音
+ * @details 控制蓝牙A2DP音频流静音
+ * @return 操作结果：0表示成功，非0表示失败
+ */
+int hal_bt_a2dp_mute(void) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    int ret = aml_bt_a2dp_mute();
+    if (ret != 0) {
+        LOG_ERROR("Amlogic bluetooth A2DP mute failed: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_INFO("HAL bluetooth A2DP mute command sent");
+    return SUCCESS;
+}
+
+/**
+ * @brief 蓝牙A2DP音量控制：取消静音
+ * @details 控制蓝牙A2DP音频流取消静音
+ * @return 操作结果：0表示成功，非0表示失败
+ */
+int hal_bt_a2dp_unmute(void) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    int ret = aml_bt_a2dp_unmute();
+    if (ret != 0) {
+        LOG_ERROR("Amlogic bluetooth A2DP unmute failed: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_INFO("HAL bluetooth A2DP unmute command sent");
+    return SUCCESS;
+}
+
+/**
+ * @brief 创建蓝牙MESH网络
+ * @details 创建蓝牙MESH网络
+ * @return 创建结果：0表示成功，非0表示失败
+ */
+int hal_bt_mesh_create_network(void) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    #ifdef CONFIG_ENABLE_BT_MESH
+    int ret = aml_bt_mesh_create_network();
+    if (ret != 0) {
+        LOG_ERROR("Amlogic bluetooth MESH create network failed: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_INFO("HAL bluetooth MESH network created");
+    return SUCCESS;
+    #else
+    LOG_WARN("BT MESH not enabled");
+    return FAILURE;
+    #endif
+}
+
+/**
+ * @brief 蓝牙MESH配对
+ * @details 进行蓝牙MESH设备配对
+ * @return 配对结果：0表示成功，非0表示失败
+ */
+int hal_bt_mesh_pair(void) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    #ifdef CONFIG_ENABLE_BT_MESH
+    int ret = aml_bt_mesh_pair();
+    if (ret != 0) {
+        LOG_ERROR("Amlogic bluetooth MESH pair failed: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_INFO("HAL bluetooth MESH pairing started");
+    return SUCCESS;
+    #else
+    LOG_WARN("BT MESH not enabled");
+    return FAILURE;
+    #endif
+}
+
+/**
+ * @brief 蓝牙MESH音量同步
+ * @details 同步蓝牙MESH网络中所有设备的音量
+ * @param vol 音量值
+ * @return 同步结果：0表示成功，非0表示失败
+ */
+int hal_bt_mesh_sync_volume(int vol) {
+    if (!g_bt_init) {
+        LOG_ERROR("HAL bluetooth not initialized");
+        return FAILURE;
+    }
+    
+    if (vol < 0 || vol > 100) {
+        LOG_ERROR("Invalid MESH volume: %d", vol);
+        return FAILURE;
+    }
+    
+    #ifdef CONFIG_ENABLE_BT_MESH
+    int ret = aml_bt_mesh_sync_volume(vol);
+    if (ret != 0) {
+        LOG_ERROR("Amlogic bluetooth MESH sync volume failed: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_INFO("HAL bluetooth MESH volume synced to: %d", vol);
+    return SUCCESS;
+    #else
+    LOG_WARN("BT MESH not enabled");
+    return FAILURE;
+    #endif
+}

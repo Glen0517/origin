@@ -25,7 +25,7 @@
 #include "volume_ctrl.h"       // 音量控制
 #include "peripheral.h"        // 外设管理
 #include "storage.h"           // 存储管理
-#include "bluetooth.h"         // 蓝牙模块
+#include "bt.h"         // 蓝牙模块
 #include "system.h"            // 系统管理
 #include "comm_mcu.h"          // MCU通信  
 
@@ -153,20 +153,58 @@ static int module_init_all(void) {
     if (CURRENT_PRODUCT_TYPE != PRODUCT_GAME_LOW_END) {
         ret |= storage_init();                  // 存储管理模块，负责U盘挂载和媒体扫描
         ret |= peripheral_init(&peri_cfg);       // 外设管理模块，负责按键、红外等
-        ret |= bluetooth_init();                // 蓝牙模块，负责蓝牙连接和音频传输
+        // 初始化蓝牙模块，使用默认配置
+        BluetoothConfig_t bt_cfg = {
+            .bt_name = "AML Audio Speaker",
+            .bt_pin = "0000",
+            .bt_auto_connect = true,
+            .bt_mesh_en = false
+        };
+#ifdef CONFIG_ENABLE_BT_MESH
+        bt_cfg.bt_mesh_en = true;
+#endif
+        ret |= bluetooth_init(&bt_cfg);         // 蓝牙模块，负责蓝牙连接和音频传输
     } else {
         // 低端游戏音响：仅初始化必要模块
         ret |= audio_core_init(&audio_cfg);     // 音频核心模块，负责音频解码和输出
-        ret |= volume_ctrl_init();              // 音量控制模块，负责音量调节
+        // 初始化音量控制模块，使用默认音量设置
+        VolumeInfo_t default_vol = {
+            .master_volume = DEFAULT_VOLUME_VAL,
+            .bass_volume = DEFAULT_VOLUME_VAL,
+            .treble_volume = DEFAULT_VOLUME_VAL,
+            .is_mute = false
+        };
+        ret |= volume_ctrl_init(&default_vol);  // 音量控制模块，负责音量调节
         ret |= system_init();                   // 系统管理模块，负责系统状态和异常处理
     }
     
     // 非低端游戏音响初始化其他模块
     if (CURRENT_PRODUCT_TYPE != PRODUCT_GAME_LOW_END) {
         ret |= audio_core_init(&audio_cfg);     // 音频核心模块，负责音频解码和输出
-        ret |= audio_source_init();             // 音频源模块，负责管理各种音频输入源
-        ret |= volume_ctrl_init();              // 音量控制模块，负责音量调节
-        ret |= play_ctrl_init();                // 播放控制模块，负责播放状态和音效
+        // 初始化音频源模块，使用默认配置
+        AudioSourceConfig_t as_cfg = {
+            .source_list = {SOURCE_BLUETOOTH, SOURCE_USB, SOURCE_HDMI_ARC, SOURCE_SPDIF, SOURCE_AUX, SOURCE_WIFI},
+            .source_cnt = 6,
+            .default_source = SOURCE_BLUETOOTH,
+            .auto_switch_en = true
+        };
+        ret |= audio_source_init(&as_cfg);      // 音频源模块，负责管理各种音频输入源
+        // 初始化音量控制模块，使用默认音量设置
+        VolumeInfo_t default_vol = {
+            .master_volume = DEFAULT_VOLUME_VAL,
+            .bass_volume = DEFAULT_VOLUME_VAL,
+            .treble_volume = DEFAULT_VOLUME_VAL,
+            .is_mute = false
+        };
+        ret |= volume_ctrl_init(&default_vol);  // 音量控制模块，负责音量调节
+        // 初始化播放控制模块，使用默认配置
+        PlayCtrlConfig_t pc_cfg = {
+            .power_off_resume_en = true,
+            .boot_default_play_en = false,
+            .bt_reconnect_timeout = 10,
+            .default_mode = SOUND_MODE_NORMAL
+        };
+        ret |= play_ctrl_init(&pc_cfg);         // 播放控制模块，负责播放状态和音效
         ret |= comm_mcu_init();                 // MCU通信模块，负责与外设MCU通信
         ret |= system_init();                   // 系统管理模块，负责系统状态和异常处理
         ret |= prod_test_init();                // 生产测试模块，负责生产过程中的测试
@@ -181,7 +219,12 @@ static int module_init_all(void) {
     ret |= spdif_optical_init(&spdif_cfg); // SPDIF模块，负责光纤/同轴音频接收
 #endif
 #ifdef CONFIG_ENABLE_DOLBY_DTS
-    ret |= sound_effects_init();           // 音效模块，负责杜比DTS解码和音效处理
+    // 初始化音效模块，使用默认配置
+    SoundEffectsConfig_t se_cfg = {
+        .dolby_en = true,
+        .virtual_5_1_en = false
+    };
+    ret |= sound_effects_init(&se_cfg);    // 音效模块，负责杜比DTS解码和音效处理
 #endif
 #ifdef CONFIG_ENABLE_VOICE_NOISE_REDUCTION
     ret |= voice_noise_reduction_init();   // 语音降噪模块，负责语音处理
@@ -196,7 +239,14 @@ static int module_init_all(void) {
     ret |= wifi_media_init(&wifi_cfg);     // WIFI媒体模块，负责DLNA和AirPlay
 #endif
 #ifdef CONFIG_ENABLE_BT_MESH
-    ret |= subwoofer_comm_init();          // 低音炮通信模块，负责与低音炮的蓝牙通信
+    // 初始化低音炮通信模块，使用默认配置
+    SubwooferConfig_t sw_cfg = {
+        .bt_name = "AML Subwoofer",
+        .bass_gain = 50,
+        .vol_sync_en = true,
+        .auto_connect_en = true
+    };
+    ret |= subwoofer_comm_init(&sw_cfg);   // 低音炮通信模块，负责与低音炮的蓝牙通信
 #endif
 
     // 8. 输出初始化结果

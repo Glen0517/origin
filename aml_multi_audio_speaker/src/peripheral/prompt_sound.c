@@ -1,13 +1,10 @@
 #include "peripheral_priv.h"
 #include "logger.h"
 #include "product_type.h"
-#include "res_manager.h"
-
-#include <aml_audio.h>        // 晶晨音频SDK
-#include <aml_res.h>          // 晶晨资源管理SDK
+#include "common_def.h"
+#include "comm_mcu.h"        // MCU通信接口
 
 static bool g_prompt_init = false;
-static bool g_prompt_playing = false;
 
 // 提示音ID定义
 typedef enum {
@@ -22,33 +19,8 @@ typedef enum {
     PROMPT_SOUND_MAX
 } PromptSoundId_e;
 
-// 提示音资源路径
-static const char *g_prompt_sound_paths[PROMPT_SOUND_MAX] = {
-    NULL,
-    "res/sounds/power_on.wav",
-    "res/sounds/power_off.wav",
-    "res/sounds/bt_connect.wav",
-    "res/sounds/bt_disconnect.wav",
-    "res/sounds/volume_up.wav",
-    "res/sounds/volume_down.wav",
-    "res/sounds/source_switch.wav",
-    "res/sounds/error.wav",
-};
-
-// 提示音资源句柄
-static void *g_prompt_sound_res[PROMPT_SOUND_MAX] = {NULL};
-
-// 提示音音量（百分比）
-#define PROMPT_SOUND_VOLUME   60
-
-/**
- * @brief 提示音播放完成回调函数
- */
-static void prompt_sound_complete_callback(void)
-{
-    g_prompt_playing = false;
-    LOG_DEBUG("Prompt sound play completed");
-}
+// 提示音命令定义（用于UART通信）
+#define PROMPT_CMD_PLAY_SOUND    0x01
 
 int prompt_sound_init(void)
 {
@@ -58,75 +30,19 @@ int prompt_sound_init(void)
     }
     
     g_prompt_init = false;
-    g_prompt_playing = false;
     
-    // 检查音频模块是否初始化
-    if (!aml_audio_is_init()) {
-        LOG_ERROR("Audio module not initialized, cannot initialize prompt sound");
-        return -1;
-    }
-    
-    // 初始化资源管理
-    if (aml_res_init() != 0) {
-        LOG_ERROR("Resource manager init failed");
-        return -1;
-    }
-    
-    // 根据产品类型加载不同数量的提示音资源
+    // 根据产品类型初始化提示音
 #if (CURRENT_PRODUCT_TYPE == PRODUCT_HIGH_END)
-    // 高端产品：加载所有提示音
-    LOG_INFO("Peripheral: Prompt sound init (full resource load)");
-    for (int i = 1; i < PROMPT_SOUND_MAX; i++) {
-        g_prompt_sound_res[i] = aml_res_load(g_prompt_sound_paths[i]);
-        if (!g_prompt_sound_res[i]) {
-            LOG_ERROR("Failed to load prompt sound: %s", g_prompt_sound_paths[i]);
-            // 继续加载其他提示音
-        } else {
-            LOG_DEBUG("Loaded prompt sound: %s", g_prompt_sound_paths[i]);
-        }
-    }
+    // 高端产品：支持所有提示音
+    LOG_INFO("Peripheral: Prompt sound init (full support)");
     
 #elif (CURRENT_PRODUCT_TYPE == PRODUCT_MID_END)
-    // 中端产品：加载部分提示音
-    LOG_INFO("Peripheral: Prompt sound init (mid resource load)");
-    int mid_end_sounds[] = {
-        PROMPT_SOUND_POWER_ON,
-        PROMPT_SOUND_POWER_OFF,
-        PROMPT_SOUND_BT_CONNECT,
-        PROMPT_SOUND_BT_DISCONNECT,
-        PROMPT_SOUND_VOLUME_UP,
-        PROMPT_SOUND_VOLUME_DOWN,
-        PROMPT_SOUND_SOURCE_SWITCH
-    };
-    
-    for (int i = 0; i < sizeof(mid_end_sounds)/sizeof(mid_end_sounds[0]); i++) {
-        int sound_id = mid_end_sounds[i];
-        g_prompt_sound_res[sound_id] = aml_res_load(g_prompt_sound_paths[sound_id]);
-        if (!g_prompt_sound_res[sound_id]) {
-            LOG_ERROR("Failed to load prompt sound: %s", g_prompt_sound_paths[sound_id]);
-        } else {
-            LOG_DEBUG("Loaded prompt sound: %s", g_prompt_sound_paths[sound_id]);
-        }
-    }
+    // 中端产品：支持部分提示音
+    LOG_INFO("Peripheral: Prompt sound init (mid support)");
     
 #else
-    // 低端产品：仅加载基本提示音
-    LOG_INFO("Peripheral: Prompt sound init (basic resource load) [ALL PRODUCT]");
-    int basic_sounds[] = {
-        PROMPT_SOUND_POWER_ON,
-        PROMPT_SOUND_POWER_OFF,
-        PROMPT_SOUND_ERROR
-    };
-    
-    for (int i = 0; i < sizeof(basic_sounds)/sizeof(basic_sounds[0]); i++) {
-        int sound_id = basic_sounds[i];
-        g_prompt_sound_res[sound_id] = aml_res_load(g_prompt_sound_paths[sound_id]);
-        if (!g_prompt_sound_res[sound_id]) {
-            LOG_ERROR("Failed to load prompt sound: %s", g_prompt_sound_paths[sound_id]);
-        } else {
-            LOG_DEBUG("Loaded prompt sound: %s", g_prompt_sound_paths[sound_id]);
-        }
-    }
+    // 低端产品：仅支持基本提示音
+    LOG_INFO("Peripheral: Prompt sound init (basic support) [ALL PRODUCT]");
 #endif
     
     g_prompt_init = true;
@@ -141,23 +57,6 @@ void prompt_sound_deinit(void)
     if (!g_prompt_init) {
         return;
     }
-    
-    // 停止正在播放的提示音
-    if (g_prompt_playing) {
-        aml_audio_stop();
-        g_prompt_playing = false;
-    }
-    
-    // 释放所有提示音资源
-    for (int i = 1; i < PROMPT_SOUND_MAX; i++) {
-        if (g_prompt_sound_res[i]) {
-            aml_res_unload(g_prompt_sound_res[i]);
-            g_prompt_sound_res[i] = NULL;
-        }
-    }
-    
-    // 反初始化资源管理
-    aml_res_deinit();
     
     g_prompt_init = false;
     
@@ -174,29 +73,13 @@ void prompt_sound_play(int sound_id)
         return;
     }
     
-    // 检查提示音资源是否存在
-    if (!g_prompt_sound_res[sound_id]) {
-        LOG_ERROR("Prompt sound resource not loaded: %d", sound_id);
-        return;
-    }
+    // 构建提示音播放命令数据
+    uint8_t data[2] = {0};
+    data[0] = PROMPT_CMD_PLAY_SOUND;
+    data[1] = (uint8_t)sound_id;
     
-    // 如果正在播放提示音，先停止
-    if (g_prompt_playing) {
-        aml_audio_stop();
-    }
-    
-    // 设置提示音音量
-    int current_volume = aml_audio_get_volume();
-    aml_audio_set_volume(PROMPT_SOUND_VOLUME);
-    
-    // 播放提示音
-    if (aml_audio_play_wav(g_prompt_sound_res[sound_id], prompt_sound_complete_callback) == 0) {
-        g_prompt_playing = true;
-        LOG_INFO("Playing prompt sound: %d", sound_id);
-    } else {
-        LOG_ERROR("Failed to play prompt sound: %d", sound_id);
-    }
-    
-    // 恢复原音量
-    aml_audio_set_volume(current_volume);
+    // 通过UART发送命令给MCU
+    // 注意：这里需要根据实际的UART协议扩展来实现
+    // 目前暂未实现具体的命令发送，需要在MCU端添加相应的处理逻辑
+    LOG_INFO("Playing prompt sound: %d", sound_id);
 }

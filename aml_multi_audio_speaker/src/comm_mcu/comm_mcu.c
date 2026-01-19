@@ -29,5 +29,57 @@ int comm_mcu_send(unsigned char *data, int len) {
         return -1;
     }
     LOG_DEBUG("Send %d bytes to MCU", len);
-    return len;
+    return uart_mcu_send_raw_data(data, len);
+}
+
+/**
+ * @brief 发送命令到MCU
+ * @param cmd 命令码
+ * @param data 数据缓冲区
+ * @param data_len 数据长度
+ * @return 成功返回发送的字节数，失败返回-1
+ */
+int comm_mcu_send_cmd(uint8_t cmd, uint8_t *data, int data_len) {
+    if (!g_mcu_cfg.init_ok) {
+        LOG_ERROR("Send cmd failed: not initialized");
+        return -1;
+    }
+    return uart_mcu_send_cmd(cmd, data, data_len);
+}
+
+/**
+ * @brief 设置LED状态
+ * @param led_idx LED索引
+ * @param led_state LED状态
+ * @return 成功返回发送的字节数，失败返回-1
+ */
+int comm_mcu_set_led(int led_idx, int led_state) {
+    uint8_t data[2] = {0};
+    data[0] = (uint8_t)led_idx;
+    data[1] = (uint8_t)led_state;
+    return comm_mcu_send_cmd(CMD_SET_LED_STATE, data, 2);
+}
+
+/**
+ * @brief 查询按键/红外状态
+ * @return 成功返回发送的字节数，失败返回-1
+ */
+int comm_mcu_query_key_status(void) {
+    return comm_mcu_send_cmd(CMD_QUERY_KEY_STATUS, NULL, 0);
+}
+
+/**
+ * @brief 查询温度湿度
+ * @return 成功返回发送的字节数，失败返回-1
+ */
+int comm_mcu_query_temp_humid(void) {
+    return comm_mcu_send_cmd(CMD_QUERY_TEMP_HUMID, NULL, 0);
+}
+
+/**
+ * @brief 查询固件版本
+ * @return 成功返回发送的字节数，失败返回-1
+ */
+int comm_mcu_query_version(void) {
+    return comm_mcu_send_cmd(CMD_QUERY_VERSION, NULL, 0);
 }
