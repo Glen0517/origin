@@ -365,3 +365,155 @@ int uart_mcu_recv_data(uint8_t *buf, int len, int timeout_ms) {
     
     return recv_len;
 }
+
+/**
+ * @brief 根据命令码获取对应的响应命令码
+ * @param cmd 命令码
+ * @return 响应命令码，无对应响应返回0
+ */
+static uint8_t get_response_cmd(uint8_t cmd) {
+    switch (cmd) {
+        case CMD_QUERY_KEY_STATUS:
+            return CMD_KEY_STATUS_RESP;
+        case CMD_QUERY_TEMP_HUMID:
+            return CMD_TEMP_HUMID_RESP;
+        case CMD_QUERY_VERSION:
+            return CMD_VERSION_RESP;
+        case CMD_SET_LED_STATE:
+            return CMD_SET_LED_RESP;
+        default:
+            return 0;
+    }
+}
+
+/**
+ * @brief 发送命令到MCU并等待响应
+ * @param cmd 命令码
+ * @param data 数据缓冲区
+ * @param data_len 数据长度
+ * @param resp_data 响应数据缓冲区
+ * @param resp_len 响应数据长度
+ * @param timeout_ms 超时时间（毫秒）
+ * @return 成功返回0，失败返回-1
+ */
+int uart_mcu_send_cmd_with_resp(uint8_t cmd, uint8_t *data, int data_len, uint8_t *resp_data, int *resp_len, int timeout_ms) {
+    if (!g_uart_init || g_uart_fd < 0) {
+        LOG_ERROR("UART send failed: not initialized");
+        return -1;
+    }
+    
+    if (!resp_len) {
+        LOG_ERROR("Invalid resp_len parameter");
+        return -1;
+    }
+    
+    // 打包数据
+    uint8_t packet[MAX_PACKET_LEN] = {0};
+    int packet_len = 0;
+    
+    int ret = uart_pack_data(cmd, data, data_len, packet, &packet_len);
+    if (ret != 0) {
+        LOG_ERROR("Failed to pack data: %d", ret);
+        return -1;
+    }
+    
+    // 向UART设备写入数据 - 发送数据到MCU
+    int sent_len = aml_uart_write(g_uart_fd, packet, packet_len);
+    
+    if (sent_len != packet_len) {
+        LOG_ERROR("UART send failed: sent %d bytes, expected %d bytes", sent_len, packet_len);
+        return -1;
+    }
+    
+    LOG_DEBUG("UART sent cmd 0x%02X, %d bytes", cmd, sent_len);
+    
+    // 计算期望的响应命令码
+    uint8_t expected_resp_cmd = get_response_cmd(cmd);
+    if (expected_resp_cmd == 0) {
+        LOG_WARN("No expected response for cmd 0x%02X", cmd);
+        *resp_len = 0;
+        return 0;
+    }
+    
+    // 等待响应
+    uint8_t resp_packet[MAX_PACKET_LEN] = {0};
+    int resp_packet_len = 0;
+    int total_recv = 0;
+    int max_recv = MAX_PACKET_LEN;
+    int timeout = timeout_ms;
+    
+    // 接收响应数据
+    while (total_recv < max_recv) {
+        int recv_len = aml_uart_read(g_uart_fd, &resp_packet[total_recv], max_recv - total_recv, timeout);
+        
+        if (recv_len < 0) {
+            LOG_ERROR("UART receive timeout waiting for response");
+            return -1;
+        }
+        
+        if (recv_len > 0) {
+            total_recv += recv_len;
+            LOG_DEBUG("Received %d bytes, total %d bytes", recv_len, total_recv);
+            
+            // 检查是否接收到完整的数据包
+            if (total_recv >= 5) {
+                // 查找数据包头部
+                int header_idx = -1;
+                for (int i = 0; i < total_recv - 4; i++) {
+                    if (resp_packet[i] == PACKET_HEADER) {
+                        header_idx = i;
+                        break;
+                    }
+                }
+                
+                if (header_idx != -1) {
+                    // 解析数据包长度
+                    int data_len_field = header_idx + 2;
+                    if (data_len_field < total_recv) {
+                        int expected_len = resp_packet[data_len_field] + 5;
+                        if (total_recv >= header_idx + expected_len) {
+                            // 有完整的数据包
+                            resp_packet_len = header_idx + expected_len;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 如果已经超时，退出循环
+        if (timeout <= 0) {
+            break;
+        }
+        
+        // 减少超时时间
+        timeout -= 10;
+        usleep(10 * 1000); // 10ms
+    }
+    
+    if (resp_packet_len == 0) {
+        LOG_ERROR("No complete response received");
+        return -1;
+    }
+    
+    // 解析响应数据包
+    uint8_t resp_cmd = 0;
+    int payload_len = 0;
+    
+    ret = uart_unpack_data(resp_packet, resp_packet_len, &resp_cmd, resp_data, &payload_len);
+    if (ret != UART_ERR_NONE) {
+        LOG_ERROR("Failed to unpack response: %d", ret);
+        return -1;
+    }
+    
+    // 检查响应命令是否匹配
+    if (resp_cmd != expected_resp_cmd) {
+        LOG_ERROR("Response cmd mismatch: expected 0x%02X, got 0x%02X", expected_resp_cmd, resp_cmd);
+        return -1;
+    }
+    
+    *resp_len = payload_len;
+    LOG_DEBUG("Received response cmd 0x%02X, data len %d", resp_cmd, payload_len);
+    
+    return 0;
+}

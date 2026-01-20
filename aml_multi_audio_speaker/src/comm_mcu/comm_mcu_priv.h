@@ -84,10 +84,14 @@ void amp_ctrl_deinit(void);
 int uart_mcu_send_cmd(uint8_t cmd, uint8_t *data, int data_len);
 int uart_mcu_send_raw_data(uint8_t *data, int len);
 int uart_mcu_recv_data(uint8_t *buf, int len, int timeout_ms);
+int uart_mcu_send_cmd_with_resp(uint8_t cmd, uint8_t *data, int data_len, uint8_t *resp_data, int *resp_len, int timeout_ms);
 
 // 通信协议相关函数声明
 int uart_pack_data(uint8_t cmd, uint8_t *data, int data_len, uint8_t *packet, int *packet_len);
 int uart_unpack_data(uint8_t *packet, int packet_len, uint8_t *cmd, uint8_t *data, int *data_len);
 uint8_t uart_calculate_checksum(uint8_t *data, int len);
+
+// 响应命令映射函数
+typedef uint8_t (*ResponseCmdMapFunc)(uint8_t cmd);
 
 #endif // __COMM_MCU_PRIV_H__
