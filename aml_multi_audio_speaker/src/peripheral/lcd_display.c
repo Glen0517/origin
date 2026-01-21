@@ -7,6 +7,9 @@
 
 static bool g_lcd_init = false;
 
+// 宏控：是否启用LCD显示
+#define CONFIG_ENABLE_LCD_DISPLAY 1
+
 // LCD配置（示例值，实际需根据硬件调整）
 #define LCD_ROWS             2       // 行数
 #define LCD_COLS             16      // 列数

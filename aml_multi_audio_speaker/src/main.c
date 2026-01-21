@@ -51,6 +51,9 @@
 
 #include "prod_test.h"          // 生产测试模块
 
+// 定义默认日志分类
+AML_LOG_DEFINE(default_log);
+
 /**
  * @brief 系统运行状态标志
  * @details 用于控制主循环的运行，0表示退出，1表示继续运行
@@ -365,11 +368,8 @@ int main(int argc, char *argv[]) {
     signal(SIGTERM, sig_handler);
 
     // 基础初始化
-    ret = log_system_init();
-    if (ret != 0) {
-        LOG_ERROR("Log init failed: %d", ret);
-        return ret;
-    }
+    // 日志系统已经通过aml_log.h初始化，不需要单独调用log_system_init
+    LOG_INFO("Log system initialized via aml_log.h");
     ret = res_manager_init();
     if (ret != 0) {
         LOG_ERROR("Res manager init failed: %d", ret);
@@ -408,7 +408,7 @@ exit_sys:
     module_deinit_all();
     event_system_deinit();
     res_manager_deinit();
-    log_system_deinit();
+    // 日志系统已经通过aml_log.h管理，不需要单独调用log_system_deinit
 
     LOG_INFO("✅ System Exit Success");
     return ret;

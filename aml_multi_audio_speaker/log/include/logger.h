@@ -1,24 +1,27 @@
 #ifndef __LOGGER_H__
 #define __LOGGER_H__
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdarg.h>
-#include <time.h>
-#include <pthread.h>
-#include <errno.h>
-
-// 先包含 product_type.h，因为它不包含日志级别宏
+#include "../aml_log.h"
 #include "product_type.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+// 声明默认日志分类
+AML_LOG_EXTERN(default_log);
+#define AML_LOG_DEFAULT AML_LOG_GET_CAT(default_log)
+
+/******************************************************************************************
+ * 兼容原有日志宏，保持向后兼容
+ ******************************************************************************************/
+#define LOG_ERROR(fmt, ...) AML_LOGE(fmt, ##__VA_ARGS__)
+#define LOG_WARN(fmt, ...)  AML_LOGW(fmt, ##__VA_ARGS__)
+#define LOG_INFO(fmt, ...)  AML_LOGI(fmt, ##__VA_ARGS__)
+#define LOG_DEBUG(fmt, ...) AML_LOGD(fmt, ##__VA_ARGS__)
+
 /******************************************************************************************
  * 日志等级宏定义 - 从高到低，等级越高输出越少，量产仅保留ERROR/WARN
- * 宏控开关：RELEASE模式下关闭DEBUG/INFO，DEBUG模式全开，在lib/compile_flags.mk中定义
  ******************************************************************************************/
 typedef enum {
     LOG_LEVEL_NONE    = 0,    // 关闭所有日志
@@ -28,74 +31,15 @@ typedef enum {
     LOG_LEVEL_DEBUG   = 4     // 调试日志：详细调试信息（如函数入参出参、循环状态、寄存器值）
 } LogLevel_e;
 
-// 现在包含 common_def.h，因为枚举已经定义完成
-#include "common_def.h"
-
-/******************************************************************************************
- * 全局日志配置 - 与log_config.json联动，宏控适配4类产品，无需手动修改
- ******************************************************************************************/
-#define LOG_FILE_PATH            "./log/aml_audio.log"  // 日志文件存储路径
-#define LOG_MAX_SIZE_MB          8                       // 单日志文件最大8MB，防止占满FLASH
-#define LOG_MAX_BACKUP_COUNT     5                       // 最多保留5个轮转日志文件
-#define LOG_PRINT_CONSOLE        1                       // 同时输出到串口控制台
-#define LOG_PRINT_FILE           1                       // 同时落地到日志文件
-
-/******************************************************************************************
- * 核心宏控：根据产品类型自动配置日志等级【完美匹配你的4类产品】
- * 低端产品：仅打印ERROR日志，极致精简；高端产品：全开DEBUG日志，调试便利
- * 无需手动修改，编译时自动根据PRODUCT_TYPE切换
- ******************************************************************************************/
-#if (CURRENT_PRODUCT_TYPE == PRODUCT_LOW_END_BT_SPEAKER) || (CURRENT_PRODUCT_TYPE == PRODUCT_SUBWOOFER) || (CURRENT_PRODUCT_TYPE == PRODUCT_GAME_LOW_END)
-    #define SYS_LOG_LEVEL         LOG_LEVEL_ERROR
-#elif (CURRENT_PRODUCT_TYPE == PRODUCT_MID_END_SOUNDBAR) || (CURRENT_PRODUCT_TYPE == PRODUCT_GAME_MID_END)
-    #define SYS_LOG_LEVEL         LOG_LEVEL_WARN
-#else
-    #define SYS_LOG_LEVEL         LOG_LEVEL_DEBUG
-#endif
-
-/******************************************************************************************
- * 模块日志宏控：被裁剪的模块，日志宏自动置空，无任何日志输出【完美匹配你的模块裁剪】
- * 如：低端产品关闭HDMI/SPDIF，对应的日志宏直接为空，不编译、不占体积、无冗余
- ******************************************************************************************/
-#ifndef CONFIG_ENABLE_HDMI_ARC
-    #define LOG_HDMI(level, fmt, ...)
-#endif
-
-#ifndef CONFIG_ENABLE_SPDIF
-    #define LOG_SPDIF(level, fmt, ...)
-#endif
-
-#ifndef CONFIG_ENABLE_DOLBY_DTS
-    #define LOG_EFFECT(level, fmt, ...)
-#endif
-
-#ifndef CONFIG_ENABLE_BT_MESH
-    #define LOG_BT_MESH(level, fmt, ...)
-#endif
-
-#ifndef CONFIG_ENABLE_WIFI_MEDIA
-    #define LOG_WIFI(level, fmt, ...)
-#endif
-
-/******************************************************************************************
- * 日志格式化宏：自动拼接【时间+模块+等级+文件名+行号】，一键定位问题，无需手动拼接
- * 核心：src业务层直接调用以下宏即可，无需调用任何函数，极致简洁！
- ******************************************************************************************/
-#define LOG_BASE(level, fmt, ...)  log_print(level, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__)
-#define LOG_ERROR(fmt, ...)        do{ if(SYS_LOG_LEVEL >= LOG_LEVEL_ERROR) LOG_BASE(LOG_LEVEL_ERROR, fmt, ##__VA_ARGS__); }while(0)
-#define LOG_WARN(fmt, ...)         do{ if(SYS_LOG_LEVEL >= LOG_LEVEL_WARN)  LOG_BASE(LOG_LEVEL_WARN,  fmt, ##__VA_ARGS__); }while(0)
-#define LOG_INFO(fmt, ...)         do{ if(SYS_LOG_LEVEL >= LOG_LEVEL_INFO)  LOG_BASE(LOG_LEVEL_INFO,  fmt, ##__VA_ARGS__); }while(0)
-#define LOG_DEBUG(fmt, ...)        do{ if(SYS_LOG_LEVEL >= LOG_LEVEL_DEBUG) LOG_BASE(LOG_LEVEL_DEBUG, fmt, ##__VA_ARGS__); }while(0)
-
 /******************************************************************************************
  * 模块专属日志宏：针对核心模块的独立日志，便于问题分类排查，与模块裁剪联动
  ******************************************************************************************/
-#define LOG_AUDIO(fmt, ...)        LOG_DEBUG("[AUDIO] " fmt, ##__VA_ARGS__)
-#define LOG_BLUETOOTH(fmt, ...)    LOG_DEBUG("[BT] " fmt, ##__VA_ARGS__)
-#define LOG_HDMI(fmt, ...)         LOG_DEBUG("[HDMI] " fmt, ##__VA_ARGS__)
-#define LOG_SPDIF(fmt, ...)        LOG_DEBUG("[SPDIF] " fmt, ##__VA_ARGS__)
-#define LOG_KEY(fmt, ...)          LOG_DEBUG("[KEY] " fmt, ##__VA_ARGS__)
-#define LOG_STORAGE(fmt, ...)      LOG_DEBUG("[STORAGE] " fmt, ##__VA_ARGS__)
+#define LOG_AUDIO(fmt, ...)        AML_LOGD("[AUDIO] " fmt, ##__VA_ARGS__)
+#define LOG_BLUETOOTH(fmt, ...)    AML_LOGD("[BT] " fmt, ##__VA_ARGS__)
+#define LOG_HDMI(fmt, ...)         AML_LOGD("[HDMI] " fmt, ##__VA_ARGS__)
+#define LOG_SPDIF(fmt, ...)        AML_LOGD("[SPDIF] " fmt, ##__VA_ARGS__)
+#define LOG_KEY(fmt, ...)          AML_LOGD("[KEY] " fmt, ##__VA_ARGS__)
+#define LOG_STORAGE(fmt, ...)      AML_LOGD("[STORAGE] " fmt, ##__VA_ARGS__)
 
 /******************************************************************************************
  * 日志系统核心接口声明（无需src业务层调用，日志宏自动封装）

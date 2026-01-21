@@ -150,43 +150,26 @@ int log_system_init(void);
 void log_system_deinit(void);
 
 /******************************************************************************************
- * 日志格式化宏：自动拼接【时间+模块+等级+文件名+行号】，一键定位问题，无需手动拼接
+ * 日志格式化宏：使用aml_log.h中的方式
  * 核心：src业务层直接调用以下宏即可，无需调用任何函数，极致简洁！
  ******************************************************************************************/
-#define LOG_BASE(level, fmt, ...)  log_print(level, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__)
-#define LOG_ERROR(fmt, ...)        do{ if(SYS_LOG_LEVEL >= LOG_LEVEL_ERROR) LOG_BASE(LOG_LEVEL_ERROR, fmt, ##__VA_ARGS__); }while(0)
-#define LOG_WARN(fmt, ...)         do{ if(SYS_LOG_LEVEL >= LOG_LEVEL_WARN)  LOG_BASE(LOG_LEVEL_WARN,  fmt, ##__VA_ARGS__); }while(0)
-#define LOG_INFO(fmt, ...)         do{ if(SYS_LOG_LEVEL >= LOG_LEVEL_INFO)  LOG_BASE(LOG_LEVEL_INFO,  fmt, ##__VA_ARGS__); }while(0)
-#define LOG_DEBUG(fmt, ...)        do{ if(SYS_LOG_LEVEL >= LOG_LEVEL_DEBUG) LOG_BASE(LOG_LEVEL_DEBUG, fmt, ##__VA_ARGS__); }while(0)
+#include "log/aml_log.h"
+
+// 兼容原有日志宏，保持向后兼容
+#define LOG_ERROR(fmt, ...) AML_LOGE(fmt, ##__VA_ARGS__)
+#define LOG_WARN(fmt, ...)  AML_LOGW(fmt, ##__VA_ARGS__)
+#define LOG_INFO(fmt, ...)  AML_LOGI(fmt, ##__VA_ARGS__)
+#define LOG_DEBUG(fmt, ...) AML_LOGD(fmt, ##__VA_ARGS__)
 
 /******************************************************************************************
  * 模块专属日志宏：针对核心模块的独立日志，便于问题分类排查，与模块裁剪联动
  ******************************************************************************************/
-#define LOG_AUDIO(fmt, ...)        LOG_DEBUG("[AUDIO] " fmt, ##__VA_ARGS__)
-#define LOG_BLUETOOTH(fmt, ...)    LOG_DEBUG("[BT] " fmt, ##__VA_ARGS__)
-#define LOG_HDMI(fmt, ...)         LOG_DEBUG("[HDMI] " fmt, ##__VA_ARGS__)
-#define LOG_SPDIF(fmt, ...)        LOG_DEBUG("[SPDIF] " fmt, ##__VA_ARGS__)
-#define LOG_KEY(fmt, ...)          LOG_DEBUG("[KEY] " fmt, ##__VA_ARGS__)
-#define LOG_STORAGE(fmt, ...)      LOG_DEBUG("[STORAGE] " fmt, ##__VA_ARGS__)
-
-/******************************************************************************************
- * 兼容原有日志宏，保持向后兼容
- ******************************************************************************************/
-#ifndef LOG_LEVEL_DEBUG
-#define LOG_LEVEL_DEBUG     4
-#endif
-
-#ifndef LOG_LEVEL_INFO
-#define LOG_LEVEL_INFO      3
-#endif
-
-#ifndef LOG_LEVEL_WARN
-#define LOG_LEVEL_WARN      2
-#endif
-
-#ifndef LOG_LEVEL_ERROR
-#define LOG_LEVEL_ERROR     1
-#endif
+#define LOG_AUDIO(fmt, ...)        AML_LOGD("[AUDIO] " fmt, ##__VA_ARGS__)
+#define LOG_BLUETOOTH(fmt, ...)    AML_LOGD("[BT] " fmt, ##__VA_ARGS__)
+#define LOG_HDMI(fmt, ...)         AML_LOGD("[HDMI] " fmt, ##__VA_ARGS__)
+#define LOG_SPDIF(fmt, ...)        AML_LOGD("[SPDIF] " fmt, ##__VA_ARGS__)
+#define LOG_KEY(fmt, ...)          AML_LOGD("[KEY] " fmt, ##__VA_ARGS__)
+#define LOG_STORAGE(fmt, ...)      AML_LOGD("[STORAGE] " fmt, ##__VA_ARGS__)
 
 #ifdef __cplusplus
 }

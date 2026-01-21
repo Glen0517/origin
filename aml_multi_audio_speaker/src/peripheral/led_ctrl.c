@@ -74,4 +74,7 @@ void led_ctrl_event_poll(void)
     
     // 通过UART与MCU通信时，无需在SOC端处理闪烁逻辑
     // 闪烁逻辑由MCU端处理
+    
+    // 可以添加LED状态的周期性检查或其他必要的处理
+    LOG_DEBUG("LED control event poll executed");
 }

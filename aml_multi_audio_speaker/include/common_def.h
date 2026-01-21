@@ -128,27 +128,19 @@ typedef struct {
 } SysStatus_t;
 
 /******************************************************************************************
- * 【日志宏定义】- 分级日志，量产关闭DEBUG，开发开启，一键切换
+ * 【日志宏定义】- 使用aml_log.h中的方式
  ******************************************************************************************/
-#define LOG_LEVEL_DEBUG     4
-#define LOG_LEVEL_INFO      3
-#define LOG_LEVEL_WARN      2
-#define LOG_LEVEL_ERROR     1
+#include "log/aml_log.h"
 
-#ifndef LOG_LEVEL
-#define LOG_LEVEL           LOG_LEVEL_INFO // 默认日志级别
-#endif
+// 声明默认日志分类
+AML_LOG_EXTERN(default_log);
+#define AML_LOG_DEFAULT AML_LOG_GET_CAT(default_log)
 
-#define LOG_PRINT(level, fmt, ...) do { \
-    if (level <= LOG_LEVEL) { \
-        printf("[%s][%s:%d] "fmt"\n", #level, __func__, __LINE__, ##__VA_ARGS__); \
-    } \
-} while(0)
-
-#define LOG_DEBUG(fmt, ...) LOG_PRINT(LOG_LEVEL_DEBUG, fmt, ##__VA_ARGS__)
-#define LOG_INFO(fmt, ...)  LOG_PRINT(LOG_LEVEL_INFO, fmt, ##__VA_ARGS__)
-#define LOG_WARN(fmt, ...)  LOG_PRINT(LOG_LEVEL_WARN, fmt, ##__VA_ARGS__)
-#define LOG_ERROR(fmt, ...) LOG_PRINT(LOG_LEVEL_ERROR, fmt, ##__VA_ARGS__)
+// 兼容原有日志宏，保持向后兼容
+#define LOG_DEBUG(fmt, ...) AML_LOGD(fmt, ##__VA_ARGS__)
+#define LOG_INFO(fmt, ...)  AML_LOGI(fmt, ##__VA_ARGS__)
+#define LOG_WARN(fmt, ...)  AML_LOGW(fmt, ##__VA_ARGS__)
+#define LOG_ERROR(fmt, ...) AML_LOGE(fmt, ##__VA_ARGS__)
 
 /******************************************************************************************
  * 【线程锁宏定义】- 通用线程安全锁，所有模块共用

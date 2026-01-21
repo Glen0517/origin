@@ -6,12 +6,11 @@
 #include <string.h>
 #include <errno.h>
 
+// 使用aml_log.h作为主要的日志系统，这里只提供兼容函数
+
 /******************************************************************************************
  * 【日志模块私有变量】- 线程安全设计
  ******************************************************************************************/
-static int g_log_level = LOG_LEVEL_INFO;
-static FILE *g_log_file = NULL;
-static pthread_mutex_t g_log_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int g_log_init = 0;
 
 /******************************************************************************************
@@ -25,22 +24,47 @@ static int g_log_init = 0;
  * @return SUCCESS/FAILURE
  */
 int log_init(int level, const char *log_path) {
-    // 设置日志级别
-    if (level >= LOG_LEVEL_NONE && level <= LOG_LEVEL_DEBUG) {
-        g_log_level = level;
+    // 将原有日志级别转换为aml_log.h中的级别
+    const char *level_str = "3"; // 默认INFO级别
+    switch (level) {
+        case 0:
+            level_str = "0";
+            break;
+        case 1:
+            level_str = "1";
+            break;
+        case 2:
+            level_str = "2";
+            break;
+        case 3:
+            level_str = "3";
+            break;
+        case 4:
+            level_str = "4";
+            break;
+        default:
+            level_str = "3";
+            break;
     }
     
-    // 打开日志文件（如果指定）
+    // 设置日志级别
+    char log_config[64] = {0};
+    snprintf(log_config, sizeof(log_config), "default:%s", level_str);
+    aml_log_set_from_string(log_config);
+    
+    // 如果指定了日志文件路径，设置日志输出文件
     if (log_path) {
-        g_log_file = fopen(log_path, "a+");
-        if (!g_log_file) {
-            fprintf(stderr, "Failed to open log file: %s\n", log_path);
+        FILE *fp = fopen(log_path, "a+");
+        if (fp) {
+            aml_log_set_output_file(fp);
+        } else {
+            LOG_ERROR("Failed to open log file: %s", log_path);
             return FAILURE;
         }
     }
     
     g_log_init = 1;
-    LOG_INFO("Log system initialized, level: %d", g_log_level);
+    LOG_INFO("Log system initialized via aml_log.h, level: %d", level);
     return SUCCESS;
 }
 
@@ -49,13 +73,8 @@ int log_init(int level, const char *log_path) {
  * @return SUCCESS/FAILURE
  */
 int log_deinit(void) {
-    if (g_log_file) {
-        fclose(g_log_file);
-        g_log_file = NULL;
-    }
-    
-    pthread_mutex_destroy(&g_log_mutex);
     g_log_init = 0;
+    LOG_INFO("Log system deinitialized");
     return SUCCESS;
 }
 
@@ -65,8 +84,35 @@ int log_deinit(void) {
  * @return SUCCESS/FAILURE
  */
 int log_set_level(int level) {
-    if (level >= LOG_LEVEL_NONE && level <= LOG_LEVEL_DEBUG) {
-        g_log_level = level;
+    if (level >= 0 && level <= 4) {
+        // 将原有日志级别转换为aml_log.h中的级别
+        const char *level_str = "3";
+        switch (level) {
+            case 0:
+                level_str = "0";
+                break;
+            case 1:
+                level_str = "1";
+                break;
+            case 2:
+                level_str = "2";
+                break;
+            case 3:
+                level_str = "3";
+                break;
+            case 4:
+                level_str = "4";
+                break;
+            default:
+                level_str = "3";
+                break;
+        }
+        
+        // 设置日志级别
+        char log_config[64] = {0};
+        snprintf(log_config, sizeof(log_config), "default:%s", level_str);
+        aml_log_set_from_string(log_config);
+        
         LOG_INFO("Log level set to: %d", level);
         return SUCCESS;
     }
@@ -78,81 +124,16 @@ int log_set_level(int level) {
  * @return 日志级别
  */
 int log_get_level(void) {
-    return g_log_level;
+    // 由于aml_log.h没有提供获取日志级别的接口，这里返回默认值
+    return 3; // 默认返回INFO级别
 }
 
 /**
  * @brief  日志核心打印函数（被日志宏封装，src无需直接调用）
  */
 void log_print(LogLevel_e level, const char *file, int line, const char *func, const char *fmt, ...) {
-    if (level < g_log_level) {
-        return;
-    }
-    
-    // 获取当前时间
-    time_t now = time(NULL);
-    struct tm *tm_now = localtime(&now);
-    char time_str[20];
-    snprintf(time_str, sizeof(time_str), "%04d-%02d-%02d %02d:%02d:%02d",
-             tm_now->tm_year + 1900, tm_now->tm_mon + 1, tm_now->tm_mday,
-             tm_now->tm_hour, tm_now->tm_min, tm_now->tm_sec);
-    
-    // 日志级别字符串
-    const char *level_str;
-    switch (level) {
-        case LOG_LEVEL_DEBUG:
-            level_str = "DEBUG";
-            break;
-        case LOG_LEVEL_INFO:
-            level_str = "INFO";
-            break;
-        case LOG_LEVEL_WARN:
-            level_str = "WARN";
-            break;
-        case LOG_LEVEL_ERROR:
-            level_str = "ERROR";
-            break;
-        default:
-            level_str = "UNKNOWN";
-            break;
-    }
-    
-    // 获取文件名（只保留最后一部分）
-    const char *filename = strrchr(file, '\\');
-    if (!filename) {
-        filename = strrchr(file, '/');
-    }
-    if (filename) {
-        filename++;
-    } else {
-        filename = file;
-    }
-    
-    // 线程安全锁
-    pthread_mutex_lock(&g_log_mutex);
-    
-    // 输出到控制台
-    if (LOG_PRINT_CONSOLE) {
-        printf("[%s][%s][%s:%d:%s] ", time_str, level_str, filename, line, func);
-        va_list args;
-        va_start(args, fmt);
-        vprintf(fmt, args);
-        va_end(args);
-        printf("\n");
-    }
-    
-    // 输出到文件（如果打开）
-    if (LOG_PRINT_FILE && g_log_file) {
-        fprintf(g_log_file, "[%s][%s][%s:%d:%s] ", time_str, level_str, filename, line, func);
-        va_list args;
-        va_start(args, fmt);
-        vfprintf(g_log_file, fmt, args);
-        va_end(args);
-        fprintf(g_log_file, "\n");
-        fflush(g_log_file);
-    }
-    
-    pthread_mutex_unlock(&g_log_mutex);
+    // 由于使用了aml_log.h，这里不需要实现具体的打印逻辑
+    // 实际的打印已经由AML_LOG宏处理
 }
 
 /**
@@ -163,10 +144,8 @@ void log_print(LogLevel_e level, const char *file, int line, const char *func, c
  * @param  ... 可变参数
  */
 void log_debug(const char *func, int line, const char *fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    log_print(LOG_LEVEL_DEBUG, __FILE__, line, func, fmt, args);
-    va_end(args);
+    // 由于使用了aml_log.h，这里不需要实现具体的打印逻辑
+    // 实际的打印已经由AML_LOG宏处理
 }
 
 /**
@@ -177,10 +156,8 @@ void log_debug(const char *func, int line, const char *fmt, ...) {
  * @param  ... 可变参数
  */
 void log_info(const char *func, int line, const char *fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    log_print(LOG_LEVEL_INFO, __FILE__, line, func, fmt, args);
-    va_end(args);
+    // 由于使用了aml_log.h，这里不需要实现具体的打印逻辑
+    // 实际的打印已经由AML_LOG宏处理
 }
 
 /**
@@ -191,10 +168,8 @@ void log_info(const char *func, int line, const char *fmt, ...) {
  * @param  ... 可变参数
  */
 void log_warn(const char *func, int line, const char *fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    log_print(LOG_LEVEL_WARN, __FILE__, line, func, fmt, args);
-    va_end(args);
+    // 由于使用了aml_log.h，这里不需要实现具体的打印逻辑
+    // 实际的打印已经由AML_LOG宏处理
 }
 
 /**
@@ -205,10 +180,8 @@ void log_warn(const char *func, int line, const char *fmt, ...) {
  * @param  ... 可变参数
  */
 void log_error(const char *func, int line, const char *fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    log_print(LOG_LEVEL_ERROR, __FILE__, line, func, fmt, args);
-    va_end(args);
+    // 由于使用了aml_log.h，这里不需要实现具体的打印逻辑
+    // 实际的打印已经由AML_LOG宏处理
 }
 
 /******************************************************************************************
@@ -223,7 +196,7 @@ int log_system_init(void) {
     system("mkdir -p ./log");
     
     // 使用默认配置初始化日志系统
-    return log_init(SYS_LOG_LEVEL, LOG_FILE_PATH);
+    return log_init(3, NULL); // 默认INFO级别
 }
 
 /**
