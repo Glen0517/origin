@@ -1,0 +1,1 @@
+sed -e 's:^:FIXMEFINALSSTATEINST:g' /home/gmf/tym_cast_sdk/aml-sdk-2025r1/output/mesona4-ba401-32bit-k6.6/tmp/sysroots-components/armv7at2hf-neon/base-passwd/fixmepath | xargs sed -i -e 's:FIXMESTAGINGDIRTARGET:FIXMEFINALSSTATETARGET:g' -e 's:FIXME_HOSTTOOLS_DIR:/home/gmf/tym_cast_sdk/aml-sdk-2025r1/output/mesona4-ba401-32bit-k6.6/tmp/hosttools:g'
