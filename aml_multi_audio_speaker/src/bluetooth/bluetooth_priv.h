@@ -19,7 +19,7 @@ typedef struct {
 int bt_a2dp_init(void);
 void bt_a2dp_deinit(void);
 int bt_a2dp_start_stream(void);
-void bt_a2dp_stop_stream(void);
+int bt_a2dp_stop_stream(void);
 int bt_a2dp_set_volume(int volume);
 int bt_a2dp_get_volume(void);
 int bt_mesh_init(void);

@@ -1,41 +1,80 @@
+/**
+ * @file bluetooth.c
+ * @brief 蓝牙模块实现
+ * @details 负责蓝牙连接管理、A2DP音频流处理、快速重连等功能
+ * @author AML Audio Team
+ * @date 2026-01-22
+ */
+
 #include "bt.h"
 #include "bluetooth_priv.h"
 #include "logger.h"
 #include "event.h"
 #include "hal.h"  // 硬件抽象层
+#include "error_handling.h"  // 统一错误处理
 
+/**
+ * @brief 蓝牙配置
+ */
 static BtCfg_t g_bt_cfg = {0};
+
+/**
+ * @brief 蓝牙连接状态
+ */
 static char g_connected_dev_addr[18] = {0};  // 蓝牙设备地址（格式：XX:XX:XX:XX:XX:XX）
 static char g_connected_dev_name[32] = {0};  // 蓝牙设备名称
 static int g_connected_dev_type = 0;  // 蓝牙设备类型（0：未知，1：手机，2：电脑，3：其他）
 static int g_disconnect_reason = 0;  // 断连原因（0：未知，1：正常断开，2：信号丢失，3：设备电量低，4：其他）
-static int g_reconnect_attempts = 0;  // 重连尝试次数
-static int g_max_reconnect_attempts = 3;  // 最大重连尝试次数
-static int g_reconnect_interval = 5;  // 重连间隔（秒）
 
+/**
+ * @brief 蓝牙重连配置
+ */
+static int g_reconnect_attempts = 0;  // 重连尝试次数
+static int g_max_reconnect_attempts = 5;  // 最大重连尝试次数
+static int g_reconnect_interval = 3;  // 重连间隔（秒）
+static int g_reconnect_backoff = 1;  // 重连退避系数
+static int g_min_reconnect_interval = 1;  // 最小重连间隔（秒）
+static int g_max_reconnect_interval = 15;  // 最大重连间隔（秒）
+static bool g_fast_reconnect_enabled = true;  // 快速重连使能
+
+/**
+ * @brief 音频流配置
+ */
+static int g_audio_stream_buffer_size = 100;  // 音频流缓冲大小（毫秒）
+
+/**
+ * @brief 蓝牙模块初始化
+ * @param cfg 蓝牙配置参数
+ * @return SUCCESS表示成功，FAILURE表示失败
+ * @details 初始化蓝牙模块，包括配置参数、硬件初始化、A2DP功能等
+ */
 int bluetooth_init(BluetoothConfig_t *cfg)
 {
     LOG_INFO("Initializing Bluetooth module...");
     
+    // 初始化蓝牙配置
     memset(&g_bt_cfg, 0, sizeof(BtCfg_t));
     
     // 初始化配置参数
     if (cfg) {
+        // 使用用户提供的配置
         LOG_DEBUG("Using provided Bluetooth configuration");
         strncpy(g_bt_cfg.bt_name, cfg->bt_name, sizeof(g_bt_cfg.bt_name) - 1);
         strncpy(g_bt_cfg.bt_pin, cfg->bt_pin, sizeof(g_bt_cfg.bt_pin) - 1);
         g_bt_cfg.bt_auto_connect = cfg->bt_auto_connect;
         g_bt_cfg.mesh_en = cfg->bt_mesh_en;
+        
         LOG_INFO("Bluetooth device name: %s", g_bt_cfg.bt_name);
         LOG_INFO("Bluetooth auto-connect: %d", g_bt_cfg.bt_auto_connect);
         LOG_INFO("Bluetooth MESH enabled: %d", g_bt_cfg.mesh_en);
     } else {
+        // 使用默认配置
         LOG_DEBUG("Using default Bluetooth configuration");
-        // 默认配置
         strncpy(g_bt_cfg.bt_name, "AML Audio Speaker", sizeof(g_bt_cfg.bt_name) - 1);
         strncpy(g_bt_cfg.bt_pin, "0000", sizeof(g_bt_cfg.bt_pin) - 1);
         g_bt_cfg.bt_auto_connect = true;
         g_bt_cfg.mesh_en = false;
+        
         LOG_INFO("Default Bluetooth device name: %s", g_bt_cfg.bt_name);
         LOG_INFO("Default Bluetooth auto-connect: %d", g_bt_cfg.bt_auto_connect);
     }
@@ -84,14 +123,18 @@ int bluetooth_init(BluetoothConfig_t *cfg)
         // 继续执行，记录错误
     }
     
+    // 设置音频流缓冲大小
+    hal_bt_a2dp_set_buffer_size(g_audio_stream_buffer_size);
+    LOG_INFO("Bluetooth A2DP buffer size set to %d ms", g_audio_stream_buffer_size);
+    
     g_bt_cfg.init_ok = 1;
     g_bt_cfg.bt_enable = true;
     g_bt_cfg.bt_connected = false;
     g_bt_cfg.bt_media_playing = false;
     g_bt_cfg.bt_media_enable = true;
     
-    LOG_INFO("Bluetooth module init success (MESH: %d, Auto-connect: %d)", 
-             g_bt_cfg.mesh_en, g_bt_cfg.bt_auto_connect);
+    LOG_INFO("Bluetooth module init success (MESH: %d, Auto-connect: %d, Fast-reconnect: %d)", 
+             g_bt_cfg.mesh_en, g_bt_cfg.bt_auto_connect, g_fast_reconnect_enabled);
     
     return SUCCESS;
 }
@@ -284,6 +327,9 @@ int bluetooth_connect(const char *addr)
     
     LOG_INFO("Connecting to Bluetooth device: %s", addr);
     
+    // 保存设备地址，用于自动重连
+    strncpy(g_connected_dev_addr, addr, sizeof(g_connected_dev_addr) - 1);
+    
     // 连接指定的蓝牙设备
     if (hal_bt_connect(addr) != 0) {
         LOG_ERROR("Failed to connect to Bluetooth device");
@@ -310,12 +356,30 @@ int bluetooth_disconnect(void)
     
     // 停止A2DP音频流
     bt_a2dp_stop_stream();
+    g_bt_cfg.bt_media_playing = false;
     
     // 断开当前连接的蓝牙设备
     if (hal_bt_disconnect() != 0) {
         LOG_ERROR("Failed to disconnect Bluetooth device");
         return FAILURE;
     }
+    
+    // 更新连接状态
+    g_bt_cfg.bt_connected = false;
+    
+    // 清空连接设备信息
+    memset(g_connected_dev_name, 0, sizeof(g_connected_dev_name));
+    g_connected_dev_type = 0;
+    
+    // 更新LED状态
+    led_ctrl_set_state(LED_BLUETOOTH, LED_STATE_OFF);
+    
+    // 更新LCD显示
+    lcd_display_text(0, 0, "BT: Disconnected");
+    
+    // 发送蓝牙断开事件
+    event_notify(EVENT_BT_DISCONNECTED, NULL);
+    event_notify(EVENT_SOURCE_BT_DISCONNECTED, NULL);
     
     LOG_INFO("Bluetooth device disconnected");
     return SUCCESS;
@@ -493,6 +557,12 @@ int bluetooth_play(void)
         return FAILURE;
     }
     
+    // 更新播放状态
+    g_bt_cfg.bt_media_playing = true;
+    
+    // 更新LED状态
+    led_ctrl_set_state(LED_PLAY, LED_STATE_ON);
+    
     // 发送播放事件
     event_notify(EVENT_BT_PLAY_START, NULL);
     event_notify(EVENT_PLAY_START, NULL);
@@ -525,6 +595,12 @@ int bluetooth_pause(void)
         return FAILURE;
     }
     
+    // 更新播放状态
+    g_bt_cfg.bt_media_playing = false;
+    
+    // 更新LED状态
+    led_ctrl_set_state(LED_PLAY, LED_STATE_OFF);
+    
     // 发送暂停事件
     event_notify(EVENT_BT_PLAY_PAUSE, NULL);
     event_notify(EVENT_PLAY_PAUSE, NULL);
@@ -556,6 +632,12 @@ int bluetooth_stop(void)
         LOG_ERROR("Failed to send stop command");
         return FAILURE;
     }
+    
+    // 更新播放状态
+    g_bt_cfg.bt_media_playing = false;
+    
+    // 更新LED状态
+    led_ctrl_set_state(LED_PLAY, LED_STATE_OFF);
     
     // 发送停止事件
     event_notify(EVENT_BT_PLAY_STOP, NULL);
@@ -910,8 +992,9 @@ void bluetooth_event_poll(void)
                 event_notify(EVENT_BT_CONNECTED, NULL);
                 event_notify(EVENT_SOURCE_BT_CONNECTED, NULL);
                 
-                // 重置重连尝试次数
+                // 重置重连尝试次数和退避系数
                 g_reconnect_attempts = 0;
+                g_reconnect_backoff = 1;
                 
                 // 自动开始A2DP音频流
                 if (g_bt_cfg.bt_media_enable) {
@@ -966,8 +1049,22 @@ void bluetooth_event_poll(void)
                     // 检查重连尝试次数
                     if (g_reconnect_attempts < g_max_reconnect_attempts) {
                         g_reconnect_attempts++;
-                        LOG_INFO("Attempting to reconnect to last device... (Attempt %d/%d)", 
-                                 g_reconnect_attempts, g_max_reconnect_attempts);
+                        
+                        // 计算重连间隔（带退避）
+                        int current_interval = g_reconnect_interval * g_reconnect_backoff;
+                        if (current_interval < g_min_reconnect_interval) {
+                            current_interval = g_min_reconnect_interval;
+                        } else if (current_interval > g_max_reconnect_interval) {
+                            current_interval = g_max_reconnect_interval;
+                        }
+                        
+                        // 快速重连模式：前几次尝试使用更短的间隔
+                        if (g_fast_reconnect_enabled && g_reconnect_attempts <= 3) {
+                            current_interval = g_min_reconnect_interval;
+                        }
+                        
+                        LOG_INFO("Attempting to reconnect to last device... (Attempt %d/%d, Interval: %d sec)", 
+                                 g_reconnect_attempts, g_max_reconnect_attempts, current_interval);
                         
                         // 延迟重连（实际实现中应该使用定时器）
                         // 这里简化处理，直接尝试重连
@@ -976,11 +1073,15 @@ void bluetooth_event_poll(void)
                         } else {
                             LOG_INFO("Reconnect initiated");
                         }
+                        
+                        // 增加退避系数
+                        g_reconnect_backoff *= 2;
                     } else {
                         LOG_INFO("Max reconnect attempts reached (%d), stopping auto-reconnect", 
                                  g_max_reconnect_attempts);
-                        // 重置重连尝试次数
+                        // 重置重连参数
                         g_reconnect_attempts = 0;
+                        g_reconnect_backoff = 1;
                         // 清空设备地址，停止重连
                         memset(g_connected_dev_addr, 0, sizeof(g_connected_dev_addr));
                     }

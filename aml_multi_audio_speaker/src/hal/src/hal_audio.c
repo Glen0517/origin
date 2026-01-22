@@ -7,8 +7,13 @@
  */
 
 #include "hal_audio.h"
-#include "logger.h"
+#include "log/aml_log.h"
 #include <aml_audio.h>
+
+// 定义音频模块日志分类
+AML_LOG_DEFINE(audio_log);
+// 设置默认日志分类
+#define AML_LOG_DEFAULT AML_LOG_GET_CAT(audio_log)
 
 static bool g_audio_init = false;
 
@@ -19,17 +24,17 @@ static bool g_audio_init = false;
  */
 int hal_audio_init(void) {
     if (g_audio_init) {
-        LOG_INFO("HAL audio already initialized");
+        AML_LOGI("HAL audio already initialized");
         return SUCCESS;
     }
     
     if (aml_audio_init() != 0) {
-        LOG_ERROR("Amlogic audio SDK init failed");
+        AML_LOGE("Amlogic audio SDK init failed");
         return FAILURE;
     }
     
     g_audio_init = true;
-    LOG_INFO("HAL audio init success");
+    AML_LOGI("HAL audio init success");
     return SUCCESS;
 }
 
@@ -40,17 +45,17 @@ int hal_audio_init(void) {
  */
 int hal_audio_deinit(void) {
     if (!g_audio_init) {
-        LOG_INFO("HAL audio not initialized");
+        AML_LOGI("HAL audio not initialized");
         return SUCCESS;
     }
     
     if (aml_audio_deinit() != 0) {
-        LOG_ERROR("Amlogic audio SDK deinit failed");
+        AML_LOGE("Amlogic audio SDK deinit failed");
         return FAILURE;
     }
     
     g_audio_init = false;
-    LOG_INFO("HAL audio deinit success");
+    AML_LOGI("HAL audio deinit success");
     return SUCCESS;
 }
 
@@ -62,17 +67,22 @@ int hal_audio_deinit(void) {
  */
 int hal_audio_set_sample_rate(int sample_rate) {
     if (!g_audio_init) {
-        LOG_ERROR("HAL audio not initialized");
+        AML_LOGE("HAL audio not initialized");
         return FAILURE;
+    }
+    
+    if (sample_rate <= 0) {
+        AML_LOGE("Invalid sample rate: %d", sample_rate);
+        return INVALID_PARAM;
     }
     
     int ret = aml_audio_set_sample_rate(sample_rate);
     if (ret != 0) {
-        LOG_ERROR("Set sample rate failed: %d", ret);
+        AML_LOGE("Set sample rate failed: %d", ret);
         return FAILURE;
     }
     
-    LOG_INFO("Sample rate set to: %d", sample_rate);
+    AML_LOGI("Sample rate set to: %d", sample_rate);
     return SUCCESS;
 }
 
@@ -84,17 +94,22 @@ int hal_audio_set_sample_rate(int sample_rate) {
  */
 int hal_audio_set_channels(int channels) {
     if (!g_audio_init) {
-        LOG_ERROR("HAL audio not initialized");
+        AML_LOGE("HAL audio not initialized");
         return FAILURE;
+    }
+    
+    if (channels <= 0) {
+        AML_LOGE("Invalid channels: %d", channels);
+        return INVALID_PARAM;
     }
     
     int ret = aml_audio_set_channels(channels);
     if (ret != 0) {
-        LOG_ERROR("Set channels failed: %d", ret);
+        AML_LOGE("Set channels failed: %d", ret);
         return FAILURE;
     }
     
-    LOG_INFO("Channels set to: %d", channels);
+    AML_LOGI("Channels set to: %d", channels);
     return SUCCESS;
 }
 
@@ -107,18 +122,18 @@ int hal_audio_set_channels(int channels) {
  */
 int hal_audio_play_pcm(uint8_t *data, int len) {
     if (!g_audio_init) {
-        LOG_ERROR("HAL audio not initialized");
+        AML_LOGE("HAL audio not initialized");
         return FAILURE;
     }
     
     if (!data || len <= 0) {
-        LOG_ERROR("Invalid audio data or length");
-        return FAILURE;
+        AML_LOGE("Invalid audio data or length");
+        return INVALID_PARAM;
     }
     
     int ret = aml_audio_play_pcm(data, len);
     if (ret != 0) {
-        LOG_ERROR("Play PCM failed: %d", ret);
+        AML_LOGE("Play PCM failed: %d", ret);
         return FAILURE;
     }
     
@@ -132,17 +147,17 @@ int hal_audio_play_pcm(uint8_t *data, int len) {
  */
 int hal_audio_stop(void) {
     if (!g_audio_init) {
-        LOG_ERROR("HAL audio not initialized");
+        AML_LOGE("HAL audio not initialized");
         return FAILURE;
     }
     
     int ret = aml_audio_stop();
     if (ret != 0) {
-        LOG_ERROR("Stop audio failed: %d", ret);
+        AML_LOGE("Stop audio failed: %d", ret);
         return FAILURE;
     }
     
-    LOG_INFO("Audio stopped");
+    AML_LOGI("Audio stopped");
     return SUCCESS;
 }
 
@@ -153,7 +168,7 @@ int hal_audio_stop(void) {
  */
 int hal_audio_get_status(void) {
     if (!g_audio_init) {
-        LOG_ERROR("HAL audio not initialized");
+        AML_LOGE("HAL audio not initialized");
         return 0;
     }
     
@@ -168,17 +183,17 @@ int hal_audio_get_status(void) {
  */
 int hal_audio_set_hw_decode(bool enable) {
     if (!g_audio_init) {
-        LOG_ERROR("HAL audio not initialized");
+        AML_LOGE("HAL audio not initialized");
         return FAILURE;
     }
     
     int ret = aml_audio_set_hw_decode(enable);
     if (ret != 0) {
-        LOG_ERROR("Set hardware decode failed: %d", ret);
+        AML_LOGE("Set hardware decode failed: %d", ret);
         return FAILURE;
     }
     
-    LOG_INFO("Hardware decode %s", enable ? "enabled" : "disabled");
+    AML_LOGI("Hardware decode %s", enable ? "enabled" : "disabled");
     return SUCCESS;
 }
 
@@ -190,17 +205,17 @@ int hal_audio_set_hw_decode(bool enable) {
  */
 int hal_audio_set_dolby_dts(bool enable) {
     if (!g_audio_init) {
-        LOG_ERROR("HAL audio not initialized");
+        AML_LOGE("HAL audio not initialized");
         return FAILURE;
     }
     
     int ret = aml_audio_set_dolby_dts(enable);
     if (ret != 0) {
-        LOG_ERROR("Set Dolby DTS failed: %d", ret);
+        AML_LOGE("Set Dolby DTS failed: %d", ret);
         return FAILURE;
     }
     
-    LOG_INFO("Dolby DTS %s", enable ? "enabled" : "disabled");
+    AML_LOGI("Dolby DTS %s", enable ? "enabled" : "disabled");
     return SUCCESS;
 }
 
@@ -211,17 +226,17 @@ int hal_audio_set_dolby_dts(bool enable) {
  */
 int hal_audio_play_test_audio(void) {
     if (!g_audio_init) {
-        LOG_ERROR("HAL audio not initialized");
+        AML_LOGE("HAL audio not initialized");
         return FAILURE;
     }
     
     int ret = aml_audio_play_test_audio();
     if (ret != 0) {
-        LOG_ERROR("Play test audio failed: %d", ret);
+        AML_LOGE("Play test audio failed: %d", ret);
         return FAILURE;
     }
     
-    LOG_INFO("Test audio playing");
+    AML_LOGI("Test audio playing");
     return SUCCESS;
 }
 
@@ -232,17 +247,17 @@ int hal_audio_play_test_audio(void) {
  */
 int hal_audio_stop_test_audio(void) {
     if (!g_audio_init) {
-        LOG_ERROR("HAL audio not initialized");
+        AML_LOGE("HAL audio not initialized");
         return FAILURE;
     }
     
     int ret = aml_audio_stop_test_audio();
     if (ret != 0) {
-        LOG_ERROR("Stop test audio failed: %d", ret);
+        AML_LOGE("Stop test audio failed: %d", ret);
         return FAILURE;
     }
     
-    LOG_INFO("Test audio stopped");
+    AML_LOGI("Test audio stopped");
     return SUCCESS;
 }
 
@@ -253,17 +268,17 @@ int hal_audio_stop_test_audio(void) {
  */
 int hal_audio_pause(void) {
     if (!g_audio_init) {
-        LOG_ERROR("HAL audio not initialized");
+        AML_LOGE("HAL audio not initialized");
         return FAILURE;
     }
     
     int ret = aml_audio_pause();
     if (ret != 0) {
-        LOG_ERROR("Pause audio failed: %d", ret);
+        AML_LOGE("Pause audio failed: %d", ret);
         return FAILURE;
     }
     
-    LOG_INFO("Audio paused");
+    AML_LOGI("Audio paused");
     return SUCCESS;
 }
 
@@ -274,17 +289,17 @@ int hal_audio_pause(void) {
  */
 int hal_audio_resume(void) {
     if (!g_audio_init) {
-        LOG_ERROR("HAL audio not initialized");
+        AML_LOGE("HAL audio not initialized");
         return FAILURE;
     }
     
     int ret = aml_audio_resume();
     if (ret != 0) {
-        LOG_ERROR("Resume audio failed: %d", ret);
+        AML_LOGE("Resume audio failed: %d", ret);
         return FAILURE;
     }
     
-    LOG_INFO("Audio resumed");
+    AML_LOGI("Audio resumed");
     return SUCCESS;
 }
 
@@ -296,16 +311,21 @@ int hal_audio_resume(void) {
  */
 int hal_audio_set_volume(int volume) {
     if (!g_audio_init) {
-        LOG_ERROR("HAL audio not initialized");
+        AML_LOGE("HAL audio not initialized");
         return FAILURE;
+    }
+    
+    if (volume < MIN_VOLUME_VAL || volume > MAX_VOLUME_VAL) {
+        AML_LOGE("Invalid volume: %d, range: %d-%d", volume, MIN_VOLUME_VAL, MAX_VOLUME_VAL);
+        return INVALID_PARAM;
     }
     
     int ret = aml_audio_set_volume(volume);
     if (ret != 0) {
-        LOG_ERROR("Set volume failed: %d", ret);
+        AML_LOGE("Set volume failed: %d", ret);
         return FAILURE;
     }
     
-    LOG_INFO("Volume set to: %d", volume);
+    AML_LOGI("Volume set to: %d", volume);
     return SUCCESS;
 }

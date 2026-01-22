@@ -7,7 +7,12 @@
  */
 
 #include "pal_network.h"
-#include "logger.h"
+#include "log/aml_log.h"
+
+// 定义网络服务模块日志分类
+AML_LOG_DEFINE(network_log);
+// 设置默认日志分类
+#define AML_LOG_DEFAULT AML_LOG_GET_CAT(network_log)
 
 static bool g_network_init = false;
 
@@ -18,12 +23,12 @@ static bool g_network_init = false;
  */
 int pal_network_init(void) {
     if (g_network_init) {
-        LOG_INFO("PAL network already initialized");
+        AML_LOGI("PAL network already initialized");
         return SUCCESS;
     }
-    
+
     g_network_init = true;
-    LOG_INFO("PAL network init success");
+    AML_LOGI("PAL network init success");
     return SUCCESS;
 }
 
@@ -34,12 +39,12 @@ int pal_network_init(void) {
  */
 int pal_network_deinit(void) {
     if (!g_network_init) {
-        LOG_INFO("PAL network not initialized");
+        AML_LOGI("PAL network not initialized");
         return SUCCESS;
     }
-    
+
     g_network_init = false;
-    LOG_INFO("PAL network deinit success");
+    AML_LOGI("PAL network deinit success");
     return SUCCESS;
 }
 
@@ -52,15 +57,15 @@ int pal_network_deinit(void) {
  */
 int pal_network_get_ip_address(char *ip_address, int max_len) {
     if (!g_network_init || !ip_address || max_len <= 0) {
-        LOG_ERROR("Invalid parameters or not initialized");
+        AML_LOGE("Invalid parameters or not initialized");
         return FAILURE;
     }
-    
+
     // 模拟实现，返回默认IP地址
     strncpy(ip_address, "192.168.1.100", max_len - 1);
     ip_address[max_len - 1] = '\0';
-    
-    LOG_INFO("IP address: %s", ip_address);
+
+    AML_LOGI("IP address: %s", ip_address);
     return SUCCESS;
 }
 
@@ -71,11 +76,11 @@ int pal_network_get_ip_address(char *ip_address, int max_len) {
  */
 int pal_network_is_connected(void) {
     if (!g_network_init) {
-        LOG_ERROR("Network not initialized");
+        AML_LOGE("Network not initialized");
         return 0;
     }
-    
+
     // 模拟实现，返回默认连接状态
-    LOG_INFO("Network connection status: CONNECTED");
+    AML_LOGI("Network connection status: CONNECTED");
     return 1;
 }

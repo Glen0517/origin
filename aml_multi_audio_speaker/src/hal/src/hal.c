@@ -7,7 +7,12 @@
  */
 
 #include "hal.h"
-#include "logger.h"
+#include "log/aml_log.h"
+
+// 定义HAL层日志分类
+AML_LOG_DEFINE(hal_log);
+// 设置默认日志分类
+#define AML_LOG_DEFAULT AML_LOG_GET_CAT(hal_log)
 
 /**
  * @brief HAL层初始化
@@ -15,33 +20,33 @@
  * @return 初始化结果：0表示成功，非0表示失败
  */
 int hal_init(void) {
-    LOG_INFO("Starting HAL layer initialization...");
+    AML_LOGI("Starting HAL layer initialization...");
     
     // 初始化音频模块
     if (hal_audio_init() != 0) {
-        LOG_ERROR("HAL audio init failed");
+        AML_LOGE("HAL audio init failed");
         return FAILURE;
     }
     
     // 初始化蓝牙模块
     if (hal_bt_init() != 0) {
-        LOG_ERROR("HAL bluetooth init failed");
+        AML_LOGE("HAL bluetooth init failed");
         return FAILURE;
     }
     
     // 初始化USB模块
     if (hal_usb_init() != 0) {
-        LOG_ERROR("HAL USB init failed");
+        AML_LOGE("HAL USB init failed");
         return FAILURE;
     }
     
     // 初始化外设模块
     if (hal_peri_init() != 0) {
-        LOG_ERROR("HAL peripheral init failed");
+        AML_LOGE("HAL peripheral init failed");
         return FAILURE;
     }
     
-    LOG_INFO("HAL layer initialization completed successfully");
+    AML_LOGI("HAL layer initialization completed successfully");
     return SUCCESS;
 }
 
@@ -51,28 +56,28 @@ int hal_init(void) {
  * @return 反初始化结果：0表示成功，非0表示失败
  */
 int hal_deinit(void) {
-    LOG_INFO("Starting HAL layer deinitialization...");
+    AML_LOGI("Starting HAL layer deinitialization...");
     
     // 反初始化外设模块
     if (hal_peri_deinit() != 0) {
-        LOG_ERROR("HAL peripheral deinit failed");
+        AML_LOGE("HAL peripheral deinit failed");
     }
     
     // 反初始化USB模块
     if (hal_usb_deinit() != 0) {
-        LOG_ERROR("HAL USB deinit failed");
+        AML_LOGE("HAL USB deinit failed");
     }
     
     // 反初始化蓝牙模块
     if (hal_bt_deinit() != 0) {
-        LOG_ERROR("HAL bluetooth deinit failed");
+        AML_LOGE("HAL bluetooth deinit failed");
     }
     
     // 反初始化音频模块
     if (hal_audio_deinit() != 0) {
-        LOG_ERROR("HAL audio deinit failed");
+        AML_LOGE("HAL audio deinit failed");
     }
     
-    LOG_INFO("HAL layer deinitialization completed");
+    AML_LOGI("HAL layer deinitialization completed");
     return SUCCESS;
 }

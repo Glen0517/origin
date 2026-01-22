@@ -51,6 +51,22 @@
 
 #include "prod_test.h"          // 生产测试模块
 
+// 线程池管理
+#include "system/thread_pool.h"  // 线程池管理模块
+// 进程管理
+#include "system/process.h"      // 进程管理模块
+#include "system/process_manager.h"  // 进程管理器模块
+// 进程间通信
+#include "system/ipc.h"          // 进程间通信模块
+// 资源管理
+#include "system/resource.h"      // 资源管理模块
+// 监控和诊断
+#include "system/monitor.h"       // 监控和诊断模块
+
+// HAL和PAL层头文件
+#include "hal.h"                // 硬件抽象层
+#include "pal.h"                // 平台抽象层
+
 // 定义默认日志分类
 AML_LOG_DEFINE(default_log);
 
@@ -83,7 +99,13 @@ static void sig_handler(int sig) {
 static int module_init_all(void) {
     int ret = 0;
     
-    // 1. 创建并初始化音频核心配置
+    // 1. 初始化HAL和PAL层
+    // HAL层：硬件抽象层，封装硬件相关操作
+    // PAL层：平台抽象层，封装平台相关服务
+    ret |= hal_init();              // 初始化硬件抽象层
+    ret |= pal_init();              // 初始化平台抽象层
+    
+    // 2. 创建并初始化音频核心配置
     // 音频核心负责音频解码、混音和输出，是系统的核心组件
     AudioCoreConfig_t audio_cfg = {
         .sample_rate = 48000,       // 采样率：48kHz
@@ -311,7 +333,13 @@ static void module_deinit_all(void) {
         system_deinit();                  // 系统管理模块
     }
 
+    // 最后反初始化HAL和PAL层
+    // 反初始化顺序与初始化顺序相反
+    pal_deinit();              // 反初始化平台抽象层
+    hal_deinit();              // 反初始化硬件抽象层
+
     LOG_INFO("✅ All modules deinit success");
+    LOG_INFO("✅ HAL and PAL layers deinit success");
 }
 
 /**
@@ -321,6 +349,11 @@ static void module_deinit_all(void) {
  */
 static void main_business_loop(void) {
     LOG_INFO("Enter business loop...");
+    
+    // 启动资源监控
+    resource_start_monitoring(1000);
+    // 启动系统监控
+    monitor_start(1000);
     
     // 主循环，直到系统运行状态为0时退出
     while (g_sys_running) {
@@ -347,6 +380,9 @@ static void main_business_loop(void) {
             // 低端游戏音响：仅轮询必要模块
             system_event_poll();            // 系统事件：系统状态、资源使用等
         }
+        
+        // 监控系统进程状态
+        process_manager_monitor();
         
         // 休眠10毫秒，降低CPU占用
         usleep(10 * 1000);
@@ -380,6 +416,41 @@ int main(int argc, char *argv[]) {
         LOG_ERROR("Event system init failed: %d", ret);
         return ret;
     }
+    
+    // 初始化线程池，设置4个线程
+    ret = thread_pool_init(4);
+    if (ret != 0) {
+        LOG_ERROR("Thread pool init failed: %d", ret);
+        return ret;
+    }
+    
+    // 初始化进程管理器
+    ret = process_manager_init();
+    if (ret != 0) {
+        LOG_ERROR("Process manager init failed: %d", ret);
+        return ret;
+    }
+    
+    // 初始化IPC模块
+    ret = ipc_init();
+    if (ret != 0) {
+        LOG_ERROR("IPC init failed: %d", ret);
+        return ret;
+    }
+    
+    // 初始化资源管理模块
+    ret = resource_init();
+    if (ret != 0) {
+        LOG_ERROR("Resource init failed: %d", ret);
+        return ret;
+    }
+    
+    // 初始化监控和诊断模块
+    ret = monitor_init();
+    if (ret != 0) {
+        LOG_ERROR("Monitor init failed: %d", ret);
+        return ret;
+    }
 
     // 启动信息
     LOG_INFO("=====================================================");
@@ -407,6 +478,12 @@ int main(int argc, char *argv[]) {
 exit_sys:
     module_deinit_all();
     event_system_deinit();
+    thread_pool_deinit();
+    process_manager_deinit();
+    // 反初始化新模块
+    monitor_deinit();
+    resource_deinit();
+    ipc_deinit();
     res_manager_deinit();
     // 日志系统已经通过aml_log.h管理，不需要单独调用log_system_deinit
 

@@ -20,18 +20,46 @@ static bool g_dlna_enabled = true;
 static bool g_airplay_enabled = true;
 static bool g_spotify_enabled = true;
 static bool g_google_cast_enabled = true;
+static bool g_dlna_started = false;
+static bool g_airplay_started = false;
+static bool g_spotify_started = false;
+static bool g_google_cast_started = false;
 static bool g_dlna_playing = false;
 static bool g_airplay_playing = false;
 static bool g_spotify_playing = false;
 static bool g_google_cast_playing = false;
 static bool g_game_mode_enabled = false;
+static bool g_on_demand_start_enabled = true;  // 按需启动使能
+static bool g_auto_reconnect_enabled = true;  // 自动重连使能
 static char g_wifi_name[32] = "Aml_Soundbar";
 static char g_current_ssid[32] = {0};
 static char g_playing_media_title[128] = {0};
 static char g_playing_media_artist[128] = {0};
 static int g_current_volume = 80;
 static int g_buffer_size = 200;  // 默认缓冲大小（毫秒）
+static int g_min_buffer_size = 50;  // 最小缓冲大小（毫秒）
+static int g_max_buffer_size = 500;  // 最大缓冲大小（毫秒）
 static int g_game_buffer_size = 30;  // 游戏模式缓冲大小（毫秒）
+static int g_network_quality = 5;  // 网络质量（1-10）
+static int g_buffer_adjust_interval = 2000;  // 缓冲调整间隔（毫秒）
+static int g_last_buffer_adjust_time = 0;  // 上次缓冲调整时间
+
+// 网络连接参数
+static int g_reconnect_attempts = 0;  // 重连尝试次数
+static int g_max_reconnect_attempts = 5;  // 最大重连尝试次数
+static int g_reconnect_interval = 3;  // 重连间隔（秒）
+static int g_reconnect_backoff = 1;  // 重连退避系数
+static int g_min_reconnect_interval = 1;  // 最小重连间隔（秒）
+static int g_max_reconnect_interval = 15;  // 最大重连间隔（秒）
+static int g_last_reconnect_time = 0;  // 上次重连时间
+
+// 网络质量检测参数
+static int g_ping_count = 5;  //  ping 次数
+static int g_ping_timeout = 2000;  // ping 超时（毫秒）
+static int g_network_quality_history[10] = {5, 5, 5, 5, 5, 5, 5, 5, 5, 5};  // 网络质量历史
+static int g_network_quality_index = 0;  // 网络质量历史索引
+static int g_last_quality_check_time = 0;  // 上次质量检查时间
+static int g_quality_check_interval = 5000;  // 质量检查间隔（毫秒）
 
 /**
  * @brief WIFI连接状态回调函数
@@ -81,16 +109,272 @@ static void wifi_connect_callback(const char *ssid, bool connected) {
 /**
  * @brief DLNA状态回调函数
  */
+// 启动DLNA服务
+static void start_dlna_service(void) {
+    if (g_dlna_enabled && !g_dlna_started) {
+        aml_dlna_start();
+        g_dlna_started = true;
+        LOG_INFO("DLNA service started on demand");
+    }
+}
+
+// 停止DLNA服务
+static void stop_dlna_service(void) {
+    if (g_dlna_enabled && g_dlna_started && !g_dlna_playing) {
+        aml_dlna_stop();
+        g_dlna_started = false;
+        LOG_INFO("DLNA service stopped (idle)");
+    }
+}
+
+// 启动AirPlay服务
+static void start_airplay_service(void) {
+    if (g_airplay_enabled && !g_airplay_started) {
+        aml_airplay_start();
+        g_airplay_started = true;
+        LOG_INFO("AirPlay service started on demand");
+    }
+}
+
+// 停止AirPlay服务
+static void stop_airplay_service(void) {
+    if (g_airplay_enabled && g_airplay_started && !g_airplay_playing) {
+        aml_airplay_stop();
+        g_airplay_started = false;
+        LOG_INFO("AirPlay service stopped (idle)");
+    }
+}
+
+// 启动Spotify服务
+static void start_spotify_service(void) {
+    if (g_spotify_enabled && !g_spotify_started) {
+        aml_spotify_start();
+        g_spotify_started = true;
+        LOG_INFO("Spotify service started on demand");
+    }
+}
+
+// 停止Spotify服务
+static void stop_spotify_service(void) {
+    if (g_spotify_enabled && g_spotify_started && !g_spotify_playing) {
+        aml_spotify_stop();
+        g_spotify_started = false;
+        LOG_INFO("Spotify service stopped (idle)");
+    }
+}
+
+// 启动Google Cast服务
+static void start_google_cast_service(void) {
+    if (g_google_cast_enabled && !g_google_cast_started) {
+        aml_google_cast_start();
+        g_google_cast_started = true;
+        LOG_INFO("Google Cast service started on demand");
+    }
+}
+
+// 停止Google Cast服务
+static void stop_google_cast_service(void) {
+    if (g_google_cast_enabled && g_google_cast_started && !g_google_cast_playing) {
+        aml_google_cast_stop();
+        g_google_cast_started = false;
+        LOG_INFO("Google Cast service stopped (idle)");
+    }
+}
+
+// 网络质量检测函数
+static int detect_network_quality(void) {
+    if (!g_wifi_connected) {
+        return 1; // 未连接时网络质量最差
+    }
+    
+    // 实际实现中应该使用真实的网络质量检测方法，例如：
+    // 1. Ping 测试 - 测试延迟和丢包率
+    // 2. 带宽测试 - 测试上传和下载速度
+    // 3. 信号强度测试 - 测试 WiFi 信号强度
+    
+    // 这里使用模拟实现
+    static int quality_pattern[] = {8, 7, 9, 8, 7, 6, 8, 9, 7, 8};
+    static int pattern_index = 0;
+    
+    // 循环使用质量模式
+    int quality = quality_pattern[pattern_index];
+    pattern_index = (pattern_index + 1) % sizeof(quality_pattern) / sizeof(quality_pattern[0]);
+    
+    // 添加一些随机波动，使模拟更真实
+    int variation = rand() % 3 - 1; // -1, 0, 或 1
+    quality = quality + variation;
+    
+    // 确保质量在有效范围内
+    if (quality < 1) quality = 1;
+    if (quality > 10) quality = 10;
+    
+    return quality;
+}
+
+// 更新网络质量历史
+static void update_network_quality_history(int quality) {
+    // 更新网络质量历史
+    g_network_quality_history[g_network_quality_index] = quality;
+    g_network_quality_index = (g_network_quality_index + 1) % 10;
+    
+    // 计算平均网络质量
+    int sum = 0;
+    for (int i = 0; i < 10; i++) {
+        sum += g_network_quality_history[i];
+    }
+    g_network_quality = sum / 10;
+}
+
+// 定期检查网络质量
+static void check_network_quality(void) {
+    if (!g_wifi_media_init) return;
+    
+    // 计算当前时间
+    int current_time = hal_get_current_time();
+    if (current_time - g_last_quality_check_time < g_quality_check_interval) return;
+    
+    // 检测网络质量
+    int quality = detect_network_quality();
+    
+    // 更新网络质量历史
+    update_network_quality_history(quality);
+    
+    // 记录网络质量
+    LOG_INFO("Network quality check: %d/10 (Average: %d/10)", quality, g_network_quality);
+    
+    // 基于网络质量调整缓冲大小
+    adjust_buffer_based_on_network();
+    
+    // 发送网络质量事件
+    event_notify(EVENT_NETWORK_QUALITY_CHANGED, (void *)&g_network_quality);
+    
+    g_last_quality_check_time = current_time;
+}
+
+// 基于网络质量调整缓冲大小
+static void adjust_buffer_based_on_network(void) {
+    if (!g_wifi_media_init) return;
+    
+    // 计算当前时间
+    int current_time = hal_get_current_time();
+    if (current_time - g_last_buffer_adjust_time < g_buffer_adjust_interval) return;
+    
+    // 根据网络质量调整缓冲大小
+    int new_buffer_size = g_buffer_size;
+    
+    if (g_network_quality >= 8) {
+        // 网络质量好，减少缓冲大小，降低延迟
+        new_buffer_size = g_min_buffer_size + (g_buffer_size - g_min_buffer_size) * 0.3;
+    } else if (g_network_quality >= 5) {
+        // 网络质量中等，使用默认缓冲大小
+        new_buffer_size = g_buffer_size;
+    } else if (g_network_quality >= 3) {
+        // 网络质量较差，增加缓冲大小，提高稳定性
+        new_buffer_size = g_buffer_size * 1.5;
+        if (new_buffer_size > g_max_buffer_size) {
+            new_buffer_size = g_max_buffer_size;
+        }
+    } else {
+        // 网络质量差，使用最大缓冲大小
+        new_buffer_size = g_max_buffer_size;
+    }
+    
+    // 如果缓冲大小有变化，更新缓冲设置
+    if (abs(new_buffer_size - g_buffer_size) > 10) { // 大于10毫秒的变化才更新
+        g_buffer_size = new_buffer_size;
+        
+        if (g_dlna_enabled && g_dlna_started) {
+            aml_dlna_set_buffer_size(new_buffer_size);
+        }
+        if (g_airplay_enabled && g_airplay_started) {
+            aml_airplay_set_buffer_size(new_buffer_size);
+        }
+        if (g_spotify_enabled && g_spotify_started) {
+            aml_spotify_set_buffer_size(new_buffer_size);
+        }
+        if (g_google_cast_enabled && g_google_cast_started) {
+            aml_google_cast_set_buffer_size(new_buffer_size);
+        }
+        
+        LOG_INFO("Adjusting buffer size to %d ms based on network quality (%d/10)", 
+                 new_buffer_size, g_network_quality);
+    }
+    
+    g_last_buffer_adjust_time = current_time;
+}
+
+// WiFi自动重连函数
+static void wifi_auto_reconnect(void) {
+    if (!g_wifi_media_init || g_wifi_connected || !g_auto_reconnect_enabled) {
+        return;
+    }
+    
+    // 计算当前时间
+    int current_time = hal_get_current_time();
+    if (current_time - g_last_reconnect_time < g_reconnect_interval * 1000) {
+        return;
+    }
+    
+    // 检查重连尝试次数
+    if (g_reconnect_attempts >= g_max_reconnect_attempts) {
+        LOG_INFO("Max reconnect attempts reached (%d), stopping auto-reconnect", g_max_reconnect_attempts);
+        // 重置重连参数
+        g_reconnect_attempts = 0;
+        g_reconnect_backoff = 1;
+        return;
+    }
+    
+    // 计算重连间隔（带退避）
+    int current_interval = g_reconnect_interval * g_reconnect_backoff;
+    if (current_interval < g_min_reconnect_interval) {
+        current_interval = g_min_reconnect_interval;
+    } else if (current_interval > g_max_reconnect_interval) {
+        current_interval = g_max_reconnect_interval;
+    }
+    
+    // 检查是否达到重连间隔
+    if (current_time - g_last_reconnect_time < current_interval * 1000) {
+        return;
+    }
+    
+    // 尝试重连
+    g_reconnect_attempts++;
+    g_reconnect_backoff *= 2; // 指数退避
+    g_last_reconnect_time = current_time;
+    
+    LOG_INFO("Attempting to reconnect to WiFi... (Attempt %d/%d, Interval: %d sec)", 
+             g_reconnect_attempts, g_max_reconnect_attempts, current_interval);
+    
+    // 实际实现中应该调用WiFi重连函数
+    // 这里简化处理，模拟重连
+    // aml_wifi_reconnect();
+    
+    // 发送重连事件
+    event_notify(EVENT_WIFI_RECONNECT_ATTEMPT, (void *)&g_reconnect_attempts);
+}
+
 static void dlna_status_callback(int status) {
+    // 按需启动DLNA服务
+    if (g_on_demand_start_enabled) {
+        start_dlna_service();
+    }
+    
     switch (status) {
         case DLNA_STATUS_IDLE:
             LOG_INFO("DLNA: Idle");
             g_dlna_playing = false;
+            
+            // 按需停止DLNA服务
+            if (g_on_demand_start_enabled) {
+                stop_dlna_service();
+            }
             break;
         case DLNA_STATUS_PLAYING:
             LOG_INFO("DLNA: Playing");
             g_dlna_playing = true;
             g_airplay_playing = false;
+            g_spotify_playing = false;
+            g_google_cast_playing = false;
             
             // 更新LED状态
             led_ctrl_set_state(LED_WIFI, LED_STATE_BLINK_SLOW);
@@ -98,6 +382,9 @@ static void dlna_status_callback(int status) {
             // 更新LCD显示
             lcd_display_text("DLNA Playing", LCD_LINE_1);
             lcd_display_text(g_playing_media_title, LCD_LINE_2);
+            
+            // 基于网络质量调整缓冲大小
+            adjust_buffer_based_on_network();
             
             // 发送DLNA播放事件
             event_notify(EVENT_DLNA_PLAY_START, (void *)g_playing_media_title);
@@ -129,6 +416,11 @@ static void dlna_status_callback(int status) {
             lcd_display_text("DLNA Stopped", LCD_LINE_1);
             lcd_display_text("", LCD_LINE_2);
             
+            // 按需停止DLNA服务
+            if (g_on_demand_start_enabled) {
+                stop_dlna_service();
+            }
+            
             // 发送DLNA停止事件
             event_notify(EVENT_DLNA_PLAY_STOP, NULL);
             break;
@@ -142,15 +434,27 @@ static void dlna_status_callback(int status) {
  * @brief AirPlay状态回调函数
  */
 static void airplay_status_callback(int status) {
+    // 按需启动AirPlay服务
+    if (g_on_demand_start_enabled) {
+        start_airplay_service();
+    }
+    
     switch (status) {
         case AIRPLAY_STATUS_IDLE:
             LOG_INFO("AirPlay: Idle");
             g_airplay_playing = false;
+            
+            // 按需停止AirPlay服务
+            if (g_on_demand_start_enabled) {
+                stop_airplay_service();
+            }
             break;
         case AIRPLAY_STATUS_PLAYING:
             LOG_INFO("AirPlay: Playing");
             g_airplay_playing = true;
             g_dlna_playing = false;
+            g_spotify_playing = false;
+            g_google_cast_playing = false;
             
             // 更新LED状态
             led_ctrl_set_state(LED_WIFI, LED_STATE_BLINK_SLOW);
@@ -158,6 +462,9 @@ static void airplay_status_callback(int status) {
             // 更新LCD显示
             lcd_display_text("AirPlay Playing", LCD_LINE_1);
             lcd_display_text(g_playing_media_title, LCD_LINE_2);
+            
+            // 基于网络质量调整缓冲大小
+            adjust_buffer_based_on_network();
             
             // 发送AirPlay播放事件
             event_notify(EVENT_AIRPLAY_PLAY_START, (void *)g_playing_media_title);
@@ -188,6 +495,11 @@ static void airplay_status_callback(int status) {
             // 更新LCD显示
             lcd_display_text("AirPlay Stopped", LCD_LINE_1);
             lcd_display_text("", LCD_LINE_2);
+            
+            // 按需停止AirPlay服务
+            if (g_on_demand_start_enabled) {
+                stop_airplay_service();
+            }
             
             // 发送AirPlay停止事件
             event_notify(EVENT_AIRPLAY_PLAY_STOP, NULL);
@@ -230,10 +542,20 @@ static void airplay_media_info_callback(const char *title, const char *artist, c
  * @brief Spotify状态回调函数
  */
 static void spotify_status_callback(int status) {
+    // 按需启动Spotify服务
+    if (g_on_demand_start_enabled) {
+        start_spotify_service();
+    }
+    
     switch (status) {
         case SPOTIFY_STATUS_IDLE:
             LOG_INFO("Spotify: Idle");
             g_spotify_playing = false;
+            
+            // 按需停止Spotify服务
+            if (g_on_demand_start_enabled) {
+                stop_spotify_service();
+            }
             break;
         case SPOTIFY_STATUS_PLAYING:
             LOG_INFO("Spotify: Playing");
@@ -248,6 +570,9 @@ static void spotify_status_callback(int status) {
             // 更新LCD显示
             lcd_display_text("Spotify Playing", LCD_LINE_1);
             lcd_display_text(g_playing_media_title, LCD_LINE_2);
+            
+            // 基于网络质量调整缓冲大小
+            adjust_buffer_based_on_network();
             
             // 发送Spotify播放事件
             event_notify(EVENT_SPOTIFY_PLAY_START, (void *)g_playing_media_title);
@@ -279,6 +604,11 @@ static void spotify_status_callback(int status) {
             lcd_display_text("Spotify Stopped", LCD_LINE_1);
             lcd_display_text("", LCD_LINE_2);
             
+            // 按需停止Spotify服务
+            if (g_on_demand_start_enabled) {
+                stop_spotify_service();
+            }
+            
             // 发送Spotify停止事件
             event_notify(EVENT_SPOTIFY_PLAY_STOP, NULL);
             break;
@@ -306,10 +636,20 @@ static void spotify_media_info_callback(const char *title, const char *artist, c
  * @brief Google Cast状态回调函数
  */
 static void google_cast_status_callback(int status) {
+    // 按需启动Google Cast服务
+    if (g_on_demand_start_enabled) {
+        start_google_cast_service();
+    }
+    
     switch (status) {
         case GOOGLE_CAST_STATUS_IDLE:
             LOG_INFO("Google Cast: Idle");
             g_google_cast_playing = false;
+            
+            // 按需停止Google Cast服务
+            if (g_on_demand_start_enabled) {
+                stop_google_cast_service();
+            }
             break;
         case GOOGLE_CAST_STATUS_PLAYING:
             LOG_INFO("Google Cast: Playing");
@@ -324,6 +664,9 @@ static void google_cast_status_callback(int status) {
             // 更新LCD显示
             lcd_display_text("Google Cast Playing", LCD_LINE_1);
             lcd_display_text(g_playing_media_title, LCD_LINE_2);
+            
+            // 基于网络质量调整缓冲大小
+            adjust_buffer_based_on_network();
             
             // 发送Google Cast播放事件
             event_notify(EVENT_GOOGLE_CAST_PLAY_START, (void *)g_playing_media_title);
@@ -354,6 +697,11 @@ static void google_cast_status_callback(int status) {
             // 更新LCD显示
             lcd_display_text("Google Cast Stopped", LCD_LINE_1);
             lcd_display_text("", LCD_LINE_2);
+            
+            // 按需停止Google Cast服务
+            if (g_on_demand_start_enabled) {
+                stop_google_cast_service();
+            }
             
             // 发送Google Cast停止事件
             event_notify(EVENT_GOOGLE_CAST_PLAY_STOP, NULL);
@@ -413,7 +761,13 @@ int wifi_media_init(WifiMediaConfig_t *cfg) {
             aml_dlna_set_device_name(g_wifi_name);
             aml_dlna_set_volume(g_current_volume);
             aml_dlna_set_buffer_size(g_buffer_size);
-            aml_dlna_start();
+            
+            // 按需启动
+            if (!g_on_demand_start_enabled) {
+                aml_dlna_start();
+                g_dlna_started = true;
+                LOG_INFO("DLNA module started");
+            }
             LOG_INFO("DLNA module init success");
         }
     }
@@ -428,7 +782,13 @@ int wifi_media_init(WifiMediaConfig_t *cfg) {
             aml_airplay_set_device_name(g_wifi_name);
             aml_airplay_set_volume(g_current_volume);
             aml_airplay_set_buffer_size(g_buffer_size);
-            aml_airplay_start();
+            
+            // 按需启动
+            if (!g_on_demand_start_enabled) {
+                aml_airplay_start();
+                g_airplay_started = true;
+                LOG_INFO("AirPlay module started");
+            }
             LOG_INFO("AirPlay module init success");
         }
     }
@@ -443,7 +803,13 @@ int wifi_media_init(WifiMediaConfig_t *cfg) {
             aml_spotify_set_device_name(g_wifi_name);
             aml_spotify_set_volume(g_current_volume);
             aml_spotify_set_buffer_size(g_buffer_size);
-            aml_spotify_start();
+            
+            // 按需启动
+            if (!g_on_demand_start_enabled) {
+                aml_spotify_start();
+                g_spotify_started = true;
+                LOG_INFO("Spotify module started");
+            }
             LOG_INFO("Spotify module init success");
         }
     }
@@ -458,13 +824,23 @@ int wifi_media_init(WifiMediaConfig_t *cfg) {
             aml_google_cast_set_device_name(g_wifi_name);
             aml_google_cast_set_volume(g_current_volume);
             aml_google_cast_set_buffer_size(g_buffer_size);
-            aml_google_cast_start();
+            
+            // 按需启动
+            if (!g_on_demand_start_enabled) {
+                aml_google_cast_start();
+                g_google_cast_started = true;
+                LOG_INFO("Google Cast module started");
+            }
             LOG_INFO("Google Cast module init success");
         }
     }
     
     g_wifi_media_init = true;
     g_wifi_connected = false;
+    g_dlna_started = false;
+    g_airplay_started = false;
+    g_spotify_started = false;
+    g_google_cast_started = false;
     g_dlna_playing = false;
     g_airplay_playing = false;
     g_spotify_playing = false;
@@ -474,7 +850,23 @@ int wifi_media_init(WifiMediaConfig_t *cfg) {
     g_playing_media_title[0] = '\0';
     g_playing_media_artist[0] = '\0';
     
+    // 初始化网络质量检测和自动重连参数
+    memset(g_network_quality_history, 5, sizeof(g_network_quality_history));
+    g_network_quality_index = 0;
+    g_network_quality = 5;
+    g_reconnect_attempts = 0;
+    g_reconnect_backoff = 1;
+    g_last_reconnect_time = 0;
+    g_last_quality_check_time = 0;
+    
     LOG_INFO("WIFI media module init success (CAST/NET PLAY) [HIGH END ONLY]");
+    LOG_INFO("  On-demand start enabled: %s", g_on_demand_start_enabled ? "YES" : "NO");
+    LOG_INFO("  Auto-reconnect enabled: %s", g_auto_reconnect_enabled ? "YES" : "NO");
+    LOG_INFO("  Buffer size: %d ms (min: %d, max: %d)", 
+             g_buffer_size, g_min_buffer_size, g_max_buffer_size);
+    LOG_INFO("  Network quality check interval: %d ms", g_quality_check_interval);
+    LOG_INFO("  Reconnect attempts: %d, Max: %d, Interval: %d sec", 
+             g_reconnect_attempts, g_max_reconnect_attempts, g_reconnect_interval);
     LOG_INFO("  Device name: %s", g_wifi_name);
     LOG_INFO("  DLNA enabled: %s", g_dlna_enabled ? "YES" : "NO");
     LOG_INFO("  AirPlay enabled: %s", g_airplay_enabled ? "YES" : "NO");
@@ -826,6 +1218,17 @@ bool wifi_media_get_google_cast_state(void) {
 
 #endif
 
+// WiFi媒体服务事件轮询函数
+void wifi_media_event_poll(void) {
+    if (!g_wifi_media_init) return;
+    
+    // 检查网络质量
+    check_network_quality();
+    
+    // 自动重连
+    wifi_auto_reconnect();
+}
+
 #ifndef CONFIG_ENABLE_WIFI_MEDIA
 int wifi_media_init(void *cfg) { return 0; }
 int wifi_media_deinit(void) { return 0; }
@@ -845,4 +1248,5 @@ bool wifi_media_is_game_mode_enabled(void) { return false; }
 int wifi_media_get_current_ssid(char *ssid, int len) { return -1; }
 bool wifi_media_get_spotify_state(void) { return false; }
 bool wifi_media_get_google_cast_state(void) { return false; }
+void wifi_media_event_poll(void) { return; }
 #endif

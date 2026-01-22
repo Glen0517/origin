@@ -7,7 +7,12 @@
  */
 
 #include "pal.h"
-#include "logger.h"
+#include "log/aml_log.h"
+
+// 定义PAL模块日志分类
+AML_LOG_DEFINE(pal_log);
+// 设置默认日志分类
+#define AML_LOG_DEFAULT AML_LOG_GET_CAT(pal_log)
 
 /**
  * @brief PAL层初始化
@@ -15,27 +20,27 @@
  * @return 初始化结果：0表示成功，非0表示失败
  */
 int pal_init(void) {
-    LOG_INFO("Starting PAL layer initialization...");
+    AML_LOGI("Starting PAL layer initialization...");
     
     // 初始化系统服务模块
     if (pal_system_init() != 0) {
-        LOG_ERROR("PAL system service init failed");
+        AML_LOGE("PAL system service init failed");
         return FAILURE;
     }
     
     // 初始化存储服务模块
     if (pal_storage_init() != 0) {
-        LOG_ERROR("PAL storage service init failed");
+        AML_LOGE("PAL storage service init failed");
         return FAILURE;
     }
     
     // 初始化网络服务模块
     if (pal_network_init() != 0) {
-        LOG_ERROR("PAL network service init failed");
+        AML_LOGE("PAL network service init failed");
         return FAILURE;
     }
     
-    LOG_INFO("PAL layer initialization completed successfully");
+    AML_LOGI("PAL layer initialization completed successfully");
     return SUCCESS;
 }
 
@@ -45,23 +50,23 @@ int pal_init(void) {
  * @return 反初始化结果：0表示成功，非0表示失败
  */
 int pal_deinit(void) {
-    LOG_INFO("Starting PAL layer deinitialization...");
+    AML_LOGI("Starting PAL layer deinitialization...");
     
     // 反初始化网络服务模块
     if (pal_network_deinit() != 0) {
-        LOG_ERROR("PAL network service deinit failed");
+        AML_LOGE("PAL network service deinit failed");
     }
     
     // 反初始化存储服务模块
     if (pal_storage_deinit() != 0) {
-        LOG_ERROR("PAL storage service deinit failed");
+        AML_LOGE("PAL storage service deinit failed");
     }
     
     // 反初始化系统服务模块
     if (pal_system_deinit() != 0) {
-        LOG_ERROR("PAL system service deinit failed");
+        AML_LOGE("PAL system service deinit failed");
     }
     
-    LOG_INFO("PAL layer deinitialization completed");
+    AML_LOGI("PAL layer deinitialization completed");
     return SUCCESS;
 }

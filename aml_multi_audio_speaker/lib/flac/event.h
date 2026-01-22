@@ -64,6 +64,13 @@
 #define EVENT_BUFFERING                308 // 正在缓冲
 #define EVENT_BUFFER_COMPLETE          309 // 缓冲完成
 
+// 音频错误事件（310-320）
+#define EVENT_AUDIO_ERROR              310 // 音频错误
+#define EVENT_AUDIO_ERROR_RECOVERED    311 // 音频错误恢复
+
+// 错误处理事件（321-330）
+#define EVENT_ERROR_OCCURRED           321 // 错误发生
+
 // 蓝牙事件（401-500）
 #define EVENT_BT_CONNECTED             401 // 蓝牙连接
 #define EVENT_BT_DISCONNECTED          402 // 蓝牙断开

@@ -7,12 +7,29 @@
  */
 
 #include "pal_system.h"
-#include "logger.h"
+#include "log/aml_log.h"
 #include <time.h>
-#include <unistd.h>
-#include <sys/statvfs.h>
 #include <string.h>
 #include <errno.h>
+
+// 条件编译：只在Linux系统上包含Linux特定的头文件
+#ifdef __linux__
+#include <unistd.h>
+#include <sys/statvfs.h>
+#else
+// Windows系统下的模拟定义
+int stime(time_t *t) { return 0; }
+unsigned int sleep(unsigned int seconds) { return 0; }
+int usleep(useconds_t usec) { return 0; }
+typedef unsigned int useconds_t;
+struct tm *localtime(const time_t *timep) { static struct tm tm; return &tm; }
+time_t mktime(struct tm *tm) { return 0; }
+#endif
+
+// 定义系统服务模块日志分类
+AML_LOG_DEFINE(system_log);
+// 设置默认日志分类
+#define AML_LOG_DEFAULT AML_LOG_GET_CAT(system_log)
 
 static bool g_system_init = false;
 
@@ -23,12 +40,12 @@ static bool g_system_init = false;
  */
 int pal_system_init(void) {
     if (g_system_init) {
-        LOG_INFO("PAL system service already initialized");
+        AML_LOGI("PAL system service already initialized");
         return SUCCESS;
     }
     
     g_system_init = true;
-    LOG_INFO("PAL system service init success");
+    AML_LOGI("PAL system service init success");
     return SUCCESS;
 }
 
@@ -39,12 +56,12 @@ int pal_system_init(void) {
  */
 int pal_system_deinit(void) {
     if (!g_system_init) {
-        LOG_INFO("PAL system service not initialized");
+        AML_LOGI("PAL system service not initialized");
         return SUCCESS;
     }
     
     g_system_init = false;
-    LOG_INFO("PAL system service deinit success");
+    AML_LOGI("PAL system service deinit success");
     return SUCCESS;
 }
 
@@ -54,14 +71,14 @@ int pal_system_deinit(void) {
  * @param time 时间结构体指针，用于存储获取的时间
  * @return 获取结果：0表示成功，非0表示失败
  */
-int pal_system_get_time(PalSystemTime_t *time) {
+int pal_system_get_time(PalSystemTime_t *time_ptr) {
     if (!g_system_init) {
-        LOG_ERROR("PAL system service not initialized");
+        AML_LOGE("PAL system service not initialized");
         return FAILURE;
     }
     
-    if (!time) {
-        LOG_ERROR("Invalid time parameter");
+    if (!time_ptr) {
+        AML_LOGE("Invalid time parameter");
         return FAILURE;
     }
     
@@ -72,20 +89,20 @@ int pal_system_get_time(PalSystemTime_t *time) {
     local_time = localtime(&current_time);
     
     if (!local_time) {
-        LOG_ERROR("Get local time failed");
+        AML_LOGE("Get local time failed");
         return FAILURE;
     }
     
-    time->year = local_time->tm_year + 1900;  // tm_year是从1900开始的
-    time->month = local_time->tm_mon + 1;     // tm_mon是从0开始的
-    time->day = local_time->tm_mday;
-    time->hour = local_time->tm_hour;
-    time->minute = local_time->tm_min;
-    time->second = local_time->tm_sec;
+    time_ptr->year = local_time->tm_year + 1900;  // tm_year是从1900开始的
+    time_ptr->month = local_time->tm_mon + 1;     // tm_mon是从0开始的
+    time_ptr->day = local_time->tm_mday;
+    time_ptr->hour = local_time->tm_hour;
+    time_ptr->minute = local_time->tm_min;
+    time_ptr->second = local_time->tm_sec;
     
-    LOG_DEBUG("System time: %04d-%02d-%02d %02d:%02d:%02d", 
-             time->year, time->month, time->day, 
-             time->hour, time->minute, time->second);
+    AML_LOGD("System time: %04d-%02d-%02d %02d:%02d:%02d", 
+             time_ptr->year, time_ptr->month, time_ptr->day, 
+             time_ptr->hour, time_ptr->minute, time_ptr->second);
     
     return SUCCESS;
 }
@@ -98,17 +115,17 @@ int pal_system_get_time(PalSystemTime_t *time) {
  */
 int pal_system_set_time(PalSystemTime_t *time) {
     if (!g_system_init) {
-        LOG_ERROR("PAL system service not initialized");
+        AML_LOGE("PAL system service not initialized");
         return FAILURE;
     }
     
     if (!time) {
-        LOG_ERROR("Invalid time parameter");
+        AML_LOGE("Invalid time parameter");
         return FAILURE;
     }
     
     // 注意：设置系统时间需要root权限
-    LOG_INFO("Set system time to: %04d-%02d-%02d %02d:%02d:%02d", 
+    AML_LOGI("Set system time to: %04d-%02d-%02d %02d:%02d:%02d", 
              time->year, time->month, time->day, 
              time->hour, time->minute, time->second);
     
@@ -129,19 +146,19 @@ int pal_system_set_time(PalSystemTime_t *time) {
     // 转换为时间戳
     t = mktime(&tm_time);
     if (t == -1) {
-        LOG_ERROR("Convert time failed");
+        AML_LOGE("Convert time failed");
         return FAILURE;
     }
     
     // 设置系统时间
     if (stime(&t) != 0) {
-        LOG_ERROR("Set system time failed: %s", strerror(errno));
-        LOG_WARN("Root permission may be required to set system time");
+        AML_LOGE("Set system time failed: %s", strerror(errno));
+        AML_LOGW("Root permission may be required to set system time");
         // 即使失败也返回成功，因为在非root环境下可能无法设置
         // 但至少我们尝试了
     }
     
-    LOG_INFO("System time set successfully");
+    AML_LOGI("System time set successfully");
     return SUCCESS;
 }
 
@@ -153,12 +170,12 @@ int pal_system_set_time(PalSystemTime_t *time) {
  */
 int pal_system_sleep(int ms) {
     if (!g_system_init) {
-        LOG_ERROR("PAL system service not initialized");
+        AML_LOGE("PAL system service not initialized");
         return FAILURE;
     }
     
     if (ms < 0) {
-        LOG_ERROR("Invalid sleep time: %d", ms);
+        AML_LOGE("Invalid sleep time: %d", ms);
         return FAILURE;
     }
     
@@ -175,12 +192,12 @@ int pal_system_sleep(int ms) {
  */
 int pal_system_get_cpu_usage(int *usage) {
     if (!g_system_init) {
-        LOG_ERROR("PAL system service not initialized");
+        AML_LOGE("PAL system service not initialized");
         return FAILURE;
     }
     
     if (!usage) {
-        LOG_ERROR("Invalid usage parameter");
+        AML_LOGE("Invalid usage parameter");
         return FAILURE;
     }
     
@@ -190,7 +207,7 @@ int pal_system_get_cpu_usage(int *usage) {
     // 模拟返回一个随机的CPU使用率
     *usage = 20 + (rand() % 30);  // 返回20-50之间的随机值
     
-    LOG_DEBUG("CPU usage: %d%%", *usage);
+    AML_LOGD("CPU usage: %d%%", *usage);
     
     return SUCCESS;
 }
@@ -203,12 +220,12 @@ int pal_system_get_cpu_usage(int *usage) {
  */
 int pal_system_get_memory_usage(int *usage) {
     if (!g_system_init) {
-        LOG_ERROR("PAL system service not initialized");
+        AML_LOGE("PAL system service not initialized");
         return FAILURE;
     }
     
     if (!usage) {
-        LOG_ERROR("Invalid usage parameter");
+        AML_LOGE("Invalid usage parameter");
         return FAILURE;
     }
     
@@ -218,7 +235,7 @@ int pal_system_get_memory_usage(int *usage) {
     // 模拟返回一个随机的内存使用率
     *usage = 40 + (rand() % 20);  // 返回40-60之间的随机值
     
-    LOG_DEBUG("Memory usage: %d%%", *usage);
+    AML_LOGD("Memory usage: %d%%", *usage);
     
     return SUCCESS;
 }
@@ -230,11 +247,11 @@ int pal_system_get_memory_usage(int *usage) {
  */
 int pal_system_reboot(void) {
     if (!g_system_init) {
-        LOG_ERROR("PAL system service not initialized");
+        AML_LOGE("PAL system service not initialized");
         return FAILURE;
     }
     
-    LOG_INFO("System reboot requested");
+    AML_LOGI("System reboot requested");
     
     // 实际实现中，这里应该调用系统API来重启系统
     // 例如：
@@ -253,11 +270,11 @@ int pal_system_reboot(void) {
  */
 int pal_system_poweroff(void) {
     if (!g_system_init) {
-        LOG_ERROR("PAL system service not initialized");
+        AML_LOGE("PAL system service not initialized");
         return FAILURE;
     }
     
-    LOG_INFO("System poweroff requested");
+    AML_LOGI("System poweroff requested");
     
     // 实际实现中，这里应该调用系统API来关闭系统
     // 例如：
