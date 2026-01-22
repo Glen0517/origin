@@ -4,6 +4,7 @@
 
 #include <dirent.h>
 #include <string.h>
+#include <stdlib.h>
 
 #define MAX_MEDIA_FILES 1000
 #define MAX_FILE_PATH 256
@@ -155,6 +156,14 @@ void media_scan_deinit(void)
 }
 
 /**
+ * @brief 比较两个文件名，用于排序
+ */
+static int compare_filenames(const void *a, const void *b)
+{
+    return strcasecmp(*(const char **)a, *(const char **)b);
+}
+
+/**
  * @brief 扫描指定路径下的所有音频文件
  */
 int media_scan_scan_path(const char *path)
@@ -177,6 +186,12 @@ int media_scan_scan_path(const char *path)
         // 通知系统媒体文件扫描失败
         event_notify(EVENT_MEDIA_SCAN_ERROR, NULL);
         return count;
+    }
+
+    // 对媒体文件列表进行排序
+    if (count > 1) {
+        qsort(g_media_files, count, sizeof(g_media_files[0]), compare_filenames);
+        LOG_INFO("Media files sorted by name");
     }
 
     LOG_INFO("Media scan completed, found %d audio files", count);

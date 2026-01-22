@@ -38,6 +38,18 @@ static void audio_decode_status_callback(int status)
     switch (status) {
         case AUDIO_DECODE_STATUS_COMPLETE:
             LOG_INFO("File playback completed: %s", g_current_playing_file);
+            
+            // 尝试自动播放下一首歌曲
+            if (g_audio_file_count > 0 && g_current_file_index >= 0) {
+                int next_index = (g_current_file_index + 1) % g_audio_file_count;
+                if (g_audio_file_list[next_index] && is_file_accessible(g_audio_file_list[next_index])) {
+                    LOG_INFO("Automatically playing next song: %s", g_audio_file_list[next_index]);
+                    g_current_file_index = next_index;
+                    file_reader_play_file(g_audio_file_list[next_index]);
+                    return;
+                }
+            }
+            
             g_file_playing = false;
             g_current_playing_file[0] = '\0';
             break;
@@ -73,7 +85,21 @@ int file_reader_init(void)
 #endif
 
     // 初始化音频解码SDK
-    aml_audio_decode_init();
+    if (aml_audio_decode_init() != 0) {
+        LOG_ERROR("Failed to initialize audio decode SDK");
+        
+        // 清理互斥锁
+#ifdef _WIN32
+        if (g_file_reader_mutex) {
+            CloseHandle(g_file_reader_mutex);
+            g_file_reader_mutex = NULL;
+        }
+#else
+        pthread_mutex_destroy(&g_file_reader_mutex);
+#endif
+        return -1;
+    }
+    
     aml_audio_decode_set_data_callback(audio_decode_callback);
     aml_audio_decode_set_status_callback(audio_decode_status_callback);
     aml_audio_decode_set_volume(g_current_volume);
@@ -94,7 +120,9 @@ void file_reader_deinit(void)
     if (g_file_reader_init) {
         // 停止当前播放的文件
         if (g_file_playing) {
-            aml_audio_decode_stop();
+            if (aml_audio_decode_stop() != 0) {
+                LOG_ERROR("Failed to stop audio decoding");
+            }
         }
 
         // 释放音频文件列表
@@ -109,7 +137,9 @@ void file_reader_deinit(void)
         }
 
         // 反初始化音频解码SDK
-        aml_audio_decode_deinit();
+        if (aml_audio_decode_deinit() != 0) {
+            LOG_ERROR("Failed to deinitialize audio decode SDK");
+        }
 
         // 清理互斥锁
 #ifdef _WIN32
@@ -118,7 +148,9 @@ void file_reader_deinit(void)
             g_file_reader_mutex = NULL;
         }
 #else
-        pthread_mutex_destroy(&g_file_reader_mutex);
+        if (pthread_mutex_destroy(&g_file_reader_mutex) != 0) {
+            LOG_ERROR("Failed to destroy mutex");
+        }
 #endif
 
         g_file_reader_init = 0;

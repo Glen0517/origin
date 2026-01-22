@@ -1,10 +1,11 @@
 #include "comm_mcu_priv.h"
 #include "logger.h"
-#include "product_type.h"
+#include "../lib/flac/product_type.h"
 
 #include <aml_uart.h>        // 晶晨UART SDK
 
 #include "peripheral_priv.h" // 外设私有定义，包含按键/红外变量声明
+#include "remote_control/remote_control_priv.h" // 远程控制私有定义
 
 static bool g_uart_init = false;
 static int g_uart_fd = -1;
@@ -153,34 +154,38 @@ static void uart_rx_callback(uint8_t *data, int len) {
                     LOG_INFO("MCU key state: 0x%02X", key_state);
                     
                     // 将MCU返回的按键状态转换为系统内部的KeyEvent_e事件
-                    if (g_key_ir_init) {
-                        KeyEvent_e event = KEY_EVENT_NONE;
-                        
-                        // 检查按键状态位
-                        if (key_state & KEY_BIT_PLAY_PAUSE) {
-                            event = KEY_EVENT_PLAY_PAUSE;
-                        } else if (key_state & KEY_BIT_VOL_UP) {
-                            event = KEY_EVENT_VOL_UP;
-                        } else if (key_state & KEY_BIT_VOL_DOWN) {
-                            event = KEY_EVENT_VOL_DOWN;
-                        } else if (key_state & KEY_BIT_SOURCE_SWITCH) {
-                            event = KEY_EVENT_SOURCE_SWITCH;
-                        } else if (key_state & KEY_BIT_SOUND_MODE) {
-                            event = KEY_EVENT_SOUND_MODE;
-                        } else if (key_state & KEY_BIT_BASS_UP) {
-                            event = KEY_EVENT_BASS_UP;
-                        } else if (key_state & KEY_BIT_TREBLE_UP) {
-                            event = KEY_EVENT_TREBLE_UP;
-                        } else if (key_state & KEY_BIT_IR_LEARN) {
-                            event = KEY_EVENT_IR_LEARN;
-                        } else if (key_state & KEY_BIT_NEXT) {
-                            event = KEY_EVENT_NEXT;
-                        } else if (key_state & KEY_BIT_PREV) {
-                            event = KEY_EVENT_PREV;
-                        }
-                        
-                        // 如果有按键事件，存储到全局变量
-                        if (event != KEY_EVENT_NONE) {
+                    KeyEvent_e event = KEY_EVENT_NONE;
+                    
+                    // 检查按键状态位
+                    if (key_state & KEY_BIT_PLAY_PAUSE) {
+                        event = KEY_EVENT_PLAY_PAUSE;
+                    } else if (key_state & KEY_BIT_VOL_UP) {
+                        event = KEY_EVENT_VOL_UP;
+                    } else if (key_state & KEY_BIT_VOL_DOWN) {
+                        event = KEY_EVENT_VOL_DOWN;
+                    } else if (key_state & KEY_BIT_SOURCE_SWITCH) {
+                        event = KEY_EVENT_SOURCE_SWITCH;
+                    } else if (key_state & KEY_BIT_SOUND_MODE) {
+                        event = KEY_EVENT_SOUND_MODE;
+                    } else if (key_state & KEY_BIT_BASS_UP) {
+                        event = KEY_EVENT_BASS_UP;
+                    } else if (key_state & KEY_BIT_TREBLE_UP) {
+                        event = KEY_EVENT_TREBLE_UP;
+                    } else if (key_state & KEY_BIT_IR_LEARN) {
+                        event = KEY_EVENT_IR_LEARN;
+                    } else if (key_state & KEY_BIT_NEXT) {
+                        event = KEY_EVENT_NEXT;
+                    } else if (key_state & KEY_BIT_PREV) {
+                        event = KEY_EVENT_PREV;
+                    }
+                    
+                    // 如果有按键事件，直接处理
+                    if (event != KEY_EVENT_NONE) {
+                        // 优先使用远程控制处理进程
+                        if (g_remote_control_init) {
+                            remote_control_process_handle_key_event(event);
+                        } else if (g_key_ir_init) {
+                            // 回退到原来的处理方式
                             g_last_key_event = event;
                             LOG_INFO("Key/IR event from MCU: %d", event);
                         }
@@ -201,6 +206,35 @@ static void uart_rx_callback(uint8_t *data, int len) {
                 if (payload_len >= 1) {
                     uint8_t status = payload[0];
                     LOG_INFO("LED state set response: %s", status ? "success" : "failed");
+                }
+                break;
+                
+            case CMD_IR_CODE_RESP: // 红外码响应
+                if (payload_len >= 4) {
+                    // 解析红外码（4字节）
+                    uint32_t ir_code = (payload[0] << 24) | (payload[1] << 16) | (payload[2] << 8) | payload[3];
+                    LOG_INFO("Received IR code: 0x%08X", ir_code);
+                    
+                    // 处理红外码
+                    if (g_remote_control_init) {
+                        remote_control_set_ir_code(ir_code);
+                    } else {
+                        LOG_WARN("Remote control not initialized, cannot process IR code");
+                    }
+                }
+                break;
+                
+            case CMD_START_IR_LEARN_RESP: // 开始红外学习响应
+                if (payload_len >= 1) {
+                    uint8_t status = payload[0];
+                    LOG_INFO("Start IR learn response: %s", status ? "success" : "failed");
+                }
+                break;
+                
+            case CMD_STOP_IR_LEARN_RESP: // 停止红外学习响应
+                if (payload_len >= 1) {
+                    uint8_t status = payload[0];
+                    LOG_INFO("Stop IR learn response: %s", status ? "success" : "failed");
                 }
                 break;
                 

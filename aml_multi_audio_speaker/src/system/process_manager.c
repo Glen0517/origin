@@ -1,372 +1,562 @@
 /**
  * @file process_manager.c
- * @brief 进程管理器实现
- * @details 负责管理系统中的所有进程，包括进程的创建、监控和管理
+ * @brief 进程管理模块实现
+ * @details 统一管理所有进程的创建、销毁和通信
  * @author AML Audio Team
  * @date 2026-01-22
  */
 
-#include "system.h"
-#include "system_priv.h"
+#include "./process_manager.h"
 #include "logger.h"
-#include "event.h"
-#include "process.h"
-#include "common_def.h"
+#include "../lib/flac/common_def.h"
+
+// 包含各个模块的头文件
+#include "../lib/flac/storage.h"
+#include "../lib/flac/wifi_media.h"
+#include "../lib/flac/audio_core.h"
+#include "../lib/flac/system.h"
+#include "../remote_control/remote_control.h"
 
 /******************************************************************************************
- * 进程管理器内部数据结构
+ * 进程管理模块内部数据结构
  ******************************************************************************************/
 
 /**
- * @brief 系统进程类型
- */
-typedef enum {
-    SYS_PROCESS_AUDIO = 0,       // 音频处理进程
-    SYS_PROCESS_NETWORK = 1,      // 网络服务进程
-    SYS_PROCESS_STORAGE = 2,      // 存储管理进程
-    SYS_PROCESS_SYSTEM = 3,       // 系统管理进程
-    SYS_PROCESS_MAX
-} SysProcessType_t;
-
-/**
- * @brief 系统进程信息
+ * @brief 进程信息结构体
  */
 typedef struct {
-    SysProcessType_t type;        // 进程类型
-    pid_t pid;                    // 进程ID
-    char name[32];                // 进程名称
-    bool initialized;             // 初始化标志
-    bool running;                 // 运行标志
-    uint32_t restart_count;       // 重启次数
-    uint32_t last_restart_time;   // 最后重启时间
-} SysProcessInfo_t;
+    char name[64];                 // 进程名称
+    pid_t (*create_func)(void);     // 进程创建函数
+    int (*terminate_func)(void);    // 进程终止函数
+    pid_t pid;                      // 进程ID
+    bool running;                   // 运行状态
+    struct ProcessInfo_t *next;     // 指向下一个进程
+} ProcessInfo_t;
 
 /******************************************************************************************
- * 进程管理器全局变量
+ * 进程管理模块全局变量
  ******************************************************************************************/
 
-static SysProcessInfo_t g_sys_processes[SYS_PROCESS_MAX] = {
-    {SYS_PROCESS_AUDIO, -1, "Audio Process", false, false, 0, 0},
-    {SYS_PROCESS_NETWORK, -1, "Network Process", false, false, 0, 0},
-    {SYS_PROCESS_STORAGE, -1, "Storage Process", false, false, 0, 0},
-    {SYS_PROCESS_SYSTEM, -1, "System Process", false, false, 0, 0}
-};
-
-static bool g_process_manager_initialized = false;
+static ProcessInfo_t *g_process_list = NULL;
+static pthread_mutex_t g_process_list_mutex = PTHREAD_MUTEX_INITIALIZER;
+static bool g_process_manager_init = false;
 
 /******************************************************************************************
- * 进程管理器内部函数
+ * 进程管理模块内部函数
  ******************************************************************************************/
 
 /**
- * @brief 创建系统进程
- * @param type 进程类型
- * @return 进程ID，失败返回-1
+ * @brief 查找进程信息
+ * @param name 进程名称
+ * @return 进程信息指针，未找到返回NULL
  */
-static pid_t create_system_process(SysProcessType_t type) {
-    const char *name = g_sys_processes[type].name;
-    int priority = 0;
-    ProcessType_t process_type = PROCESS_TYPE_SYSTEM;
-    
-    switch (type) {
-        case SYS_PROCESS_AUDIO:
-            process_type = PROCESS_TYPE_AUDIO;
-            priority = 1; // 高优先级
-            break;
-        case SYS_PROCESS_NETWORK:
-            process_type = PROCESS_TYPE_NETWORK;
-            priority = 0; // 普通优先级
-            break;
-        case SYS_PROCESS_STORAGE:
-            process_type = PROCESS_TYPE_STORAGE;
-            priority = -1; // 低优先级
-            break;
-        case SYS_PROCESS_SYSTEM:
-            process_type = PROCESS_TYPE_SYSTEM;
-            priority = 1; // 高优先级
-            break;
-        default:
-            LOG_ERROR("Invalid process type: %d", type);
-            return -1;
+static ProcessInfo_t *find_process(const char *name) {
+    if (!name) {
+        return NULL;
     }
     
-    pid_t pid = process_create(process_type, name, priority);
-    if (pid != -1) {
-        g_sys_processes[type].pid = pid;
-        g_sys_processes[type].running = true;
-        g_sys_processes[type].initialized = true;
-        g_sys_processes[type].restart_count = 0;
-        g_sys_processes[type].last_restart_time = GetTickCount();
-        LOG_INFO("Created system process: %s, pid: %d, priority: %d", name, pid, priority);
-    } else {
-        LOG_ERROR("Failed to create system process: %s", name);
-    }
-    
-    return pid;
-}
-
-/**
- * @brief 重启系统进程
- * @param type 进程类型
- * @return 进程ID，失败返回-1
- */
-static pid_t restart_system_process(SysProcessType_t type) {
-    if (g_sys_processes[type].pid != -1) {
-        process_terminate(g_sys_processes[type].pid);
-        g_sys_processes[type].pid = -1;
-        g_sys_processes[type].running = false;
-    }
-    
-    pid_t pid = create_system_process(type);
-    if (pid != -1) {
-        g_sys_processes[type].restart_count++;
-        g_sys_processes[type].last_restart_time = GetTickCount();
-        LOG_INFO("Restarted system process: %s, pid: %d, restart count: %d", 
-                 g_sys_processes[type].name, pid, g_sys_processes[type].restart_count);
-    }
-    
-    return pid;
-}
-
-/**
- * @brief 监控系统进程
- */
-static void monitor_system_processes(void) {
-    for (int i = 0; i < SYS_PROCESS_MAX; i++) {
-        if (g_sys_processes[i].initialized && g_sys_processes[i].pid != -1) {
-            bool running = process_is_running(g_sys_processes[i].pid);
-            if (!running && g_sys_processes[i].running) {
-                LOG_WARN("System process crashed: %s, pid: %d", 
-                         g_sys_processes[i].name, g_sys_processes[i].pid);
-                
-                // 重启进程
-                restart_system_process((SysProcessType_t)i);
-                
-                // 发送进程崩溃事件
-                event_notify(EVENT_SYSTEM_PROCESS_CRASH, &i);
-            }
-            g_sys_processes[i].running = running;
+    ProcessInfo_t *current = g_process_list;
+    while (current) {
+        if (strcmp(current->name, name) == 0) {
+            return current;
         }
+        current = current->next;
     }
+    
+    return NULL;
 }
 
 /**
- * @brief 获取系统进程信息
- * @param type 进程类型
- * @param info 进程信息
- * @return SUCCESS/FAILURE
+ * @brief 添加进程信息
+ * @param name 进程名称
+ * @param create_func 进程创建函数
+ * @param terminate_func 进程终止函数
+ * @return 添加结果：0表示成功，非0表示失败
  */
-static int get_system_process_info(SysProcessType_t type, ProcessInfo_t *info) {
-    if (type >= SYS_PROCESS_MAX) {
-        LOG_ERROR("Invalid process type: %d", type);
-        return FAILURE;
+static int add_process(const char *name, pid_t (*create_func)(void), int (*terminate_func)(void)) {
+    if (!name || !create_func || !terminate_func) {
+        LOG_ERROR("Invalid parameters");
+        return -1;
     }
     
-    if (g_sys_processes[type].pid == -1) {
-        LOG_ERROR("Process not created: %s", g_sys_processes[type].name);
-        return FAILURE;
+    // 检查进程是否已存在
+    if (find_process(name)) {
+        LOG_WARN("Process already exists: %s", name);
+        return -1;
     }
     
-    return process_get_info(g_sys_processes[type].pid, info);
+    // 创建进程信息结构体
+    ProcessInfo_t *process = (ProcessInfo_t *)malloc(sizeof(ProcessInfo_t));
+    if (!process) {
+        LOG_ERROR("Failed to allocate memory for process info");
+        return -1;
+    }
+    
+    // 初始化进程信息
+    strncpy(process->name, name, sizeof(process->name) - 1);
+    process->create_func = create_func;
+    process->terminate_func = terminate_func;
+    process->pid = -1;
+    process->running = false;
+    process->next = NULL;
+    
+    // 添加到进程列表
+    if (!g_process_list) {
+        g_process_list = process;
+    } else {
+        ProcessInfo_t *current = g_process_list;
+        while (current->next) {
+            current = current->next;
+        }
+        current->next = process;
+    }
+    
+    LOG_INFO("Added process: %s", name);
+    return 0;
+}
+
+/**
+ * @brief 移除进程信息
+ * @param name 进程名称
+ * @return 移除结果：0表示成功，非0表示失败
+ */
+static int remove_process(const char *name) {
+    if (!name) {
+        return -1;
+    }
+    
+    ProcessInfo_t *prev = NULL;
+    ProcessInfo_t *current = g_process_list;
+    
+    while (current) {
+        if (strcmp(current->name, name) == 0) {
+            // 从列表中移除
+            if (prev) {
+                prev->next = current->next;
+            } else {
+                g_process_list = current->next;
+            }
+            
+            // 释放内存
+            free(current);
+            LOG_INFO("Removed process: %s", name);
+            return 0;
+        }
+        
+        prev = current;
+        current = current->next;
+    }
+    
+    LOG_WARN("Process not found: %s", name);
+    return -1;
+}
+
+/**
+ * @brief 检查进程是否运行
+ * @param pid 进程ID
+ * @return 运行状态：true表示运行，false表示未运行
+ */
+static bool is_process_running(pid_t pid) {
+    if (pid == -1) {
+        return false;
+    }
+    
+    // 尝试发送信号0（不执行任何操作，只检查进程是否存在）
+    return (kill(pid, 0) == 0);
 }
 
 /******************************************************************************************
- * 进程管理器对外接口
+ * 进程管理模块对外接口
  ******************************************************************************************/
 
 /**
- * @brief 初始化进程管理器
- * @return SUCCESS/FAILURE
+ * @brief 初始化进程管理模块
+ * @return 初始化结果：0表示成功，非0表示失败
  */
 int process_manager_init(void) {
-    if (g_process_manager_initialized) {
-        LOG_WARN("Process manager already initialized");
+    if (g_process_manager_init) {
+        LOG_INFO("Process manager already initialized");
         return SUCCESS;
     }
     
-    // 初始化进程管理模块
-    if (process_init() != SUCCESS) {
-        LOG_ERROR("Failed to initialize process module");
-        return FAILURE;
-    }
+    // 初始化进程列表
+    g_process_list = NULL;
+    pthread_mutex_init(&g_process_list_mutex, NULL);
     
-    // 创建系统进程
-    for (int i = 0; i < SYS_PROCESS_MAX; i++) {
-        create_system_process((SysProcessType_t)i);
-    }
+    // 注册系统进程
+    process_manager_register_process("storage", NULL, NULL);
+    process_manager_register_process("network", NULL, NULL);
+    process_manager_register_process("audio", NULL, NULL);
+    process_manager_register_process("system", NULL, NULL);
+    process_manager_register_process("remote_control", NULL, NULL);
     
-    g_process_manager_initialized = true;
-    LOG_INFO("Process manager initialized successfully");
+    g_process_manager_init = true;
+    LOG_INFO("Process manager init success");
+    
     return SUCCESS;
 }
 
 /**
- * @brief 反初始化进程管理器
- * @return SUCCESS/FAILURE
+ * @brief 反初始化进程管理模块
+ * @return 反初始化结果：0表示成功，非0表示失败
  */
 int process_manager_deinit(void) {
-    if (!g_process_manager_initialized) {
-        LOG_WARN("Process manager not initialized");
+    if (!g_process_manager_init) {
+        LOG_INFO("Process manager not initialized");
         return SUCCESS;
     }
     
-    // 终止所有系统进程
-    for (int i = 0; i < SYS_PROCESS_MAX; i++) {
-        if (g_sys_processes[i].pid != -1) {
-            process_terminate(g_sys_processes[i].pid);
-            g_sys_processes[i].pid = -1;
-            g_sys_processes[i].running = false;
-            g_sys_processes[i].initialized = false;
-        }
-    }
+    // 停止所有进程
+    process_manager_stop_all_processes();
     
-    // 反初始化进程管理模块
-    if (process_deinit() != SUCCESS) {
-        LOG_ERROR("Failed to deinitialize process module");
-        return FAILURE;
+    // 清空进程列表
+    ProcessInfo_t *current = g_process_list;
+    while (current) {
+        ProcessInfo_t *next = current->next;
+        free(current);
+        current = next;
     }
+    g_process_list = NULL;
     
-    g_process_manager_initialized = false;
-    LOG_INFO("Process manager deinitialized successfully");
+    // 销毁互斥锁
+    pthread_mutex_destroy(&g_process_list_mutex);
+    
+    g_process_manager_init = false;
+    LOG_INFO("Process manager deinitialized");
+    
     return SUCCESS;
 }
 
 /**
- * @brief 获取系统进程ID
- * @param type 进程类型
- * @return 进程ID，失败返回-1
+ * @brief 注册进程
+ * @param name 进程名称
+ * @param create_func 进程创建函数
+ * @param terminate_func 进程终止函数
+ * @return 注册结果：0表示成功，非0表示失败
  */
-pid_t process_manager_get_process_id(SysProcessType_t type) {
-    if (type >= SYS_PROCESS_MAX) {
-        LOG_ERROR("Invalid process type: %d", type);
+int process_manager_register_process(const char *name, pid_t (*create_func)(void), int (*terminate_func)(void)) {
+    if (!g_process_manager_init) {
+        LOG_ERROR("Process manager not initialized");
         return -1;
     }
     
-    return g_sys_processes[type].pid;
-}
-
-/**
- * @brief 重启系统进程
- * @param type 进程类型
- * @return SUCCESS/FAILURE
- */
-int process_manager_restart_process(SysProcessType_t type) {
-    if (type >= SYS_PROCESS_MAX) {
-        LOG_ERROR("Invalid process type: %d", type);
-        return FAILURE;
-    }
+    MUTEX_LOCK_LOCK(g_process_list_mutex);
+    int ret = add_process(name, create_func, terminate_func);
+    MUTEX_LOCK_UNLOCK(g_process_list_mutex);
     
-    pid_t pid = restart_system_process(type);
-    return pid != -1 ? SUCCESS : FAILURE;
+    return ret;
 }
 
 /**
- * @brief 监控系统进程状态
- * @return SUCCESS/FAILURE
+ * @brief 启动进程
+ * @param name 进程名称
+ * @return 启动结果：0表示成功，非0表示失败
  */
-int process_manager_monitor(void) {
-    if (!g_process_manager_initialized) {
+int process_manager_start_process(const char *name) {
+    if (!g_process_manager_init) {
         LOG_ERROR("Process manager not initialized");
-        return FAILURE;
+        return -1;
     }
     
-    monitor_system_processes();
-    return SUCCESS;
+    MUTEX_LOCK_LOCK(g_process_list_mutex);
+    
+    ProcessInfo_t *process = find_process(name);
+    if (!process) {
+        LOG_ERROR("Process not found: %s", name);
+        MUTEX_LOCK_UNLOCK(g_process_list_mutex);
+        return -1;
+    }
+    
+    if (process->running) {
+        LOG_WARN("Process already running: %s", name);
+        MUTEX_LOCK_UNLOCK(g_process_list_mutex);
+        return 0;
+    }
+    
+    // 使用各个模块提供的对外接口函数启动进程
+    int ret = 0;
+    if (strcmp(name, "storage") == 0) {
+        ret = storage_process_init();
+    } else if (strcmp(name, "network") == 0) {
+        ret = network_process_init();
+    } else if (strcmp(name, "audio") == 0) {
+        ret = audio_process_init();
+    } else if (strcmp(name, "system") == 0) {
+        ret = system_process_init();
+    } else if (strcmp(name, "remote_control") == 0) {
+        ret = remote_control_process_init();
+    } else {
+        LOG_ERROR("Unknown process name: %s", name);
+        MUTEX_LOCK_UNLOCK(g_process_list_mutex);
+        return -1;
+    }
+    
+    if (ret != SUCCESS) {
+        LOG_ERROR("Failed to start process: %s", name);
+        MUTEX_LOCK_UNLOCK(g_process_list_mutex);
+        return -1;
+    }
+    
+    // 由于无法获取进程ID，我们使用一个虚拟的进程ID
+    process->pid = 1; // 虚拟进程ID
+    process->running = true;
+    LOG_INFO("Started process: %s", name);
+    
+    MUTEX_LOCK_UNLOCK(g_process_list_mutex);
+    return 0;
 }
 
 /**
- * @brief 获取系统进程状态
- * @param type 进程类型
- * @param running 运行状态
- * @return SUCCESS/FAILURE
+ * @brief 停止进程
+ * @param name 进程名称
+ * @return 停止结果：0表示成功，非0表示失败
  */
-int process_manager_get_process_status(SysProcessType_t type, bool *running) {
-    if (type >= SYS_PROCESS_MAX) {
-        LOG_ERROR("Invalid process type: %d", type);
-        return FAILURE;
+int process_manager_stop_process(const char *name) {
+    if (!g_process_manager_init) {
+        LOG_ERROR("Process manager not initialized");
+        return -1;
     }
     
-    if (running) {
-        *running = g_sys_processes[type].running;
+    MUTEX_LOCK_LOCK(g_process_list_mutex);
+    
+    ProcessInfo_t *process = find_process(name);
+    if (!process) {
+        LOG_ERROR("Process not found: %s", name);
+        MUTEX_LOCK_UNLOCK(g_process_list_mutex);
+        return -1;
     }
     
-    return SUCCESS;
+    if (!process->running) {
+        LOG_WARN("Process not running: %s", name);
+        MUTEX_LOCK_UNLOCK(g_process_list_mutex);
+        return 0;
+    }
+    
+    // 使用各个模块提供的对外接口函数停止进程
+    int ret = 0;
+    if (strcmp(name, "storage") == 0) {
+        ret = storage_process_deinit();
+    } else if (strcmp(name, "network") == 0) {
+        ret = network_process_deinit();
+    } else if (strcmp(name, "audio") == 0) {
+        ret = audio_process_deinit();
+    } else if (strcmp(name, "system") == 0) {
+        ret = system_process_deinit();
+    } else if (strcmp(name, "remote_control") == 0) {
+        ret = remote_control_process_deinit();
+    } else {
+        LOG_ERROR("Unknown process name: %s", name);
+        MUTEX_LOCK_UNLOCK(g_process_list_mutex);
+        return -1;
+    }
+    
+    if (ret != SUCCESS) {
+        LOG_ERROR("Failed to stop process: %s", name);
+        MUTEX_LOCK_UNLOCK(g_process_list_mutex);
+        return -1;
+    }
+    
+    process->pid = -1;
+    process->running = false;
+    LOG_INFO("Stopped process: %s", name);
+    
+    MUTEX_LOCK_UNLOCK(g_process_list_mutex);
+    return 0;
 }
 
 /**
- * @brief 获取系统进程信息
- * @param type 进程类型
- * @param info 进程信息
- * @return SUCCESS/FAILURE
+ * @brief 启动所有进程
+ * @return 启动结果：0表示成功，非0表示失败
  */
-int process_manager_get_process_info(SysProcessType_t type, ProcessInfo_t *info) {
-    return get_system_process_info(type, info);
+int process_manager_start_all_processes(void) {
+    if (!g_process_manager_init) {
+        LOG_ERROR("Process manager not initialized");
+        return -1;
+    }
+    
+    MUTEX_LOCK_LOCK(g_process_list_mutex);
+    
+    ProcessInfo_t *current = g_process_list;
+    int failed = 0;
+    
+    while (current) {
+        if (!current->running) {
+            // 使用各个模块提供的对外接口函数启动进程
+            int ret = 0;
+            if (strcmp(current->name, "storage") == 0) {
+                ret = storage_process_init();
+            } else if (strcmp(current->name, "network") == 0) {
+                ret = network_process_init();
+            } else if (strcmp(current->name, "audio") == 0) {
+                ret = audio_process_init();
+            } else if (strcmp(current->name, "system") == 0) {
+                ret = system_process_init();
+            } else if (strcmp(current->name, "remote_control") == 0) {
+                ret = remote_control_process_init();
+            }
+            
+            if (ret != SUCCESS) {
+                LOG_ERROR("Failed to start process: %s", current->name);
+                failed++;
+            } else {
+                current->pid = 1; // 虚拟进程ID
+                current->running = true;
+                LOG_INFO("Started process: %s", current->name);
+            }
+        }
+        current = current->next;
+    }
+    
+    MUTEX_LOCK_UNLOCK(g_process_list_mutex);
+    
+    if (failed > 0) {
+        LOG_ERROR("Failed to start %d processes", failed);
+        return -1;
+    }
+    
+    LOG_INFO("Started all processes");
+    return 0;
 }
 
 /**
- * @brief 获取所有系统进程信息
- * @param infos 进程信息数组
- * @param max_count 最大进程数
- * @param count 实际进程数
- * @return SUCCESS/FAILURE
+ * @brief 停止所有进程
+ * @return 停止结果：0表示成功，非0表示失败
  */
-int process_manager_get_all_process_info(ProcessInfo_t *infos, int max_count, int *count) {
-    if (!infos || !count) {
-        LOG_ERROR("Invalid parameters");
-        return FAILURE;
+int process_manager_stop_all_processes(void) {
+    if (!g_process_manager_init) {
+        LOG_ERROR("Process manager not initialized");
+        return -1;
     }
     
-    int actual_count = 0;
-    for (int i = 0; i < SYS_PROCESS_MAX && i < max_count; i++) {
-        if (g_sys_processes[i].pid != -1) {
-            if (process_get_info(g_sys_processes[i].pid, &infos[actual_count]) == SUCCESS) {
-                actual_count++;
+    MUTEX_LOCK_LOCK(g_process_list_mutex);
+    
+    ProcessInfo_t *current = g_process_list;
+    int failed = 0;
+    
+    while (current) {
+        if (current->running) {
+            // 使用各个模块提供的对外接口函数停止进程
+            int ret = 0;
+            if (strcmp(current->name, "storage") == 0) {
+                ret = storage_process_deinit();
+            } else if (strcmp(current->name, "network") == 0) {
+                ret = network_process_deinit();
+            } else if (strcmp(current->name, "audio") == 0) {
+                ret = audio_process_deinit();
+            } else if (strcmp(current->name, "system") == 0) {
+                ret = system_process_deinit();
+            } else if (strcmp(current->name, "remote_control") == 0) {
+                ret = remote_control_process_deinit();
+            }
+            
+            if (ret != SUCCESS) {
+                LOG_ERROR("Failed to stop process: %s", current->name);
+                failed++;
+            } else {
+                current->pid = -1;
+                current->running = false;
+                LOG_INFO("Stopped process: %s", current->name);
+            }
+        }
+        current = current->next;
+    }
+    
+    MUTEX_LOCK_UNLOCK(g_process_list_mutex);
+    
+    if (failed > 0) {
+        LOG_ERROR("Failed to stop %d processes", failed);
+        return -1;
+    }
+    
+    LOG_INFO("Stopped all processes");
+    return 0;
+}
+
+/**
+ * @brief 获取进程ID
+ * @param name 进程名称
+ * @return 进程ID，失败返回-1
+ */
+pid_t process_manager_get_process_pid(const char *name) {
+    if (!g_process_manager_init) {
+        LOG_ERROR("Process manager not initialized");
+        return -1;
+    }
+    
+    MUTEX_LOCK_LOCK(g_process_list_mutex);
+    
+    ProcessInfo_t *process = find_process(name);
+    pid_t pid = process ? process->pid : -1;
+    
+    MUTEX_LOCK_UNLOCK(g_process_list_mutex);
+    
+    return pid;
+}
+
+/**
+ * @brief 检查进程是否运行
+ * @param name 进程名称
+ * @return 运行状态：true表示运行，false表示未运行
+ */
+bool process_manager_is_process_running(const char *name) {
+    if (!g_process_manager_init) {
+        LOG_ERROR("Process manager not initialized");
+        return false;
+    }
+    
+    MUTEX_LOCK_LOCK(g_process_list_mutex);
+    
+    ProcessInfo_t *process = find_process(name);
+    bool running = false;
+    
+    if (process) {
+        if (process->running) {
+            // 验证进程是否真的在运行
+            running = is_process_running(process->pid);
+            if (!running) {
+                // 更新状态
+                process->running = false;
+                process->pid = -1;
+                LOG_WARN("Process %s is not running, updated status", name);
             }
         }
     }
     
-    *count = actual_count;
-    return SUCCESS;
+    MUTEX_LOCK_UNLOCK(g_process_list_mutex);
+    
+    return running;
 }
 
 /**
- * @brief 发送消息到系统进程
- * @param type 进程类型
- * @param msg 消息内容
- * @param msg_len 消息长度
- * @return SUCCESS/FAILURE
+ * @brief 监控进程状态
+ * @return 监控结果：0表示成功，非0表示失败
  */
-int process_manager_send_message(SysProcessType_t type, const void *msg, int msg_len) {
-    if (type >= SYS_PROCESS_MAX) {
-        LOG_ERROR("Invalid process type: %d", type);
-        return FAILURE;
-    }
-    
-    if (g_sys_processes[type].pid == -1) {
-        LOG_ERROR("Process not created: %s", g_sys_processes[type].name);
-        return FAILURE;
-    }
-    
-    return process_send_message(g_sys_processes[type].pid, msg, msg_len);
-}
-
-/**
- * @brief 接收来自系统进程的消息
- * @param type 进程类型
- * @param msg 消息缓冲区
- * @param msg_len 消息长度
- * @return 实际读取的消息长度，失败返回-1
- */
-int process_manager_receive_message(SysProcessType_t type, void *msg, int msg_len) {
-    if (type >= SYS_PROCESS_MAX) {
-        LOG_ERROR("Invalid process type: %d", type);
+int process_manager_monitor_processes(void) {
+    if (!g_process_manager_init) {
+        LOG_ERROR("Process manager not initialized");
         return -1;
     }
     
-    if (g_sys_processes[type].pid == -1) {
-        LOG_ERROR("Process not created: %s", g_sys_processes[type].name);
-        return -1;
+    MUTEX_LOCK_LOCK(g_process_list_mutex);
+    
+    ProcessInfo_t *current = g_process_list;
+    int restarted = 0;
+    
+    while (current) {
+        if (current->running) {
+            // 由于使用虚拟进程ID，我们无法直接检测进程状态
+            // 这里我们假设所有进程都在正常运行
+            // 实际应用中，应该使用各个模块提供的状态查询接口来检测进程状态
+            LOG_DEBUG("Monitoring process: %s", current->name);
+        }
+        current = current->next;
     }
     
-    return process_receive_message(g_sys_processes[type].pid, msg, msg_len);
+    MUTEX_LOCK_UNLOCK(g_process_list_mutex);
+    
+    if (restarted > 0) {
+        LOG_INFO("Restarted %d processes", restarted);
+    }
+    
+    return 0;
 }

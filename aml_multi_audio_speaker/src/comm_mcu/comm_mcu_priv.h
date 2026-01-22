@@ -2,7 +2,7 @@
 #define __COMM_MCU_PRIV_H__
 
 #include "comm_mcu.h"
-#include "product_type.h"
+#include "../lib/flac/product_type.h"
 
 // UART设备定义
 #define UART_DEV_PATH        "/dev/ttyS0"
@@ -20,6 +20,11 @@
 #define CMD_VERSION_RESP        0x06    // 固件版本响应
 #define CMD_SET_LED_STATE       0x07    // 设置LED状态
 #define CMD_SET_LED_RESP        0x08    // LED状态设置响应
+#define CMD_START_IR_LEARN      0x09    // 开始红外学习
+#define CMD_START_IR_LEARN_RESP 0x0A    // 开始红外学习响应
+#define CMD_STOP_IR_LEARN       0x0B    // 停止红外学习
+#define CMD_STOP_IR_LEARN_RESP  0x0C    // 停止红外学习响应
+#define CMD_IR_CODE_RESP        0x0D    // 红外码响应
 
 // 按键状态位定义
 #define KEY_BIT_PLAY_PAUSE      (1 << 0)

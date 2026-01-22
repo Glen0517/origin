@@ -20,15 +20,22 @@
 #else
 // Windows系统下的模拟定义
 #define MNT_FORCE 1
+#define DT_REG 8
+#define DT_DIR 4
 int mount(const char *dev_path, const char *mount_point, const char *type, unsigned long flags, const void *data) { return 0; }
 int umount(const char *target) { return 0; }
 int umount2(const char *target, int flags) { return 0; }
 int stat(const char *path, struct stat *buf) { return 0; }
-int mkdir(const char *pathname, mode_t mode) { return 0; }
+int mkdir(const char *pathname) { return 0; }
 typedef long mode_t;
-struct stat { int st_mode; };
+typedef void *DIR;
+struct dirent { int d_type; char d_name[256]; };
+struct stat { int st_mode; long st_size; };
 struct statvfs { long f_bavail; long f_frsize; long f_blocks; };
 int statvfs(const char *path, struct statvfs *buf) { memset(buf, 0, sizeof(struct statvfs)); return 0; }
+DIR *opendir(const char *path) { return (DIR *)1; }
+int closedir(DIR *dir) { return 0; }
+struct dirent *readdir(DIR *dir) { static struct dirent entry = {0}; return &entry; }
 #endif
 
 // 定义存储服务模块日志分类
@@ -93,7 +100,12 @@ int pal_storage_mount(const char *dev_path, const char *mount_point) {
     // 确保挂载点目录存在
     struct stat st;
     if (stat(mount_point, &st) != 0) {
+        // 根据不同平台使用不同的mkdir调用方式
+#ifdef __linux__
         if (mkdir(mount_point, 0755) != 0) {
+#else
+        if (mkdir(mount_point) != 0) {
+#endif
             AML_LOGE("Create mount point failed: %s", strerror(errno));
             return FAILURE;
         }

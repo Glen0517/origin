@@ -36,6 +36,7 @@ const char *usb_mount_get_mount_point(void)
 int usb_mount_mount_device(const char *dev_path)
 {
     if (!g_usb_mount_init || !dev_path) {
+        LOG_ERROR("USB mount failed: invalid parameters");
         return -1;
     }
     
@@ -45,12 +46,32 @@ int usb_mount_mount_device(const char *dev_path)
         return 0;
     }
     
+    // 确保挂载点目录存在
+    struct stat statbuf;
+    if (stat(g_usb_mount_point, &statbuf) != 0) {
+        // 根据不同平台使用不同的mkdir调用方式
+#ifdef __linux__
+        if (mkdir(g_usb_mount_point, 0755) != 0) {
+#else
+        if (mkdir(g_usb_mount_point) != 0) {
+#endif
+            LOG_ERROR("Failed to create mount point directory: %s, error: %s", g_usb_mount_point, strerror(errno));
+            return -1;
+        }
+        LOG_INFO("Created mount point directory: %s", g_usb_mount_point);
+    } else if (!S_ISDIR(statbuf.st_mode)) {
+        LOG_ERROR("Mount point is not a directory: %s", g_usb_mount_point);
+        return -1;
+    }
+    
     // 使用PAL层挂载存储设备
     int ret = pal_storage_mount(dev_path, g_usb_mount_point);
     if (ret == 0) {
         g_usb_mounted = true;
         LOG_INFO("USB device mounted: %s -> %s", dev_path, g_usb_mount_point);
         event_notify(EVENT_USB_MOUNTED, (void *)g_usb_mount_point);
+    } else {
+        LOG_ERROR("Failed to mount USB device: %s -> %s, error: %d", dev_path, g_usb_mount_point, ret);
     }
     return ret;
 }
@@ -61,14 +82,17 @@ int usb_mount_mount_device(const char *dev_path)
 int usb_mount_umount_device(void)
 {
     if (!g_usb_mount_init || !g_usb_mounted) {
+        LOG_WARN("USB device is not mounted");
         return -1;
     }
     
     // 检查是否有文件正在播放
     if (storage_is_playing()) {
-        LOG_WARN("Trying to unmount USB device while file is playing");
+        LOG_WARN("Trying to unmount USB device while file is playing, stopping playback");
         // 停止播放
-        storage_stop();
+        if (storage_stop() != 0) {
+            LOG_ERROR("Failed to stop playback before unmount");
+        }
     }
     
     // 使用PAL层卸载存储设备
@@ -77,6 +101,8 @@ int usb_mount_umount_device(void)
         g_usb_mounted = false;
         LOG_INFO("USB device unmounted: %s", g_usb_mount_point);
         event_notify(EVENT_USB_UNMOUNTED, NULL);
+    } else {
+        LOG_ERROR("Failed to unmount USB device: %s, error: %d", g_usb_mount_point, ret);
     }
     return ret;
 }

@@ -34,21 +34,29 @@ static void usb_audio_device_callback(const char *dev_path, bool connected) {
             
             // 打开USB音频设备（通过HAL层）
             // 参数：USB音频设备路径
-            hal_usb_audio_open(dev_path);
+            if (hal_usb_audio_open(dev_path) != 0) {
+                LOG_ERROR("Failed to open USB audio device: %s", dev_path);
+            }
             
             // 挂载USB存储设备
             // 参数：USB设备路径
-            storage_process_mount_device(dev_path);
+            if (storage_process_mount_device(dev_path) != 0) {
+                LOG_ERROR("Failed to mount USB storage device: %s", dev_path);
+            }
         } else {
             LOG_INFO("USB audio device disconnected: %s", g_usb_device_path);
             g_usb_device_path[0] = '\0';
             
             // 关闭USB音频设备（通过HAL层）
             // 无参数
-            hal_usb_audio_close();
+            if (hal_usb_audio_close() != 0) {
+                LOG_ERROR("Failed to close USB audio device");
+            }
             
             // 卸载USB存储设备
-            storage_process_umount_device();
+            if (storage_process_umount_device() != 0) {
+                LOG_ERROR("Failed to unmount USB storage device");
+            }
         }
     }
 }
@@ -78,15 +86,27 @@ int src_usb_init(void) {
     
     // 设置USB音频设备连接状态回调（通过HAL层）
     // 参数：设备连接状态回调函数指针
-    hal_usb_audio_set_device_callback(usb_audio_device_callback);
+    if (hal_usb_audio_set_device_callback(usb_audio_device_callback) != 0) {
+        LOG_ERROR("Failed to set USB device callback");
+        hal_usb_deinit();
+        return FAILURE;
+    }
     
     // 设置USB音频数据接收回调（通过HAL层）
     // 参数：音频数据回调函数指针
-    hal_usb_audio_set_data_callback(usb_audio_data_callback);
+    if (hal_usb_audio_set_data_callback(usb_audio_data_callback) != 0) {
+        LOG_ERROR("Failed to set USB data callback");
+        hal_usb_deinit();
+        return FAILURE;
+    }
     
     // 启用USB音频设备检测（通过HAL层）
     // 参数：true表示启用，false表示禁用
-    hal_usb_audio_enable_detection(true);
+    if (hal_usb_audio_enable_detection(true) != 0) {
+        LOG_ERROR("Failed to enable USB detection");
+        hal_usb_deinit();
+        return FAILURE;
+    }
     
     g_usb_src_init = true;
     g_usb_connected = false;
@@ -102,17 +122,27 @@ void src_usb_deinit(void) {
     if (g_usb_src_init) {
         // 禁用USB音频设备检测（通过HAL层）
         // 参数：false表示禁用
-        hal_usb_audio_enable_detection(false);
+        if (hal_usb_audio_enable_detection(false) != 0) {
+            LOG_ERROR("Failed to disable USB detection");
+        }
         
         // 关闭当前打开的USB音频设备（通过HAL层）
         // 无参数
         if (g_usb_connected) {
-            hal_usb_audio_close();
+            if (hal_usb_audio_close() != 0) {
+                LOG_ERROR("Failed to close USB audio device");
+            }
+            // 确保设备被卸载
+            if (storage_process_umount_device() != 0) {
+                LOG_ERROR("Failed to unmount USB storage device during deinit");
+            }
         }
         
         // 反初始化USB硬件（通过HAL层）
         // 无参数
-        hal_usb_deinit();
+        if (hal_usb_deinit() != 0) {
+            LOG_ERROR("Failed to deinit USB hardware");
+        }
         
         g_usb_src_init = false;
         g_usb_connected = false;

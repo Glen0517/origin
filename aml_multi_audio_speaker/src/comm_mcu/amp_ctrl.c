@@ -1,6 +1,6 @@
 #include "comm_mcu_priv.h"
-#include "logger.h"
-#include "product_type.h"
+#include "../lib/flac/logger.h"
+#include "../lib/flac/product_type.h"
 
 #include <aml_gpio.h>        // 晶晨GPIO SDK
 #include <aml_pwm.h>         // 晶晨PWM SDK
