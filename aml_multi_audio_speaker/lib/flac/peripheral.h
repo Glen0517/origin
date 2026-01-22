@@ -16,7 +16,9 @@ typedef enum {
     KEY_EVENT_BASS_UP,
     KEY_EVENT_TREBLE_UP,
     KEY_EVENT_IR_LEARN,
-    KEY_EVENT_BT_PAIR // 低音炮专属配对键
+    KEY_EVENT_BT_PAIR, // 低音炮专属配对键
+    KEY_EVENT_NEXT,    // 下一曲
+    KEY_EVENT_PREV     // 上一曲
 } KeyEvent_e;
 
 /******************************************************************************************

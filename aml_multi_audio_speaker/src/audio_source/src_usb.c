@@ -4,6 +4,10 @@
 #include "storage.h"
 #include "hal.h"  // 硬件抽象层
 
+// 存储进程管理函数声明
+int storage_process_mount_device(const char *dev_path);
+int storage_process_umount_device(void);
+
 static bool g_usb_src_init = false;         // USB音频源初始化标志
 static bool g_usb_connected = false;        // USB设备连接状态
 static char g_usb_device_path[64] = {0};    // USB设备路径
@@ -31,6 +35,10 @@ static void usb_audio_device_callback(const char *dev_path, bool connected) {
             // 打开USB音频设备（通过HAL层）
             // 参数：USB音频设备路径
             hal_usb_audio_open(dev_path);
+            
+            // 挂载USB存储设备
+            // 参数：USB设备路径
+            storage_process_mount_device(dev_path);
         } else {
             LOG_INFO("USB audio device disconnected: %s", g_usb_device_path);
             g_usb_device_path[0] = '\0';
@@ -38,6 +46,9 @@ static void usb_audio_device_callback(const char *dev_path, bool connected) {
             // 关闭USB音频设备（通过HAL层）
             // 无参数
             hal_usb_audio_close();
+            
+            // 卸载USB存储设备
+            storage_process_umount_device();
         }
     }
 }

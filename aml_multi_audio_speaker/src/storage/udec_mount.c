@@ -39,6 +39,12 @@ int usb_mount_mount_device(const char *dev_path)
         return -1;
     }
     
+    // 检查是否已经挂载
+    if (g_usb_mounted) {
+        LOG_WARN("USB device already mounted: %s", g_usb_mount_point);
+        return 0;
+    }
+    
     // 使用PAL层挂载存储设备
     int ret = pal_storage_mount(dev_path, g_usb_mount_point);
     if (ret == 0) {
@@ -56,6 +62,13 @@ int usb_mount_umount_device(void)
 {
     if (!g_usb_mount_init || !g_usb_mounted) {
         return -1;
+    }
+    
+    // 检查是否有文件正在播放
+    if (storage_is_playing()) {
+        LOG_WARN("Trying to unmount USB device while file is playing");
+        // 停止播放
+        storage_stop();
     }
     
     // 使用PAL层卸载存储设备
@@ -77,10 +90,11 @@ int usb_mount_init(void)
 
     g_usb_mount_init = 1;
     g_usb_mounted = false;
-    g_usb_mount_point[0] = '\0';
+    // 保持默认挂载点
+    strcpy(g_usb_mount_point, "/mnt/usb");
     
     LOG_INFO("Storage: USB mount/umount init success");
-    LOG_INFO("  Default mount point: /mnt/usb");
+    LOG_INFO("  Default mount point: %s", g_usb_mount_point);
     
     return 0;
 }

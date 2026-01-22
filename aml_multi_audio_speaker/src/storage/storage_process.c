@@ -13,6 +13,16 @@
 #include "process.h"
 #include "common_def.h"
 
+// 条件编译：处理 waitpid 和 WNOHANG 的跨平台问题
+#ifdef __linux__
+#include <sys/wait.h>
+#else
+// Windows 系统下的模拟定义
+typedef int pid_t;
+#define WNOHANG 1
+pid_t waitpid(pid_t pid, int *status, int options) { return -1; }
+#endif
+
 /******************************************************************************************
  * 存储管理进程内部数据结构
  ******************************************************************************************/

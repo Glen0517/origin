@@ -2,7 +2,6 @@
 #include "logger.h"
 #include "event.h"
 
-#include <aml_file_system.h>  // 晶晨文件系统SDK
 #include <dirent.h>
 #include <string.h>
 
@@ -36,11 +35,34 @@ static bool is_supported_audio_file(const char *file_name)
 }
 
 /**
+ * @brief 检查文件名是否安全（防止路径遍历攻击）
+ */
+static bool is_safe_filename(const char *file_name)
+{
+    if (!file_name) {
+        return false;
+    }
+    
+    // 检查是否包含路径遍历字符
+    if (strstr(file_name, "../") || strstr(file_name, "..\\") || strcmp(file_name, "..") == 0) {
+        return false;
+    }
+    
+    return true;
+}
+
+/**
  * @brief 扫描目录中的音频文件
  */
 static int scan_directory(const char *dir_path)
 {
     if (!dir_path || g_media_file_count >= MAX_MEDIA_FILES) {
+        return g_media_file_count;
+    }
+
+    // 检查路径长度
+    if (strlen(dir_path) >= MAX_FILE_PATH - 32) { // 预留足够空间给文件名
+        LOG_ERROR("Directory path too long: %s", dir_path);
         return g_media_file_count;
     }
 
@@ -57,8 +79,20 @@ static int scan_directory(const char *dir_path)
             continue;
         }
 
+        // 检查文件名安全性
+        if (!is_safe_filename(entry->d_name)) {
+            LOG_WARN("Skipping unsafe filename: %s", entry->d_name);
+            continue;
+        }
+
         char full_path[MAX_FILE_PATH];
-        snprintf(full_path, sizeof(full_path), "%s/%s", dir_path, entry->d_name);
+        int path_len = snprintf(full_path, sizeof(full_path), "%s/%s", dir_path, entry->d_name);
+        
+        // 检查路径长度是否超过缓冲区大小
+        if (path_len >= sizeof(full_path)) {
+            LOG_WARN("Path too long, skipping: %s/%s", dir_path, entry->d_name);
+            continue;
+        }
 
         // 检查是否为目录
         struct stat statbuf;
@@ -76,6 +110,8 @@ static int scan_directory(const char *dir_path)
                     }
                 }
             }
+        } else {
+            LOG_WARN("Failed to stat file: %s", full_path);
         }
 
         // 检查是否达到最大文件数
@@ -96,9 +132,6 @@ int media_scan_init(void)
         return 0;
     }
 
-    // 初始化文件系统SDK
-    aml_file_system_init();
-
     g_media_scan_init = true;
     g_media_file_count = 0;
 
@@ -114,9 +147,6 @@ void media_scan_deinit(void)
     if (g_media_scan_init) {
         // 清空媒体文件列表
         g_media_file_count = 0;
-
-        // 反初始化文件系统SDK
-        aml_file_system_deinit();
 
         g_media_scan_init = false;
 

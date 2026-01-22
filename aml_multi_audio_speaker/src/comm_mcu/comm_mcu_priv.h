@@ -30,6 +30,8 @@
 #define KEY_BIT_BASS_UP         (1 << 5)
 #define KEY_BIT_TREBLE_UP       (1 << 6)
 #define KEY_BIT_IR_LEARN        (1 << 7)
+#define KEY_BIT_NEXT            (1 << 8)    // 下一曲
+#define KEY_BIT_PREV            (1 << 9)    // 上一曲
 
 // UART数据包格式定义
 #define PACKET_HEADER           0xAA    // 数据包头部

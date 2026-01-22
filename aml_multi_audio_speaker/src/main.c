@@ -25,6 +25,7 @@
 #include "volume_ctrl.h"       // 音量控制
 #include "peripheral.h"        // 外设管理
 #include "storage.h"           // 存储管理
+#include "storage_priv.h"      // 存储管理私有头文件（包含file_reader相关函数）
 #include "bt.h"         // 蓝牙模块
 #include "system.h"            // 系统管理
 #include "comm_mcu.h"          // MCU通信  
@@ -361,6 +362,51 @@ static void main_business_loop(void) {
         // 低端游戏音响极致裁剪，只轮询必要模块
         if (CURRENT_PRODUCT_TYPE != PRODUCT_GAME_LOW_END) {
             peripheral_event_poll();        // 外设事件：按键、红外等
+            
+            // 处理按键事件
+            KeyEvent_e key_event = peripheral_get_key_event();
+            if (key_event != KEY_EVENT_NONE) {
+                LOG_INFO("Key event received: %d", key_event);
+                
+                // 根据按键事件执行相应操作
+                switch (key_event) {
+                    case KEY_EVENT_PLAY_PAUSE:
+                        // 处理播放/暂停
+                        break;
+                    case KEY_EVENT_VOL_UP:
+                        // 处理音量增加
+                        break;
+                    case KEY_EVENT_VOL_DOWN:
+                        // 处理音量减少
+                        break;
+                    case KEY_EVENT_SOURCE_SWITCH:
+                        // 处理音源切换
+                        break;
+                    case KEY_EVENT_SOUND_MODE:
+                        // 处理音效模式
+                        break;
+                    case KEY_EVENT_BASS_UP:
+                        // 处理低音增加
+                        break;
+                    case KEY_EVENT_TREBLE_UP:
+                        // 处理高音增加
+                        break;
+                    case KEY_EVENT_IR_LEARN:
+                        // 处理红外学习
+                        break;
+                    case KEY_EVENT_NEXT:
+                        // 处理下一曲
+                        file_reader_play_next();
+                        break;
+                    case KEY_EVENT_PREV:
+                        // 处理上一曲
+                        file_reader_play_prev();
+                        break;
+                    default:
+                        break;
+                }
+            }
+            
             bluetooth_event_poll();         // 蓝牙事件：连接、媒体流等
             audio_source_event_poll();      // 音频源事件：源切换、状态变化等
             play_ctrl_event_poll();         // 播放控制事件：播放状态、音效等

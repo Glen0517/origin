@@ -101,14 +101,14 @@ int pal_storage_mount(const char *dev_path, const char *mount_point) {
     }
 
     // 尝试挂载设备（支持vfat和ext4文件系统）
-    if (mount(dev_path, mount_point, "vfat", 0, NULL) != 0) {
+    if (mount(dev_path, mount_point, "fat32", 0, NULL) != 0) {
         if (mount(dev_path, mount_point, "ext4", 0, NULL) != 0) {
             AML_LOGE("Mount device failed: %s", strerror(errno));
             return FAILURE;
         }
         AML_LOGI("Mounted as ext4 filesystem");
     } else {
-        AML_LOGI("Mounted as vfat filesystem");
+        AML_LOGI("Mounted as fat32 filesystem");
     }
 
     AML_LOGI("Device mounted successfully");

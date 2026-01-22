@@ -124,4 +124,11 @@ bool storage_is_playing(void);
  */
 const char *storage_get_current_file(void);
 
+/**
+ * @brief  检查存储系统状态
+ * @details 检查文件播放状态，处理U盘拔出等错误情况
+ * @return SUCCESS/FAILURE
+ */
+int storage_check_status(void);
+
 #endif // __STORAGE_H__

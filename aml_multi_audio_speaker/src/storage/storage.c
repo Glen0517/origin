@@ -20,9 +20,29 @@ int storage_init(void)
         LOG_ERROR("PAL storage init failed");
         return FAILURE;
     }
-    file_reader_init();
-    media_scan_init();
-    usb_mount_init();
+    
+    // 初始化子模块，检查错误
+    if (file_reader_init() != 0) {
+        LOG_ERROR("File reader init failed");
+        pal_storage_deinit();
+        return FAILURE;
+    }
+    
+    if (media_scan_init() != 0) {
+        LOG_ERROR("Media scan init failed");
+        file_reader_deinit();
+        pal_storage_deinit();
+        return FAILURE;
+    }
+    
+    if (usb_mount_init() != 0) {
+        LOG_ERROR("USB mount init failed");
+        media_scan_deinit();
+        file_reader_deinit();
+        pal_storage_deinit();
+        return FAILURE;
+    }
+    
     g_storage_cfg.init_ok = 1;
     LOG_INFO("Storage module init success [NO PRODUCT DIFF]");
     return 0;
@@ -85,6 +105,23 @@ int storage_set_volume(int volume)
         return FAILURE;
     }
     return file_reader_set_volume(volume);
+}
+
+/**
+ * @brief 检查存储系统状态
+ * @details 检查文件播放状态，处理U盘拔出等错误情况
+ */
+int storage_check_status(void)
+{
+    if (!g_storage_cfg.init_ok) {
+        LOG_ERROR("Storage module not initialized");
+        return FAILURE;
+    }
+    
+    // 检查文件播放状态
+    file_reader_check_play_status();
+    
+    return 0;
 }
 
 int storage_scan_media(const char *path)

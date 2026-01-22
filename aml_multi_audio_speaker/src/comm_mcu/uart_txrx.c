@@ -173,6 +173,10 @@ static void uart_rx_callback(uint8_t *data, int len) {
                             event = KEY_EVENT_TREBLE_UP;
                         } else if (key_state & KEY_BIT_IR_LEARN) {
                             event = KEY_EVENT_IR_LEARN;
+                        } else if (key_state & KEY_BIT_NEXT) {
+                            event = KEY_EVENT_NEXT;
+                        } else if (key_state & KEY_BIT_PREV) {
+                            event = KEY_EVENT_PREV;
                         }
                         
                         // 如果有按键事件，存储到全局变量
