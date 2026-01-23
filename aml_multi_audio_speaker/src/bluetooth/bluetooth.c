@@ -124,7 +124,7 @@ int bluetooth_init(BluetoothConfig_t *cfg)
     }
     
     // 设置音频流缓冲大小
-    hal_bt_a2dp_set_buffer_size(g_audio_stream_buffer_size);
+    bt_a2dp_set_buffer_size(g_audio_stream_buffer_size);
     LOG_INFO("Bluetooth A2DP buffer size set to %d ms", g_audio_stream_buffer_size);
     
     g_bt_cfg.init_ok = 1;
@@ -355,7 +355,9 @@ int bluetooth_disconnect(void)
     LOG_INFO("Disconnecting Bluetooth device...");
     
     // 停止A2DP音频流
-    bt_a2dp_stop_stream();
+    if (bt_a2dp_stop_stream() != 0) {
+        LOG_ERROR("Failed to stop A2DP stream");
+    }
     g_bt_cfg.bt_media_playing = false;
     
     // 断开当前连接的蓝牙设备
@@ -892,7 +894,9 @@ int bluetooth_cleanup_connection(void)
     LOG_INFO("Cleaning up Bluetooth connection resources...");
     
     // 停止A2DP音频流
-    bt_a2dp_stop_stream();
+    if (bt_a2dp_stop_stream() != 0) {
+        LOG_ERROR("Failed to stop A2DP stream during cleanup");
+    }
     
     // 清空连接设备信息
     memset(g_connected_dev_addr, 0, sizeof(g_connected_dev_addr));
@@ -998,7 +1002,11 @@ void bluetooth_event_poll(void)
                 
                 // 自动开始A2DP音频流
                 if (g_bt_cfg.bt_media_enable) {
-                    bt_a2dp_start_stream();
+                    if (bt_a2dp_start_stream() != 0) {
+                        LOG_ERROR("Failed to start A2DP stream automatically");
+                    } else {
+                        LOG_INFO("A2DP stream started automatically");
+                    }
                 }
             } else {
                 LOG_INFO("Bluetooth disconnected");
