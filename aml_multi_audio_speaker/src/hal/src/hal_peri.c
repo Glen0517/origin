@@ -7,14 +7,9 @@
  */
 
 #include "hal_peri.h"
-#include "log/aml_log.h"
+#include "logger.h"
 #include <aml_gpio.h>
 #include <aml_pwm.h>
-
-// 定义外设模块日志分类
-AML_LOG_DEFINE(peri_log);
-// 设置默认日志分类
-#define AML_LOG_DEFAULT AML_LOG_GET_CAT(peri_log)
 
 static bool g_peri_init = false;
 
@@ -25,25 +20,25 @@ static bool g_peri_init = false;
  */
 int hal_peri_init(void) {
     if (g_peri_init) {
-        AML_LOGI("HAL peripheral already initialized");
+        LOG_INFO("HAL peripheral already initialized");
         return SUCCESS;
     }
     
     // 初始化GPIO SDK
     if (aml_gpio_init() != 0) {
-        AML_LOGE("Amlogic GPIO SDK init failed");
+        LOG_ERROR("Amlogic GPIO SDK init failed");
         return FAILURE;
     }
     
     // 初始化PWM SDK
     if (aml_pwm_init() != 0) {
-        AML_LOGE("Amlogic PWM SDK init failed");
+        LOG_ERROR("Amlogic PWM SDK init failed");
         // 即使PWM初始化失败，也继续执行，因为GPIO可能仍然可用
-        AML_LOGW("Continue with GPIO only");
+        LOG_WARN("Continue with GPIO only");
     }
     
     g_peri_init = true;
-    AML_LOGI("HAL peripheral init success");
+    LOG_INFO("HAL peripheral init success");
     return SUCCESS;
 }
 
@@ -54,24 +49,24 @@ int hal_peri_init(void) {
  */
 int hal_peri_deinit(void) {
     if (!g_peri_init) {
-        AML_LOGI("HAL peripheral not initialized");
+        LOG_INFO("HAL peripheral not initialized");
         return SUCCESS;
     }
     
     // 反初始化PWM SDK
     if (aml_pwm_deinit() != 0) {
-        AML_LOGE("Amlogic PWM SDK deinit failed");
+        LOG_ERROR("Amlogic PWM SDK deinit failed");
         // 即使PWM反初始化失败，也继续执行
     }
     
     // 反初始化GPIO SDK
     if (aml_gpio_deinit() != 0) {
-        AML_LOGE("Amlogic GPIO SDK deinit failed");
+        LOG_ERROR("Amlogic GPIO SDK deinit failed");
         return FAILURE;
     }
     
     g_peri_init = false;
-    AML_LOGI("HAL peripheral deinit success");
+    LOG_INFO("HAL peripheral deinit success");
     return SUCCESS;
 }
 
@@ -84,27 +79,27 @@ int hal_peri_deinit(void) {
  */
 int hal_gpio_set_value(int pin, int value) {
     if (!g_peri_init) {
-        AML_LOGE("HAL peripheral not initialized");
+        LOG_ERROR("HAL peripheral not initialized");
         return FAILURE;
     }
     
     if (pin < 0) {
-        AML_LOGE("Invalid GPIO pin: %d", pin);
+        LOG_ERROR("Invalid GPIO pin: %d", pin);
         return INVALID_PARAM;
     }
     
     if (value != 0 && value != 1) {
-        AML_LOGE("Invalid GPIO value: %d", value);
+        LOG_ERROR("Invalid GPIO value: %d", value);
         return INVALID_PARAM;
     }
     
     int ret = aml_gpio_set_value(pin, value);
     if (ret != 0) {
-        AML_LOGE("Set GPIO %d value failed: %d", pin, ret);
+        LOG_ERROR("Set GPIO %d value failed: %d", pin, ret);
         return FAILURE;
     }
     
-    AML_LOGD("GPIO %d set to: %d", pin, value);
+    LOG_DEBUG("GPIO %d set to: %d", pin, value);
     return SUCCESS;
 }
 
@@ -116,22 +111,22 @@ int hal_gpio_set_value(int pin, int value) {
  */
 int hal_gpio_get_value(int pin) {
     if (!g_peri_init) {
-        AML_LOGE("HAL peripheral not initialized");
+        LOG_ERROR("HAL peripheral not initialized");
         return -1;
     }
     
     if (pin < 0) {
-        AML_LOGE("Invalid GPIO pin: %d", pin);
+        LOG_ERROR("Invalid GPIO pin: %d", pin);
         return -1;
     }
     
     int value = aml_gpio_get_value(pin);
     if (value < 0) {
-        AML_LOGE("Get GPIO %d value failed", pin);
+        LOG_ERROR("Get GPIO %d value failed", pin);
         return -1;
     }
     
-    AML_LOGD("GPIO %d value: %d", pin, value);
+    LOG_DEBUG("GPIO %d value: %d", pin, value);
     return value;
 }
 
@@ -144,27 +139,27 @@ int hal_gpio_get_value(int pin) {
  */
 int hal_gpio_set_direction(int pin, int direction) {
     if (!g_peri_init) {
-        AML_LOGE("HAL peripheral not initialized");
+        LOG_ERROR("HAL peripheral not initialized");
         return FAILURE;
     }
     
     if (pin < 0) {
-        AML_LOGE("Invalid GPIO pin: %d", pin);
+        LOG_ERROR("Invalid GPIO pin: %d", pin);
         return INVALID_PARAM;
     }
     
     if (direction != 0 && direction != 1) {
-        AML_LOGE("Invalid GPIO direction: %d", direction);
+        LOG_ERROR("Invalid GPIO direction: %d", direction);
         return INVALID_PARAM;
     }
     
     int ret = aml_gpio_set_direction(pin, direction);
     if (ret != 0) {
-        AML_LOGE("Set GPIO %d direction failed: %d", pin, ret);
+        LOG_ERROR("Set GPIO %d direction failed: %d", pin, ret);
         return FAILURE;
     }
     
-    AML_LOGD("GPIO %d direction set to: %s", pin, direction ? "output" : "input");
+    LOG_DEBUG("GPIO %d direction set to: %s", pin, direction ? "output" : "input");
     return SUCCESS;
 }
 
@@ -177,27 +172,27 @@ int hal_gpio_set_direction(int pin, int direction) {
  */
 int hal_pwm_set_duty(int channel, int duty) {
     if (!g_peri_init) {
-        AML_LOGE("HAL peripheral not initialized");
+        LOG_ERROR("HAL peripheral not initialized");
         return FAILURE;
     }
     
     if (channel < 0) {
-        AML_LOGE("Invalid PWM channel: %d", channel);
+        LOG_ERROR("Invalid PWM channel: %d", channel);
         return INVALID_PARAM;
     }
     
     if (duty < 0 || duty > 100) {
-        AML_LOGE("Invalid PWM duty: %d", duty);
+        LOG_ERROR("Invalid PWM duty: %d", duty);
         return INVALID_PARAM;
     }
     
     int ret = aml_pwm_set_duty(channel, duty);
     if (ret != 0) {
-        AML_LOGE("Set PWM %d duty failed: %d", channel, ret);
+        LOG_ERROR("Set PWM %d duty failed: %d", channel, ret);
         return FAILURE;
     }
     
-    AML_LOGD("PWM %d duty set to: %d%%", channel, duty);
+    LOG_DEBUG("PWM %d duty set to: %d%%", channel, duty);
     return SUCCESS;
 }
 
@@ -210,27 +205,27 @@ int hal_pwm_set_duty(int channel, int duty) {
  */
 int hal_pwm_set_frequency(int channel, int freq) {
     if (!g_peri_init) {
-        AML_LOGE("HAL peripheral not initialized");
+        LOG_ERROR("HAL peripheral not initialized");
         return FAILURE;
     }
     
     if (channel < 0) {
-        AML_LOGE("Invalid PWM channel: %d", channel);
+        LOG_ERROR("Invalid PWM channel: %d", channel);
         return INVALID_PARAM;
     }
     
     if (freq <= 0) {
-        AML_LOGE("Invalid PWM frequency: %d", freq);
+        LOG_ERROR("Invalid PWM frequency: %d", freq);
         return INVALID_PARAM;
     }
     
     int ret = aml_pwm_set_frequency(channel, freq);
     if (ret != 0) {
-        AML_LOGE("Set PWM %d frequency failed: %d", channel, ret);
+        LOG_ERROR("Set PWM %d frequency failed: %d", channel, ret);
         return FAILURE;
     }
     
-    AML_LOGD("PWM %d frequency set to: %d Hz", channel, freq);
+    LOG_DEBUG("PWM %d frequency set to: %d Hz", channel, freq);
     return SUCCESS;
 }
 
@@ -242,22 +237,22 @@ int hal_pwm_set_frequency(int channel, int freq) {
  */
 int hal_pwm_enable(int channel) {
     if (!g_peri_init) {
-        AML_LOGE("HAL peripheral not initialized");
+        LOG_ERROR("HAL peripheral not initialized");
         return FAILURE;
     }
     
     if (channel < 0) {
-        AML_LOGE("Invalid PWM channel: %d", channel);
+        LOG_ERROR("Invalid PWM channel: %d", channel);
         return INVALID_PARAM;
     }
     
     int ret = aml_pwm_enable(channel);
     if (ret != 0) {
-        AML_LOGE("Enable PWM %d failed: %d", channel, ret);
+        LOG_ERROR("Enable PWM %d failed: %d", channel, ret);
         return FAILURE;
     }
     
-    AML_LOGD("PWM %d enabled", channel);
+    LOG_DEBUG("PWM %d enabled", channel);
     return SUCCESS;
 }
 
@@ -269,21 +264,21 @@ int hal_pwm_enable(int channel) {
  */
 int hal_pwm_disable(int channel) {
     if (!g_peri_init) {
-        AML_LOGE("HAL peripheral not initialized");
+        LOG_ERROR("HAL peripheral not initialized");
         return FAILURE;
     }
     
     if (channel < 0) {
-        AML_LOGE("Invalid PWM channel: %d", channel);
+        LOG_ERROR("Invalid PWM channel: %d", channel);
         return INVALID_PARAM;
     }
     
     int ret = aml_pwm_disable(channel);
     if (ret != 0) {
-        AML_LOGE("Disable PWM %d failed: %d", channel, ret);
+        LOG_ERROR("Disable PWM %d failed: %d", channel, ret);
         return FAILURE;
     }
     
-    AML_LOGD("PWM %d disabled", channel);
+    LOG_DEBUG("PWM %d disabled", channel);
     return SUCCESS;
 }

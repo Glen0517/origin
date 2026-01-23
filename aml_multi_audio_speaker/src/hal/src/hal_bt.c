@@ -7,7 +7,7 @@
  */
 
 #include "hal_bt.h"
-#include "log/aml_log.h"
+#include "logger.h"
 #include <aml_bt.h>
 #include <aml_bt_a2dp.h>
 #include <aml_bt_hfp.h>
@@ -17,11 +17,6 @@
 #include "bluetooth/l2cap.h"
 #include "bluetooth/sdp.h"
 #include "bluetooth/sdp_lib.h"
-
-// 定义蓝牙模块日志分类
-AML_LOG_DEFINE(bt_log);
-// 设置默认日志分类
-#define AML_LOG_DEFAULT AML_LOG_GET_CAT(bt_log)
 
 static bool g_bt_init = false;
 
@@ -198,22 +193,22 @@ int hal_bt_mesh_event_poll(void) {
  */
 int hal_bt_set_device_name(const char *name) {
     if (!g_bt_init) {
-        AML_LOGE("HAL bluetooth not initialized");
+        LOG_ERROR("HAL bluetooth not initialized");
         return FAILURE;
     }
     
     if (!name || strlen(name) == 0 || strlen(name) > 31) {
-        AML_LOGE("Invalid device name: %s (length: %zu)", name, name ? strlen(name) : 0);
+        LOG_ERROR("Invalid device name: %s (length: %zu)", name, name ? strlen(name) : 0);
         return INVALID_PARAM;
     }
     
     int ret = aml_bt_set_device_name(name);
     if (ret != 0) {
-        AML_LOGE("Amlogic bluetooth set device name failed: %d", ret);
+        LOG_ERROR("Amlogic bluetooth set device name failed: %d", ret);
         return FAILURE;
     }
     
-    AML_LOGI("HAL bluetooth device name set to: %s", name);
+    LOG_INFO("HAL bluetooth device name set to: %s", name);
     return SUCCESS;
 }
 
@@ -225,22 +220,22 @@ int hal_bt_set_device_name(const char *name) {
  */
 int hal_bt_set_pin_code(const char *pin) {
     if (!g_bt_init) {
-        AML_LOGE("HAL bluetooth not initialized");
+        LOG_ERROR("HAL bluetooth not initialized");
         return FAILURE;
     }
     
     if (!pin || strlen(pin) == 0 || strlen(pin) > 16) {
-        AML_LOGE("Invalid pin code: %s (length: %zu)", pin, pin ? strlen(pin) : 0);
+        LOG_ERROR("Invalid pin code: %s (length: %zu)", pin, pin ? strlen(pin) : 0);
         return INVALID_PARAM;
     }
     
     int ret = aml_bt_set_pin_code(pin);
     if (ret != 0) {
-        AML_LOGE("Amlogic bluetooth set pin code failed: %d", ret);
+        LOG_ERROR("Amlogic bluetooth set pin code failed: %d", ret);
         return FAILURE;
     }
     
-    AML_LOGI("HAL bluetooth pin code set successfully");
+    LOG_INFO("HAL bluetooth pin code set successfully");
     return SUCCESS;
 }
 
@@ -296,22 +291,22 @@ int hal_bt_set_pairable(bool pairable) {
  */
 int hal_bt_set_pairable_timeout(int timeout) {
     if (!g_bt_init) {
-        AML_LOGE("HAL bluetooth not initialized");
+        LOG_ERROR("HAL bluetooth not initialized");
         return FAILURE;
     }
     
     if (timeout < 0 || timeout > 3600) {
-        AML_LOGE("Invalid timeout value: %d (range: 0-3600)", timeout);
+        LOG_ERROR("Invalid timeout value: %d (range: 0-3600)", timeout);
         return INVALID_PARAM;
     }
     
     int ret = aml_bt_set_pairable_timeout(timeout);
     if (ret != 0) {
-        AML_LOGE("Amlogic bluetooth set pairable timeout failed: %d", ret);
+        LOG_ERROR("Amlogic bluetooth set pairable timeout failed: %d", ret);
         return FAILURE;
     }
     
-    AML_LOGI("HAL bluetooth pairable timeout set to: %d seconds", timeout);
+    LOG_INFO("HAL bluetooth pairable timeout set to: %d seconds", timeout);
     return SUCCESS;
 }
 
@@ -324,22 +319,22 @@ int hal_bt_set_pairable_timeout(int timeout) {
  */
 int hal_bt_get_connected_dev_name(char *name, int len) {
     if (!g_bt_init) {
-        AML_LOGE("HAL bluetooth not initialized");
+        LOG_ERROR("HAL bluetooth not initialized");
         return FAILURE;
     }
     
     if (!name || len <= 0 || len > 256) {
-        AML_LOGE("Invalid parameters: name=%p, len=%d", name, len);
+        LOG_ERROR("Invalid parameters: name=%p, len=%d", name, len);
         return INVALID_PARAM;
     }
     
     int ret = aml_bt_get_connected_dev_name(name, len);
     if (ret != 0) {
-        AML_LOGE("Amlogic bluetooth get connected device name failed: %d", ret);
+        LOG_ERROR("Amlogic bluetooth get connected device name failed: %d", ret);
         return FAILURE;
     }
     
-    AML_LOGD("HAL bluetooth connected device name: %s", name);
+    LOG_DEBUG("HAL bluetooth connected device name: %s", name);
     return SUCCESS;
 }
 
@@ -352,22 +347,22 @@ int hal_bt_get_connected_dev_name(char *name, int len) {
  */
 int hal_bt_get_connected_dev_addr(char *addr, int len) {
     if (!g_bt_init) {
-        AML_LOGE("HAL bluetooth not initialized");
+        LOG_ERROR("HAL bluetooth not initialized");
         return FAILURE;
     }
     
     if (!addr || len <= 0 || len < 18) {
-        AML_LOGE("Invalid parameters: addr=%p, len=%d (minimum 18 bytes required)", addr, len);
+        LOG_ERROR("Invalid parameters: addr=%p, len=%d (minimum 18 bytes required)", addr, len);
         return INVALID_PARAM;
     }
     
     int ret = aml_bt_get_connected_dev_addr(addr, len);
     if (ret != 0) {
-        AML_LOGE("Amlogic bluetooth get connected device address failed: %d", ret);
+        LOG_ERROR("Amlogic bluetooth get connected device address failed: %d", ret);
         return FAILURE;
     }
     
-    AML_LOGD("HAL bluetooth connected device address: %s", addr);
+    LOG_DEBUG("HAL bluetooth connected device address: %s", addr);
     return SUCCESS;
 }
 
@@ -379,22 +374,22 @@ int hal_bt_get_connected_dev_addr(char *addr, int len) {
  */
 int hal_bt_get_connected_dev_type(int *type) {
     if (!g_bt_init) {
-        AML_LOGE("HAL bluetooth not initialized");
+        LOG_ERROR("HAL bluetooth not initialized");
         return FAILURE;
     }
     
     if (!type) {
-        AML_LOGE("Invalid parameters: type=%p", type);
+        LOG_ERROR("Invalid parameters: type=%p", type);
         return INVALID_PARAM;
     }
     
     int ret = aml_bt_get_connected_dev_type(type);
     if (ret != 0) {
-        AML_LOGE("Amlogic bluetooth get connected device type failed: %d", ret);
+        LOG_ERROR("Amlogic bluetooth get connected device type failed: %d", ret);
         return FAILURE;
     }
     
-    AML_LOGD("HAL bluetooth connected device type: %d", *type);
+    LOG_DEBUG("HAL bluetooth connected device type: %d", *type);
     return SUCCESS;
 }
 
@@ -424,27 +419,27 @@ int hal_bt_get_disconnect_reason(void) {
  */
 int hal_bt_scan_devices(int timeout, BluetoothDeviceCallback_t device_info, void *user_data) {
     if (!g_bt_init) {
-        AML_LOGE("HAL bluetooth not initialized");
+        LOG_ERROR("HAL bluetooth not initialized");
         return FAILURE;
     }
     
     if (timeout <= 0 || timeout > 30) {
-        AML_LOGE("Invalid scan timeout: %d (range: 1-30 seconds)", timeout);
+        LOG_ERROR("Invalid scan timeout: %d (range: 1-30 seconds)", timeout);
         return INVALID_PARAM;
     }
     
-    AML_LOGI("Scanning Bluetooth devices for %d seconds", timeout);
+    LOG_INFO("Scanning Bluetooth devices for %d seconds", timeout);
     
     // 使用bluez5库扫描蓝牙设备
     int dev_id = hci_get_route(NULL);
     if (dev_id < 0) {
-        AML_LOGE("Failed to get HCI device: %s", strerror(errno));
+        LOG_ERROR("Failed to get HCI device: %s", strerror(errno));
         return FAILURE;
     }
     
     int sock = hci_open_dev(dev_id);
     if (sock < 0) {
-        AML_LOGE("Failed to open HCI device: %s", strerror(errno));
+        LOG_ERROR("Failed to open HCI device: %s", strerror(errno));
         return FAILURE;
     }
     
@@ -456,20 +451,20 @@ int hal_bt_scan_devices(int timeout, BluetoothDeviceCallback_t device_info, void
     uint8_t filter_policy = 0x00; // 不使用过滤
     
     if (hci_le_set_scan_parameters(sock, scan_type, interval, window, own_type, filter_policy, 1000) < 0) {
-        AML_LOGE("Failed to set scan parameters: %s", strerror(errno));
+        LOG_ERROR("Failed to set scan parameters: %s", strerror(errno));
         close(sock);
         return FAILURE;
     }
     
     // 启用扫描
     if (hci_le_set_scan_enable(sock, 1, 0, 1000) < 0) {
-        AML_LOGE("Failed to enable scan: %s", strerror(errno));
+        LOG_ERROR("Failed to enable scan: %s", strerror(errno));
         close(sock);
         return FAILURE;
     }
     
     // 开始扫描
-    AML_LOGI("Bluetooth scan started");
+    LOG_INFO("Bluetooth scan started");
     
     // 模拟扫描结果，实际实现中应该使用hci_le_set_scan_callback
     if (device_info) {
@@ -487,13 +482,13 @@ int hal_bt_scan_devices(int timeout, BluetoothDeviceCallback_t device_info, void
     
     // 禁用扫描
     if (hci_le_set_scan_enable(sock, 0, 0, 1000) < 0) {
-        AML_LOGE("Failed to disable scan: %s", strerror(errno));
+        LOG_ERROR("Failed to disable scan: %s", strerror(errno));
         close(sock);
         return FAILURE;
     }
     
     close(sock);
-    AML_LOGI("Bluetooth scan completed");
+    LOG_INFO("Bluetooth scan completed");
     return SUCCESS;
 }
 
@@ -505,22 +500,22 @@ int hal_bt_scan_devices(int timeout, BluetoothDeviceCallback_t device_info, void
  */
 int hal_bt_connect(const char *addr) {
     if (!g_bt_init) {
-        AML_LOGE("HAL bluetooth not initialized");
+        LOG_ERROR("HAL bluetooth not initialized");
         return FAILURE;
     }
     
     if (!addr || strlen(addr) != 17) {
-        AML_LOGE("Invalid Bluetooth device address: %s", addr);
+        LOG_ERROR("Invalid Bluetooth device address: %s", addr);
         return INVALID_PARAM;
     }
     
     int ret = aml_bt_connect(addr);
     if (ret != 0) {
-        AML_LOGE("Amlogic bluetooth connect failed: %d", ret);
+        LOG_ERROR("Amlogic bluetooth connect failed: %d", ret);
         return FAILURE;
     }
     
-    AML_LOGI("HAL bluetooth connect initiated to: %s", addr);
+    LOG_INFO("HAL bluetooth connect initiated to: %s", addr);
     return SUCCESS;
 }
 
@@ -637,22 +632,22 @@ int hal_bt_a2dp_stop_stream(void) {
  */
 int hal_bt_a2dp_set_volume(int volume) {
     if (!g_bt_init) {
-        AML_LOGE("HAL bluetooth not initialized");
+        LOG_ERROR("HAL bluetooth not initialized");
         return FAILURE;
     }
     
     if (volume < 0 || volume > 100) {
-        AML_LOGE("Invalid A2DP volume: %d", volume);
+        LOG_ERROR("Invalid A2DP volume: %d", volume);
         return INVALID_PARAM;
     }
     
     int ret = aml_bt_a2dp_set_volume(volume);
     if (ret != 0) {
-        AML_LOGE("Amlogic bluetooth A2DP set volume failed: %d", ret);
+        LOG_ERROR("Amlogic bluetooth A2DP set volume failed: %d", ret);
         return FAILURE;
     }
     
-    AML_LOGI("HAL bluetooth A2DP volume set to: %d", volume);
+    LOG_INFO("HAL bluetooth A2DP volume set to: %d", volume);
     return SUCCESS;
 }
 
@@ -687,23 +682,23 @@ int hal_bt_a2dp_get_volume(void) {
  */
 int hal_bt_a2dp_set_audio_params(int sample_rate, int channels, int bit_depth) {
     if (!g_bt_init) {
-        AML_LOGE("HAL bluetooth not initialized");
+        LOG_ERROR("HAL bluetooth not initialized");
         return FAILURE;
     }
     
     if (sample_rate <= 0 || channels <= 0 || bit_depth <= 0) {
-        AML_LOGE("Invalid A2DP audio parameters: sample_rate=%d, channels=%d, bit_depth=%d", 
+        LOG_ERROR("Invalid A2DP audio parameters: sample_rate=%d, channels=%d, bit_depth=%d", 
                  sample_rate, channels, bit_depth);
         return INVALID_PARAM;
     }
     
     int ret = aml_bt_a2dp_set_audio_params(sample_rate, channels, bit_depth);
     if (ret != 0) {
-        AML_LOGE("Amlogic bluetooth A2DP set audio parameters failed: %d", ret);
+        LOG_ERROR("Amlogic bluetooth A2DP set audio parameters failed: %d", ret);
         return FAILURE;
     }
     
-    AML_LOGI("HAL bluetooth A2DP audio parameters set: sample_rate=%d, channels=%d, bit_depth=%d", 
+    LOG_INFO("HAL bluetooth A2DP audio parameters set: sample_rate=%d, channels=%d, bit_depth=%d", 
              sample_rate, channels, bit_depth);
     return SUCCESS;
 }
@@ -862,17 +857,17 @@ int hal_bt_a2dp_volume_down(void) {
  */
 int hal_bt_a2dp_mute(void) {
     if (!g_bt_init) {
-        AML_LOGE("HAL bluetooth not initialized");
+        LOG_ERROR("HAL bluetooth not initialized");
         return FAILURE;
     }
     
     int ret = aml_bt_a2dp_mute();
     if (ret != 0) {
-        AML_LOGE("Amlogic bluetooth A2DP mute failed: %d", ret);
+        LOG_ERROR("Amlogic bluetooth A2DP mute failed: %d", ret);
         return FAILURE;
     }
     
-    AML_LOGI("HAL bluetooth A2DP mute command sent");
+    LOG_INFO("HAL bluetooth A2DP mute command sent");
     return SUCCESS;
 }
 
@@ -883,17 +878,17 @@ int hal_bt_a2dp_mute(void) {
  */
 int hal_bt_a2dp_unmute(void) {
     if (!g_bt_init) {
-        AML_LOGE("HAL bluetooth not initialized");
+        LOG_ERROR("HAL bluetooth not initialized");
         return FAILURE;
     }
     
     int ret = aml_bt_a2dp_unmute();
     if (ret != 0) {
-        AML_LOGE("Amlogic bluetooth A2DP unmute failed: %d", ret);
+        LOG_ERROR("Amlogic bluetooth A2DP unmute failed: %d", ret);
         return FAILURE;
     }
     
-    AML_LOGI("HAL bluetooth A2DP unmute command sent");
+    LOG_INFO("HAL bluetooth A2DP unmute command sent");
     return SUCCESS;
 }
 
@@ -904,21 +899,21 @@ int hal_bt_a2dp_unmute(void) {
  */
 int hal_bt_mesh_create_network(void) {
     if (!g_bt_init) {
-        AML_LOGE("HAL bluetooth not initialized");
+        LOG_ERROR("HAL bluetooth not initialized");
         return FAILURE;
     }
     
     #ifdef CONFIG_ENABLE_BT_MESH
     int ret = aml_bt_mesh_create_network();
     if (ret != 0) {
-        AML_LOGE("Amlogic bluetooth MESH create network failed: %d", ret);
+        LOG_ERROR("Amlogic bluetooth MESH create network failed: %d", ret);
         return FAILURE;
     }
     
-    AML_LOGI("HAL bluetooth MESH network created");
+    LOG_INFO("HAL bluetooth MESH network created");
     return SUCCESS;
     #else
-    AML_LOGW("BT MESH not enabled");
+    LOG_WARN("BT MESH not enabled");
     return FAILURE;
     #endif
 }
@@ -930,21 +925,21 @@ int hal_bt_mesh_create_network(void) {
  */
 int hal_bt_mesh_pair(void) {
     if (!g_bt_init) {
-        AML_LOGE("HAL bluetooth not initialized");
+        LOG_ERROR("HAL bluetooth not initialized");
         return FAILURE;
     }
     
     #ifdef CONFIG_ENABLE_BT_MESH
     int ret = aml_bt_mesh_pair();
     if (ret != 0) {
-        AML_LOGE("Amlogic bluetooth MESH pair failed: %d", ret);
+        LOG_ERROR("Amlogic bluetooth MESH pair failed: %d", ret);
         return FAILURE;
     }
     
-    AML_LOGI("HAL bluetooth MESH pairing started");
+    LOG_INFO("HAL bluetooth MESH pairing started");
     return SUCCESS;
     #else
-    AML_LOGW("BT MESH not enabled");
+    LOG_WARN("BT MESH not enabled");
     return FAILURE;
     #endif
 }
@@ -957,26 +952,26 @@ int hal_bt_mesh_pair(void) {
  */
 int hal_bt_mesh_sync_volume(int vol) {
     if (!g_bt_init) {
-        AML_LOGE("HAL bluetooth not initialized");
+        LOG_ERROR("HAL bluetooth not initialized");
         return FAILURE;
     }
     
     if (vol < 0 || vol > 100) {
-        AML_LOGE("Invalid MESH volume: %d (range: 0-100)", vol);
+        LOG_ERROR("Invalid MESH volume: %d (range: 0-100)", vol);
         return INVALID_PARAM;
     }
     
     #ifdef CONFIG_ENABLE_BT_MESH
     int ret = aml_bt_mesh_sync_volume(vol);
     if (ret != 0) {
-        AML_LOGE("Amlogic bluetooth MESH sync volume failed: %d", ret);
+        LOG_ERROR("Amlogic bluetooth MESH sync volume failed: %d", ret);
         return FAILURE;
     }
     
-    AML_LOGI("HAL bluetooth MESH volume synced to: %d", vol);
+    LOG_INFO("HAL bluetooth MESH volume synced to: %d", vol);
     return SUCCESS;
     #else
-    AML_LOGW("BT MESH not enabled");
+    LOG_WARN("BT MESH not enabled");
     return NOT_SUPPORT;
     #endif
 }

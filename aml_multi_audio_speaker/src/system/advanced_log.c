@@ -1,19 +1,9 @@
-#include "log/aml_log.h"
+#include "logger.h"
 #include "common_def.h"
 
 /******************************************************************************************
- * 【高级日志系统实现】- 利用aml_log.h
+ * 【高级日志系统实现】- 利用logger.h
  ******************************************************************************************/
-
-// 定义各个模块的日志分类
-AML_LOG_DEFINE(audio_log);      // 音频模块日志
-AML_LOG_DEFINE(bt_log);         // 蓝牙模块日志
-AML_LOG_DEFINE(network_log);    // 网络模块日志
-AML_LOG_DEFINE(peripheral_log); // 外设模块日志
-AML_LOG_DEFINE(storage_log);    // 存储模块日志
-
-// 设置默认日志分类
-#define AML_LOG_DEFAULT AML_LOG_GET_CAT(audio_log)
 
 /******************************************************************************************
  * 【高级日志系统初始化】- 初始化所有日志分类
@@ -36,7 +26,7 @@ int advanced_log_init(void) {
     }
     
     // 输出初始化信息
-    AML_LOGI("Advanced log system initialized");
+    LOG_INFO("Advanced log system initialized");
     AML_LOGCATI(audio_log, "Audio module log initialized");
     AML_LOGCATI(bt_log, "Bluetooth module log initialized");
     AML_LOGCATI(network_log, "Network module log initialized");
@@ -62,7 +52,7 @@ int advanced_log_set_level(const char *category, int level) {
     aml_log_set_from_string(config);
     
     // 输出设置信息
-    AML_LOGI("Set log level for %s to %d", category, level);
+    LOG_INFO("Set log level for %s to %d", category, level);
     
     return SUCCESS;
 }

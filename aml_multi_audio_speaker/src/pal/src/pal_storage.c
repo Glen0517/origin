@@ -7,7 +7,7 @@
  */
 
 #include "pal_storage.h"
-#include "log/aml_log.h"
+#include "logger.h"
 #include <string.h>
 #include <errno.h>
 
@@ -38,10 +38,7 @@ int closedir(DIR *dir) { return 0; }
 struct dirent *readdir(DIR *dir) { static struct dirent entry = {0}; return &entry; }
 #endif
 
-// 定义存储服务模块日志分类
-AML_LOG_DEFINE(storage_log);
-// 设置默认日志分类
-#define AML_LOG_DEFAULT AML_LOG_GET_CAT(storage_log)
+
 
 static bool g_storage_init = false;
 
@@ -52,12 +49,12 @@ static bool g_storage_init = false;
  */
 int pal_storage_init(void) {
     if (g_storage_init) {
-        AML_LOGI("PAL storage service already initialized");
+        LOG_INFO("PAL storage service already initialized");
         return SUCCESS;
     }
     
     g_storage_init = true;
-    AML_LOGI("PAL storage service init success");
+    LOG_INFO("PAL storage service init success");
     return SUCCESS;
 }
 
@@ -68,12 +65,12 @@ int pal_storage_init(void) {
  */
 int pal_storage_deinit(void) {
     if (!g_storage_init) {
-        AML_LOGI("PAL storage service not initialized");
+        LOG_INFO("PAL storage service not initialized");
         return SUCCESS;
     }
     
     g_storage_init = false;
-    AML_LOGI("PAL storage service deinit success");
+    LOG_INFO("PAL storage service deinit success");
     return SUCCESS;
 }
 
@@ -86,16 +83,16 @@ int pal_storage_deinit(void) {
  */
 int pal_storage_mount(const char *dev_path, const char *mount_point) {
     if (!g_storage_init) {
-        AML_LOGE("PAL storage service not initialized");
+        LOG_ERROR("PAL storage service not initialized");
         return FAILURE;
     }
 
     if (!dev_path || !mount_point) {
-        AML_LOGE("Invalid device path or mount point");
+        LOG_ERROR("Invalid device path or mount point");
         return FAILURE;
     }
 
-    AML_LOGI("Mounting device %s to %s", dev_path, mount_point);
+    LOG_INFO("Mounting device %s to %s", dev_path, mount_point);
 
     // 确保挂载点目录存在
     struct stat st;
@@ -106,24 +103,24 @@ int pal_storage_mount(const char *dev_path, const char *mount_point) {
 #else
         if (mkdir(mount_point) != 0) {
 #endif
-            AML_LOGE("Create mount point failed: %s", strerror(errno));
+            LOG_ERROR("Create mount point failed: %s", strerror(errno));
             return FAILURE;
         }
-        AML_LOGI("Created mount point directory: %s", mount_point);
+        LOG_INFO("Created mount point directory: %s", mount_point);
     }
 
     // 尝试挂载设备（支持vfat和ext4文件系统）
     if (mount(dev_path, mount_point, "fat32", 0, NULL) != 0) {
         if (mount(dev_path, mount_point, "ext4", 0, NULL) != 0) {
-            AML_LOGE("Mount device failed: %s", strerror(errno));
+            LOG_ERROR("Mount device failed: %s", strerror(errno));
             return FAILURE;
         }
-        AML_LOGI("Mounted as ext4 filesystem");
+        LOG_INFO("Mounted as ext4 filesystem");
     } else {
-        AML_LOGI("Mounted as fat32 filesystem");
+        LOG_INFO("Mounted as fat32 filesystem");
     }
 
-    AML_LOGI("Device mounted successfully");
+    LOG_INFO("Device mounted successfully");
     return SUCCESS;
 }
 
@@ -135,28 +132,28 @@ int pal_storage_mount(const char *dev_path, const char *mount_point) {
  */
 int pal_storage_unmount(const char *mount_point) {
     if (!g_storage_init) {
-        AML_LOGE("PAL storage service not initialized");
+        LOG_ERROR("PAL storage service not initialized");
         return FAILURE;
     }
 
     if (!mount_point) {
-        AML_LOGE("Invalid mount point");
+        LOG_ERROR("Invalid mount point");
         return FAILURE;
     }
 
-    AML_LOGI("Unmounting device from %s", mount_point);
+    LOG_INFO("Unmounting device from %s", mount_point);
 
     // 尝试卸载设备
     if (umount(mount_point) != 0) {
         // 如果失败，尝试强制卸载
         if (umount2(mount_point, MNT_FORCE) != 0) {
-            AML_LOGE("Unmount device failed: %s", strerror(errno));
+            LOG_ERROR("Unmount device failed: %s", strerror(errno));
             return FAILURE;
         }
-        AML_LOGW("Forced unmount successful");
+        LOG_WARN("Forced unmount successful");
     }
 
-    AML_LOGI("Device unmounted successfully");
+    LOG_INFO("Device unmounted successfully");
     return SUCCESS;
 }
 
@@ -169,12 +166,12 @@ int pal_storage_unmount(const char *mount_point) {
  */
 int pal_storage_get_free_space(const char *path, long *free_space) {
     if (!g_storage_init) {
-        AML_LOGE("PAL storage service not initialized");
+        LOG_ERROR("PAL storage service not initialized");
         return FAILURE;
     }
 
     if (!path || !free_space) {
-        AML_LOGE("Invalid path or free_space parameter");
+        LOG_ERROR("Invalid path or free_space parameter");
         return FAILURE;
     }
     
@@ -182,12 +179,12 @@ int pal_storage_get_free_space(const char *path, long *free_space) {
     
     // 调用系统API来获取空间信息
     if (statvfs(path, &stat) != 0) {
-        AML_LOGE("Get storage space failed: %s", strerror(errno));
+        LOG_ERROR("Get storage space failed: %s", strerror(errno));
         return FAILURE;
     }
     *free_space = stat.f_bavail * stat.f_frsize;
 
-    AML_LOGD("Free space for %s: %ld bytes", path, *free_space);
+    LOG_DEBUG("Free space for %s: %ld bytes", path, *free_space);
     return SUCCESS;
 }
 
@@ -200,12 +197,12 @@ int pal_storage_get_free_space(const char *path, long *free_space) {
  */
 int pal_storage_get_total_space(const char *path, long *total_space) {
     if (!g_storage_init) {
-        AML_LOGE("PAL storage service not initialized");
+        LOG_ERROR("PAL storage service not initialized");
         return FAILURE;
     }
 
     if (!path || !total_space) {
-        AML_LOGE("Invalid path or total_space parameter");
+        LOG_ERROR("Invalid path or total_space parameter");
         return FAILURE;
     }
 
@@ -213,12 +210,12 @@ int pal_storage_get_total_space(const char *path, long *total_space) {
 
     // 调用系统API来获取空间信息
     if (statvfs(path, &stat) != 0) {
-        AML_LOGE("Get storage space failed: %s", strerror(errno));
+        LOG_ERROR("Get storage space failed: %s", strerror(errno));
         return FAILURE;
     }
     *total_space = stat.f_blocks * stat.f_frsize;
 
-    AML_LOGD("Total space for %s: %ld bytes", path, *total_space);
+    LOG_DEBUG("Total space for %s: %ld bytes", path, *total_space);
     return SUCCESS;
 }
 
@@ -259,7 +256,7 @@ static int scan_directory(const char *path, PalMediaScanCallback_t callback, voi
     struct dirent *entry;
     
     if ((dir = opendir(path)) == NULL) {
-        AML_LOGE("Open directory failed: %s", strerror(errno));
+        LOG_ERROR("Open directory failed: %s", strerror(errno));
         return FAILURE;
     }
     
