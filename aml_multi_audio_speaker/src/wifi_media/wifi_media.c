@@ -1156,15 +1156,11 @@ int wifi_media_enable_game_mode(bool enable) {
     
     g_game_mode_enabled = enable;
     
-    if (enable) {
-        // 游戏模式：减小缓冲大小，降低延迟
-        wifi_media_set_buffer_size(g_game_buffer_size);
-        LOG_INFO("WIFI media game mode enabled (buffer size: %d ms)", g_game_buffer_size);
-    } else {
-        // 正常模式：恢复默认缓冲大小
-        wifi_media_set_buffer_size(200);
-        LOG_INFO("WIFI media game mode disabled (buffer size: 200 ms)");
-    }
+    // 游戏模式：减小缓冲大小，降低延迟
+    int new_buffer_size = enable ? WIFI_GAME_BUFFER_SIZE : WIFI_DEFAULT_BUFFER_SIZE;
+    wifi_media_set_buffer_size(new_buffer_size);
+    
+    LOG_INFO("WIFI media game mode %s (buffer size: %d ms)", enable ? "enabled" : "disabled", new_buffer_size);
     
     // 发送游戏模式切换事件
     event_notify(enable ? EVENT_GAME_MODE_ENABLED : EVENT_GAME_MODE_DISABLED, NULL);
@@ -1216,16 +1212,24 @@ bool wifi_media_get_google_cast_state(void) {
     return g_google_cast_enabled && g_wifi_connected;
 }
 
+/**
+ * @brief 获取WiFi媒体状态
+ * @return 状态：1-已连接，0-未连接
+ */
+int wifi_media_get_status(void) {
+    return g_wifi_media_init && g_wifi_connected ? 1 : 0;
+}
+
 #endif
 
 // WiFi媒体服务事件轮询函数
 void wifi_media_event_poll(void) {
     if (!g_wifi_media_init) return;
     
-    // 检查网络质量
+    // 检查网络质量并调整缓冲
     check_network_quality();
     
-    // 自动重连
+    // 处理自动重连
     wifi_auto_reconnect();
 }
 
@@ -1248,5 +1252,5 @@ bool wifi_media_is_game_mode_enabled(void) { return false; }
 int wifi_media_get_current_ssid(char *ssid, int len) { return -1; }
 bool wifi_media_get_spotify_state(void) { return false; }
 bool wifi_media_get_google_cast_state(void) { return false; }
-void wifi_media_event_poll(void) { return; }
+int wifi_media_get_status(void) { return false; }
 #endif

@@ -13,6 +13,10 @@
 #include "hal.h"  // 硬件抽象层
 #include "error_handling.h"  // 统一错误处理
 
+// 蓝牙配对相关常量定义
+#define BT_PAIRING_TIMEOUT_DEFAULT 30  // 默认配对超时时间（秒）
+#define BT_PAIRING_LED_BLINK_INTERVAL 500  // LED闪烁间隔（毫秒）
+
 /**
  * @brief 蓝牙配置
  */
@@ -178,21 +182,26 @@ int bluetooth_start_pair(void)
     
     LOG_INFO("Starting Bluetooth pairing...");
     
+    // 优化：使用统一的错误检查，减少重复代码
+    int ret = 0;
+    
     // 开启蓝牙可发现模式
-    if (hal_bt_set_discoverable(true) != 0) {
-        LOG_ERROR("Failed to set Bluetooth discoverable");
+    if ((ret = hal_bt_set_discoverable(true)) != 0) {
+        LOG_ERROR("Failed to set Bluetooth discoverable: %d", ret);
         return FAILURE;
     }
     
     // 开启蓝牙可配对模式
-    if (hal_bt_set_pairable(true) != 0) {
-        LOG_ERROR("Failed to set Bluetooth pairable");
+    if ((ret = hal_bt_set_pairable(true)) != 0) {
+        LOG_ERROR("Failed to set Bluetooth pairable: %d", ret);
+        // 回滚：关闭可发现模式
+        hal_bt_set_discoverable(false);
         return FAILURE;
     }
     
-    // 设置可发现和可配对的超时时间（30秒）
-    if (hal_bt_set_pairable_timeout(30) != 0) {
-        LOG_ERROR("Failed to set Bluetooth pairable timeout");
+    // 设置可发现和可配对的超时时间
+    if ((ret = hal_bt_set_pairable_timeout(BT_PAIRING_TIMEOUT_DEFAULT)) != 0) {
+        LOG_WARN("Failed to set Bluetooth pairable timeout: %d, using default", ret);
         // 继续执行，使用默认超时
     }
     
@@ -204,7 +213,7 @@ int bluetooth_start_pair(void)
     snprintf(lcd_msg, sizeof(lcd_msg), "BT: Pairing Mode");
     lcd_display_text(0, 0, lcd_msg);
     
-    LOG_INFO("Bluetooth pairing started");
+    LOG_INFO("Bluetooth pairing started (timeout: %d seconds)", BT_PAIRING_TIMEOUT_DEFAULT);
     return SUCCESS;
 }
 
@@ -217,32 +226,17 @@ int bluetooth_stop_pair(void)
     
     LOG_INFO("Stopping Bluetooth pairing...");
     
-    // 关闭蓝牙可发现模式
-    if (hal_bt_set_discoverable(false) != 0) {
-        LOG_ERROR("Failed to disable Bluetooth discoverable");
-        // 继续执行
-    }
-    
-    // 关闭蓝牙可配对模式
-    if (hal_bt_set_pairable(false) != 0) {
-        LOG_ERROR("Failed to disable Bluetooth pairable");
-        // 继续执行
-    }
+    // 关闭蓝牙可发现模式和可配对模式，忽略返回值，确保都执行
+    hal_bt_set_discoverable(false);
+    hal_bt_set_pairable(false);
     
     // 更新LED状态
-    if (g_bt_cfg.bt_connected) {
-        led_ctrl_set_state(LED_BLUETOOTH, LED_STATE_ON);
-    } else {
-        led_ctrl_set_state(LED_BLUETOOTH, LED_STATE_OFF);
-    }
+    led_ctrl_set_state(LED_BLUETOOTH, g_bt_cfg.bt_connected ? LED_STATE_ON : LED_STATE_OFF);
     
     // 更新LCD显示
     char lcd_msg[32] = {0};
-    if (g_bt_cfg.bt_connected) {
-        snprintf(lcd_msg, sizeof(lcd_msg), "BT: Connected");
-    } else {
-        snprintf(lcd_msg, sizeof(lcd_msg), "BT: Ready");
-    }
+    const char *status_msg = g_bt_cfg.bt_connected ? "Connected" : "Ready";
+    snprintf(lcd_msg, sizeof(lcd_msg), "BT: %s", status_msg);
     lcd_display_text(0, 0, lcd_msg);
     
     LOG_INFO("Bluetooth pairing stopped");
@@ -948,6 +942,7 @@ void bluetooth_event_poll(void)
     
     // 轮询蓝牙连接状态
     if (g_bt_cfg.bt_enable) {
+        // 仅在DEBUG模式下输出日志，减少性能开销
         LOG_DEBUG("Polling Bluetooth events...");
         
         // 获取蓝牙连接状态 - 检查蓝牙设备是否已连接
@@ -959,9 +954,9 @@ void bluetooth_event_poll(void)
             return;
         }
         
-        LOG_DEBUG("Bluetooth connection status: %d", conn_status);
-        
+        // 仅在状态变化时输出日志，减少日志量
         if (conn_status != g_bt_cfg.bt_connected) {
+            LOG_DEBUG("Bluetooth connection status changed: %d -> %d", g_bt_cfg.bt_connected, conn_status);
             g_bt_cfg.bt_connected = conn_status;
             
             if (conn_status) {
@@ -971,16 +966,22 @@ void bluetooth_event_poll(void)
                 LOG_INFO("Pairing completed, disabling discoverable and pairable modes");
                 bluetooth_stop_pair();
                 
-                // 获取连接的设备信息
-                if (hal_bt_get_connected_dev_addr(g_connected_dev_addr, sizeof(g_connected_dev_addr)) == 0) {
+                // 批量获取连接的设备信息，减少函数调用次数
+                int dev_type = 0;
+                int addr_ret = hal_bt_get_connected_dev_addr(g_connected_dev_addr, sizeof(g_connected_dev_addr));
+                int name_ret = hal_bt_get_connected_dev_name(g_connected_dev_name, sizeof(g_connected_dev_name));
+                int type_ret = hal_bt_get_connected_dev_type(&dev_type);
+                
+                if (addr_ret == 0) {
                     LOG_INFO("Connected device address: %s", g_connected_dev_addr);
                 }
                 
-                if (hal_bt_get_connected_dev_name(g_connected_dev_name, sizeof(g_connected_dev_name)) == 0) {
+                if (name_ret == 0) {
                     LOG_INFO("Connected device name: %s", g_connected_dev_name);
                 }
                 
-                if (hal_bt_get_connected_dev_type(&g_connected_dev_type) == 0) {
+                if (type_ret == 0) {
+                    g_connected_dev_type = dev_type;
                     LOG_INFO("Connected device type: %d", g_connected_dev_type);
                 }
                 
@@ -989,7 +990,7 @@ void bluetooth_event_poll(void)
                 
                 // 更新LCD显示
                 char lcd_msg[32] = {0};
-                if (strlen(g_connected_dev_name) > 0) {
+                if (name_ret == 0 && strlen(g_connected_dev_name) > 0) {
                     snprintf(lcd_msg, sizeof(lcd_msg), "BT: %s", g_connected_dev_name);
                 } else {
                     snprintf(lcd_msg, sizeof(lcd_msg), "BT: Connected");
@@ -1019,20 +1020,18 @@ void bluetooth_event_poll(void)
                 g_disconnect_reason = hal_bt_get_disconnect_reason();
                 LOG_INFO("Bluetooth disconnect reason: %d", g_disconnect_reason);
                 
-                // 根据断连原因进行处理
-                switch (g_disconnect_reason) {
-                    case 1:
-                        LOG_INFO("Bluetooth disconnected normally");
-                        break;
-                    case 2:
-                        LOG_INFO("Bluetooth disconnected due to signal loss");
-                        break;
-                    case 3:
-                        LOG_INFO("Bluetooth disconnected due to low battery");
-                        break;
-                    default:
-                        LOG_INFO("Bluetooth disconnected for unknown reason");
-                        break;
+                // 优化：使用数组映射代替switch-case，提高性能
+                static const char *disconnect_reasons[] = {
+                    "unknown reason",
+                    "normally",
+                    "signal loss",
+                    "low battery"
+                };
+                
+                if (g_disconnect_reason >= 0 && g_disconnect_reason < sizeof(disconnect_reasons) / sizeof(disconnect_reasons[0])) {
+                    LOG_INFO("Bluetooth disconnected due to %s", disconnect_reasons[g_disconnect_reason]);
+                } else {
+                    LOG_INFO("Bluetooth disconnected for unknown reason");
                 }
                 
                 // 停止A2DP音频流

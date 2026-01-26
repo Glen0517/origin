@@ -15,6 +15,18 @@ static HalUsbDeviceCallback_t g_device_callback = NULL;
 static HalUsbDataCallback_t g_data_callback = NULL;
 
 /**
+ * @brief 检查USB初始化状态
+ * @return 初始化状态：true表示已初始化，false表示未初始化
+ */
+static bool check_usb_init(void) {
+    if (!g_usb_init) {
+        LOG_ERROR("HAL USB not initialized");
+        return false;
+    }
+    return true;
+}
+
+/**
  * @brief Amlogic USB设备连接状态回调函数
  * @param dev_path USB设备路径
  * @param connected 连接状态：true表示已连接，false表示已断开
@@ -43,7 +55,6 @@ static void aml_usb_data_callback(uint8_t *pcm_data, int data_len) {
  */
 int hal_usb_init(void) {
     if (g_usb_init) {
-        LOG_INFO("HAL USB already initialized");
         return SUCCESS;
     }
     
@@ -64,7 +75,6 @@ int hal_usb_init(void) {
  */
 int hal_usb_deinit(void) {
     if (!g_usb_init) {
-        LOG_INFO("HAL USB not initialized");
         return SUCCESS;
     }
     
@@ -87,18 +97,12 @@ int hal_usb_deinit(void) {
  * @return 打开结果：0表示成功，非0表示失败
  */
 int hal_usb_audio_open(const char *dev_path) {
-    if (!g_usb_init) {
-        LOG_ERROR("HAL USB not initialized");
+    if (!check_usb_init()) {
         return FAILURE;
     }
     
-    if (!dev_path || strlen(dev_path) == 0) {
-        LOG_ERROR("Invalid USB device path: NULL or empty");
-        return INVALID_PARAM;
-    }
-    
-    if (strlen(dev_path) > PATH_MAX) {
-        LOG_ERROR("Invalid USB device path: too long");
+    if (!dev_path || *dev_path == '\0' || strlen(dev_path) > PATH_MAX) {
+        LOG_ERROR("Invalid USB device path");
         return INVALID_PARAM;
     }
     
@@ -107,7 +111,7 @@ int hal_usb_audio_open(const char *dev_path) {
         return FAILURE;
     }
     
-    LOG_INFO("USB audio device opened successfully: %s", dev_path);
+    LOG_INFO("USB audio device opened: %s", dev_path);
     return SUCCESS;
 }
 
@@ -117,8 +121,7 @@ int hal_usb_audio_open(const char *dev_path) {
  * @return 关闭结果：0表示成功，非0表示失败
  */
 int hal_usb_audio_close(void) {
-    if (!g_usb_init) {
-        LOG_ERROR("HAL USB not initialized");
+    if (!check_usb_init()) {
         return FAILURE;
     }
     
@@ -138,8 +141,7 @@ int hal_usb_audio_close(void) {
  * @return 设置结果：0表示成功，非0表示失败
  */
 int hal_usb_audio_set_device_callback(HalUsbDeviceCallback_t callback) {
-    if (!g_usb_init) {
-        LOG_ERROR("HAL USB not initialized");
+    if (!check_usb_init()) {
         return FAILURE;
     }
     
@@ -150,7 +152,6 @@ int hal_usb_audio_set_device_callback(HalUsbDeviceCallback_t callback) {
         return FAILURE;
     }
     
-    LOG_INFO("USB device callback set %s", callback ? "successfully" : "to NULL");
     return SUCCESS;
 }
 
@@ -161,8 +162,7 @@ int hal_usb_audio_set_device_callback(HalUsbDeviceCallback_t callback) {
  * @return 设置结果：0表示成功，非0表示失败
  */
 int hal_usb_audio_set_data_callback(HalUsbDataCallback_t callback) {
-    if (!g_usb_init) {
-        LOG_ERROR("HAL USB not initialized");
+    if (!check_usb_init()) {
         return FAILURE;
     }
     
@@ -173,7 +173,6 @@ int hal_usb_audio_set_data_callback(HalUsbDataCallback_t callback) {
         return FAILURE;
     }
     
-    LOG_INFO("USB data callback set %s", callback ? "successfully" : "to NULL");
     return SUCCESS;
 }
 
@@ -184,8 +183,7 @@ int hal_usb_audio_set_data_callback(HalUsbDataCallback_t callback) {
  * @return 设置结果：0表示成功，非0表示失败
  */
 int hal_usb_audio_enable_detection(bool enable) {
-    if (!g_usb_init) {
-        LOG_ERROR("HAL USB not initialized");
+    if (!check_usb_init()) {
         return FAILURE;
     }
     
@@ -194,6 +192,5 @@ int hal_usb_audio_enable_detection(bool enable) {
         return FAILURE;
     }
     
-    LOG_INFO("USB detection %s", enable ? "enabled" : "disabled");
     return SUCCESS;
 }

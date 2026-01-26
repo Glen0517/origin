@@ -130,6 +130,12 @@ bool wifi_media_get_spotify_state(void);
  */
 bool wifi_media_get_google_cast_state(void);
 
+/**
+ * @brief 获取WiFi媒体状态
+ * @return 状态：1表示已连接，0表示未连接
+ */
+int wifi_media_get_status(void);
+
 #endif // CONFIG_ENABLE_WIFI_MEDIA
 
 // 非WiFi版本的空实现
@@ -151,5 +157,6 @@ extern bool wifi_media_is_game_mode_enabled(void);
 extern int wifi_media_get_current_ssid(char *ssid, int len);
 extern bool wifi_media_get_spotify_state(void);
 extern bool wifi_media_get_google_cast_state(void);
+extern int wifi_media_get_status(void);
 
 #endif // __WIFI_MEDIA_H__

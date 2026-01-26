@@ -195,8 +195,14 @@ int log_system_init(void) {
     // 创建日志目录（如果不存在）
     system("mkdir -p ./log");
     
-    // 使用默认配置初始化日志系统
-    return log_init(3, NULL); // 默认INFO级别
+    // 生成带时间戳的日志文件名
+    char log_file_path[128] = {0};
+    time_t now = time(NULL);
+    struct tm *tm_info = localtime(&now);
+    strftime(log_file_path, sizeof(log_file_path), "./log/system_%Y%m%d_%H%M%S.log", tm_info);
+    
+    // 使用持久化存储配置初始化日志系统
+    return log_init(3, log_file_path); // 默认INFO级别，日志持久化存储
 }
 
 /**

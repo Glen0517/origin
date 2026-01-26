@@ -24,6 +24,7 @@ int audio_source_init(AudioSourceConfig_t *cfg) {
     if (cfg) {
         g_audio_src.auto_switch_en = cfg->auto_switch_en;
     }
+    g_audio_src.manual_selected = false;  // 初始化手动选择标志为false
 
     // 基础音源（必加载）
     src_bt_init();       // 初始化蓝牙音频源
@@ -97,8 +98,10 @@ int audio_source_switch(AudioSourceType_e source) {
         LOG_ERROR("Source %d not supported", source);
         return NOT_SUPPORT;
     }
+    
     g_audio_src.cur_source = source;
-    LOG_INFO("Switch source to: %d", source);
+    g_audio_src.manual_selected = true; // 设置手动选择标志
+    LOG_INFO("Switch source to: %d (manual selection)", source);
     return SUCCESS;
 }
 
@@ -307,10 +310,67 @@ bool audio_source_detect(AudioSourceType_e source) {
 }
 
 /**
+ * @brief 检查当前音源是否正在播放
+ * @return 播放状态：true表示正在播放，false表示未播放
+ */
+static bool is_current_source_playing(void) {
+    switch (g_audio_src.cur_source) {
+        case AUDIO_SOURCE_BT:
+            return src_bt_is_playing();
+        case AUDIO_SOURCE_USB:
+            return src_usb_is_playing();
+        case AUDIO_SOURCE_HDMI:
+#ifdef CONFIG_ENABLE_HDMI_ARC
+            return src_hdmi_is_playing();
+#else
+            return false;
+#endif
+        case AUDIO_SOURCE_SPDIF:
+#ifdef CONFIG_ENABLE_SPDIF
+            return src_spdif_is_playing();
+#else
+            return false;
+#endif
+        case AUDIO_SOURCE_AUX:
+#ifdef CONFIG_ENABLE_AUX
+            return src_aux_is_playing();
+#else
+            return false;
+#endif
+        case AUDIO_SOURCE_UAC:
+#ifdef CONFIG_ENABLE_UAC
+            return src_uac_is_playing();
+#else
+            return false;
+#endif
+        case AUDIO_SOURCE_WIFI:
+#ifdef CONFIG_ENABLE_WIFI_MEDIA
+            return src_wifi_is_playing();
+#else
+            return false;
+#endif
+        default:
+            return false;
+    }
+}
+
+/**
  * @brief 自动音源切换
  */
 static void audio_source_auto_switch(void) {
     if (!g_audio_src.init_ok || !g_audio_src.auto_switch_en) {
+        return;
+    }
+    
+    // 检查当前音源是否被手动选择，如果是则不自动切换
+    if (g_audio_src.manual_selected) {
+        LOG_DEBUG("Auto switch disabled: source manually selected");
+        return;
+    }
+    
+    // 检查当前音源是否正在播放，如果是则不自动切换
+    if (is_current_source_playing()) {
+        LOG_DEBUG("Auto switch disabled: current source is playing");
         return;
     }
     

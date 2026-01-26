@@ -33,10 +33,14 @@ typedef struct {
     int recovery_count;      // 恢复计数
     SysState_e last_state;   // 上一次系统状态
     int state_change_count;  // 状态变化计数
+    bool power_off_flag;     // 关机标志
 } SystemMonitor_t;
 
 // 系统监控数据
 static SystemMonitor_t g_sys_monitor = {0};
+
+// 系统状态持久化存储路径
+#define SYSTEM_STATE_FILE_PATH "./config/system_state.json"
 
 // 系统错误处理回调函数
 static void system_error_callback(ErrorInfo_t *error_info)
@@ -130,33 +134,51 @@ static int system_auto_recover(void) {
         }
     }
     
-    // 2. 检查蓝牙
+    // 2. 检查蓝牙 - 实现自动重连
     if (!bluetooth_get_connect_state()) {
-        LOG_DEBUG("Bluetooth not connected, no recovery needed");
+        LOG_WARN("Bluetooth not connected, attempting to reconnect");
+        // 调用蓝牙重连函数
+        if (bluetooth_reconnect() == SUCCESS) {
+            LOG_INFO("Bluetooth reconnection initiated");
+            recovery_actions++;
+        }
     }
     
-    // 3. 检查WiFi媒体
+    // 3. 检查WiFi媒体 - 实现自动重连
     if (!wifi_media_get_connect_state()) {
-        LOG_DEBUG("WiFi not connected, no recovery needed");
+        LOG_WARN("WiFi not connected, attempting to reconnect");
+        // 调用WiFi重连函数
+        if (wifi_media_reconnect() == SUCCESS) {
+            LOG_INFO("WiFi reconnection initiated");
+            recovery_actions++;
+        }
     }
     
     // 4. 检查系统资源
     if (g_sys_monitor.cpu_usage > CPU_USAGE_THRESHOLD_CRITICAL) {
         LOG_WARN("High CPU usage, attempting to reduce load");
-        // 实际实现中应该采取措施降低CPU负载
+        // 降低CPU负载：关闭不必要的功能，降低音频质量等
+        audio_core_set_low_power_mode(true);
+        // 停止非关键进程
+        process_manager_stop_non_critical_processes();
         recovery_actions++;
     }
     
     if (g_sys_monitor.mem_usage > MEM_USAGE_THRESHOLD_CRITICAL) {
         LOG_WARN("High memory usage, attempting to free memory");
-        // 实际实现中应该采取措施释放内存
+        // 释放内存：清理缓存，关闭不必要的功能等
+        memory_cleanup();
+        // 减少音频缓冲区大小
+        audio_core_set_buffer_size(50);
         recovery_actions++;
     }
     
     // 5. 检查系统温度
     if (g_sys_monitor.temp > 60) {
         LOG_WARN("High system temperature, attempting to cool down");
-        // 实际实现中应该采取措施降低温度
+        // 降低温度：降低CPU频率，关闭不必要的功能等
+        pal_system_set_cpu_frequency("low");
+        audio_core_set_low_power_mode(true);
         recovery_actions++;
     }
     
@@ -169,6 +191,77 @@ static int system_auto_recover(void) {
         LOG_INFO("System auto recovery completed, no actions needed");
         return SUCCESS;
     }
+}
+
+// 保存系统状态到文件
+static void save_system_state(void) {
+    // 创建配置目录
+    system("mkdir -p ./config");
+    
+    // 打开文件
+    FILE *fp = fopen(SYSTEM_STATE_FILE_PATH, "w");
+    if (!fp) {
+        LOG_ERROR("Failed to open system state file for writing");
+        return;
+    }
+    
+    // 写入系统状态
+    fprintf(fp, "{");
+    fprintf(fp, "\"cpu_usage\": %d, ", g_sys_monitor.cpu_usage);
+    fprintf(fp, "\"mem_usage\": %d, ", g_sys_monitor.mem_usage);
+    fprintf(fp, "\"temp\": %d, ", g_sys_monitor.temp);
+    fprintf(fp, "\"voltage\": %d, ", g_sys_monitor.voltage);
+    fprintf(fp, "\"uptime\": %d, ", g_sys_monitor.uptime);
+    fprintf(fp, "\"error_count\": %d, ", g_sys_monitor.error_count);
+    fprintf(fp, "\"recovery_count\": %d, ", g_sys_monitor.recovery_count);
+    fprintf(fp, "\"last_state\": %d, ", g_sys_monitor.last_state);
+    fprintf(fp, "\"state_change_count\": %d", g_sys_monitor.state_change_count);
+    fprintf(fp, "}");
+    
+    fclose(fp);
+    LOG_DEBUG("System state saved to %s", SYSTEM_STATE_FILE_PATH);
+}
+
+// 从文件恢复系统状态
+static void restore_system_state(void) {
+    // 打开文件
+    FILE *fp = fopen(SYSTEM_STATE_FILE_PATH, "r");
+    if (!fp) {
+        LOG_DEBUG("System state file not found, using default values");
+        return;
+    }
+    
+    // 读取文件内容
+    char buffer[256] = {0};
+    size_t read_len = fread(buffer, 1, sizeof(buffer) - 1, fp);
+    fclose(fp);
+    
+    if (read_len == 0) {
+        LOG_DEBUG("System state file is empty, using default values");
+        return;
+    }
+    
+    // 简单解析JSON格式的系统状态
+    // 这里使用简化的解析方式，实际项目中应该使用JSON库
+    int cpu_usage = 0, mem_usage = 0, temp = 0, voltage = 0;
+    int uptime = 0, error_count = 0, recovery_count = 0;
+    int last_state = 0, state_change_count = 0;
+    
+    sscanf(buffer, "{\"cpu_usage\": %d, \"mem_usage\": %d, \"temp\": %d, \"voltage\": %d, \"uptime\": %d, \"error_count\": %d, \"recovery_count\": %d, \"last_state\": %d, \"state_change_count\": %d}",
+           &cpu_usage, &mem_usage, &temp, &voltage, &uptime, &error_count, &recovery_count, &last_state, &state_change_count);
+    
+    // 恢复系统状态
+    g_sys_monitor.cpu_usage = cpu_usage;
+    g_sys_monitor.mem_usage = mem_usage;
+    g_sys_monitor.temp = temp;
+    g_sys_monitor.voltage = voltage;
+    g_sys_monitor.uptime = uptime;
+    g_sys_monitor.error_count = error_count;
+    g_sys_monitor.recovery_count = recovery_count;
+    g_sys_monitor.last_state = (SysState_e)last_state;
+    g_sys_monitor.state_change_count = state_change_count;
+    
+    LOG_INFO("System state restored from %s", SYSTEM_STATE_FILE_PATH);
 }
 
 // 系统状态检查函数
@@ -227,6 +320,17 @@ static void check_system_status(void) {
         LOG_INFO("System state changed: %d -> %d (Change count: %d)", 
                  g_sys_monitor.last_state, current_state, g_sys_monitor.state_change_count);
         g_sys_monitor.last_state = current_state;
+        
+        // 保存系统状态
+        save_system_state();
+    }
+    
+    // 定期保存系统状态（每30秒）
+    static time_t last_save_time = 0;
+    time_t now = time(NULL);
+    if (now - last_save_time > 30) {
+        save_system_state();
+        last_save_time = now;
     }
 }
 
@@ -268,6 +372,9 @@ int system_init(void)
     // 初始化系统监控数据
     memset(&g_sys_monitor, 0, sizeof(SystemMonitor_t));
     g_sys_monitor.last_state = SYS_STATE_IDLE;
+    
+    // 从文件恢复系统状态
+    restore_system_state();
     
     // 初始化统一错误处理模块
     error_handling_init();

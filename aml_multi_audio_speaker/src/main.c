@@ -147,6 +147,7 @@ static int module_init_all(void) {
     
     // 5. 根据产品类型调整配置
     switch (CURRENT_PRODUCT_TYPE) {
+#ifdef CONFIG_ENABLE_GAME_SPEAKER
         case PRODUCT_GAME_HIGH_END:
             // 高端游戏音响配置
             LOG_INFO("=== Initializing HIGH END GAME SPEAKER ===");
@@ -171,7 +172,7 @@ static int module_init_all(void) {
             peri_cfg.ir_learn_en = false;     // 禁用红外学习
             peri_cfg.mic_mute_en = false;     // 禁用麦克风静音功能
             break;
-        
+#endif
         default:
             // 其他产品类型保持默认配置
             break;
@@ -179,8 +180,12 @@ static int module_init_all(void) {
     
     // 6. 初始化基础核心模块
     // 初始化顺序：存储 -> 外设 -> 蓝牙 -> 音频核心 -> 音频源 -> 音量控制 -> 播放控制 -> MCU通信 -> 系统 -> 生产测试
-    // 低端游戏音响极致裁剪，只保留核心模块
+    // 非游戏音响或非低端游戏音响初始化基础模块
+#ifdef CONFIG_ENABLE_GAME_SPEAKER
     if (CURRENT_PRODUCT_TYPE != PRODUCT_GAME_LOW_END) {
+#else
+    {
+#endif
         ret |= storage_init();                  // 存储管理模块，负责U盘挂载和媒体扫描
         ret |= peripheral_init(&peri_cfg);       // 外设管理模块，负责按键、红外等
         // 初始化蓝牙模块，使用默认配置
@@ -194,8 +199,11 @@ static int module_init_all(void) {
         bt_cfg.bt_mesh_en = true;
 #endif
         ret |= bluetooth_init(&bt_cfg);         // 蓝牙模块，负责蓝牙连接和音频传输
-    } else {
-        // 低端游戏音响：仅初始化必要模块
+    }
+
+#ifdef CONFIG_ENABLE_GAME_SPEAKER
+    // 低端游戏音响：仅初始化必要模块
+    if (CURRENT_PRODUCT_TYPE == PRODUCT_GAME_LOW_END) {
         ret |= audio_core_init(&audio_cfg);     // 音频核心模块，负责音频解码和输出
         // 初始化音量控制模块，使用默认音量设置
         VolumeInfo_t default_vol = {
@@ -206,39 +214,39 @@ static int module_init_all(void) {
         };
         ret |= volume_ctrl_init(&default_vol);  // 音量控制模块，负责音量调节
         ret |= system_init();                   // 系统管理模块，负责系统状态和异常处理
+        return ret;
     }
+#endif
     
     // 非低端游戏音响初始化其他模块
-    if (CURRENT_PRODUCT_TYPE != PRODUCT_GAME_LOW_END) {
-        ret |= audio_core_init(&audio_cfg);     // 音频核心模块，负责音频解码和输出
-        // 初始化音频源模块，使用默认配置
-        AudioSourceConfig_t as_cfg = {
-            .source_list = {SOURCE_BLUETOOTH, SOURCE_USB, SOURCE_HDMI_ARC, SOURCE_SPDIF, SOURCE_AUX, SOURCE_WIFI},
-            .source_cnt = 6,
-            .default_source = SOURCE_BLUETOOTH,
-            .auto_switch_en = true
-        };
-        ret |= audio_source_init(&as_cfg);      // 音频源模块，负责管理各种音频输入源
-        // 初始化音量控制模块，使用默认音量设置
-        VolumeInfo_t default_vol = {
-            .master_volume = DEFAULT_VOLUME_VAL,
-            .bass_volume = DEFAULT_VOLUME_VAL,
-            .treble_volume = DEFAULT_VOLUME_VAL,
-            .is_mute = false
-        };
-        ret |= volume_ctrl_init(&default_vol);  // 音量控制模块，负责音量调节
-        // 初始化播放控制模块，使用默认配置
-        PlayCtrlConfig_t pc_cfg = {
-            .power_off_resume_en = true,
-            .boot_default_play_en = false,
-            .bt_reconnect_timeout = 10,
-            .default_mode = SOUND_MODE_NORMAL
-        };
-        ret |= play_ctrl_init(&pc_cfg);         // 播放控制模块，负责播放状态和音效
-        ret |= comm_mcu_init();                 // MCU通信模块，负责与外设MCU通信
-        ret |= system_init();                   // 系统管理模块，负责系统状态和异常处理
-        ret |= prod_test_init();                // 生产测试模块，负责生产过程中的测试
-    }
+    ret |= audio_core_init(&audio_cfg);     // 音频核心模块，负责音频解码和输出
+    // 初始化音频源模块，使用默认配置
+    AudioSourceConfig_t as_cfg = {
+        .source_list = {SOURCE_BLUETOOTH, SOURCE_USB, SOURCE_HDMI_ARC, SOURCE_SPDIF, SOURCE_AUX, SOURCE_WIFI},
+        .source_cnt = 6,
+        .default_source = SOURCE_BLUETOOTH,
+        .auto_switch_en = true
+    };
+    ret |= audio_source_init(&as_cfg);      // 音频源模块，负责管理各种音频输入源
+    // 初始化音量控制模块，使用默认音量设置
+    VolumeInfo_t default_vol = {
+        .master_volume = DEFAULT_VOLUME_VAL,
+        .bass_volume = DEFAULT_VOLUME_VAL,
+        .treble_volume = DEFAULT_VOLUME_VAL,
+        .is_mute = false
+    };
+    ret |= volume_ctrl_init(&default_vol);  // 音量控制模块，负责音量调节
+    // 初始化播放控制模块，使用默认配置
+    PlayCtrlConfig_t pc_cfg = {
+        .power_off_resume_en = true,
+        .boot_default_play_en = false,
+        .bt_reconnect_timeout = 10,
+        .default_mode = SOUND_MODE_NORMAL
+    };
+    ret |= play_ctrl_init(&pc_cfg);         // 播放控制模块，负责播放状态和音效
+    ret |= comm_mcu_init();                 // MCU通信模块，负责与外设MCU通信
+    ret |= system_init();                   // 系统管理模块，负责系统状态和异常处理
+    ret |= prod_test_init();                // 生产测试模块，负责生产过程中的测试
 
     // 7. 根据宏控配置初始化可选模块
     // 这些模块根据产品配置条件编译，实现不同产品的功能差异化
@@ -315,8 +323,12 @@ static void module_deinit_all(void) {
 
     // 2. 然后反初始化基础核心模块
     // 反初始化顺序：生产测试 -> 系统 -> MCU通信 -> 播放控制 -> 音量控制 -> 音频源 -> 音频核心 -> 蓝牙 -> 外设 -> 存储
-    // 低端游戏音响极致裁剪，只反初始化核心模块
+    // 非游戏音响或非低端游戏音响反初始化所有模块
+#ifdef CONFIG_ENABLE_GAME_SPEAKER
     if (CURRENT_PRODUCT_TYPE != PRODUCT_GAME_LOW_END) {
+#else
+    {
+#endif
         prod_test_deinit();               // 生产测试模块
         system_deinit();                  // 系统管理模块
         comm_mcu_deinit();                // MCU通信模块
@@ -327,12 +339,16 @@ static void module_deinit_all(void) {
         bluetooth_deinit();               // 蓝牙模块
         peripheral_deinit();             // 外设管理模块
         storage_deinit();                // 存储管理模块
-    } else {
-        // 低端游戏音响：仅反初始化必要模块
+    }
+
+#ifdef CONFIG_ENABLE_GAME_SPEAKER
+    // 低端游戏音响：仅反初始化必要模块
+    if (CURRENT_PRODUCT_TYPE == PRODUCT_GAME_LOW_END) {
         audio_core_deinit();              // 音频核心模块
         volume_ctrl_deinit();             // 音量控制模块
         system_deinit();                  // 系统管理模块
     }
+#endif
 
     // 最后反初始化HAL和PAL层
     // 反初始化顺序与初始化顺序相反
@@ -359,8 +375,12 @@ static void main_business_loop(void) {
     // 主循环，直到系统运行状态为0时退出
     while (g_sys_running) {
         // 轮询各个模块的事件
-        // 低端游戏音响极致裁剪，只轮询必要模块
+        // 非游戏音响或非低端游戏音响轮询所有模块
+#ifdef CONFIG_ENABLE_GAME_SPEAKER
         if (CURRENT_PRODUCT_TYPE != PRODUCT_GAME_LOW_END) {
+#else
+        {
+#endif
             peripheral_event_poll();        // 外设事件：按键、红外等
             
             // 处理按键事件
@@ -407,25 +427,64 @@ static void main_business_loop(void) {
                 }
             }
             
-            bluetooth_event_poll();         // 蓝牙事件：连接、媒体流等
-            audio_source_event_poll();      // 音频源事件：源切换、状态变化等
-            play_ctrl_event_poll();         // 播放控制事件：播放状态、音效等
-            system_event_poll();            // 系统事件：系统状态、资源使用等
+            // 事件轮询频率管理 - 为不同模块设置不同的轮询频率
+            static uint32_t last_bt_poll = 0;
+            static uint32_t last_audio_source_poll = 0;
+            static uint32_t last_play_ctrl_poll = 0;
+            static uint32_t last_system_poll = 0;
+            static uint32_t last_optional_poll = 0;
             
-            // 轮询可选模块的事件
+            uint32_t current_time = (uint32_t)time(NULL) * 1000;
+            
+            // 蓝牙事件：每50毫秒轮询一次
+            if (current_time - last_bt_poll >= 50) {
+                bluetooth_event_poll();         // 蓝牙事件：连接、媒体流等
+                last_bt_poll = current_time;
+            }
+            
+            // 音频源事件：每50毫秒轮询一次
+            if (current_time - last_audio_source_poll >= 50) {
+                audio_source_event_poll();      // 音频源事件：源切换、状态变化等
+                last_audio_source_poll = current_time;
+            }
+            
+            // 播放控制事件：每10毫秒轮询一次（需要较高实时性）
+            if (current_time - last_play_ctrl_poll >= 10) {
+                play_ctrl_event_poll();         // 播放控制事件：播放状态、音效等
+                last_play_ctrl_poll = current_time;
+            }
+            
+            // 系统事件：每2秒轮询一次
+            if (current_time - last_system_poll >= 2000) {
+                system_event_poll();            // 系统事件：系统状态、资源使用等
+                last_system_poll = current_time;
+            }
+            
+            // 轮询可选模块的事件：每100毫秒轮询一次
+            if (current_time - last_optional_poll >= 100) {
+                // 轮询可选模块的事件
 #ifdef CONFIG_ENABLE_BT_MESH
-            subwoofer_comm_event_poll();    // 低音炮通信事件
+                subwoofer_comm_event_poll();    // 低音炮通信事件
 #endif
 #ifdef CONFIG_ENABLE_HDMI_ARC
-            hdmi_arc_event_poll();          // HDMI ARC事件：连接、音频流等
+                hdmi_arc_event_poll();          // HDMI ARC事件：连接、音频流等
 #endif
 #ifdef CONFIG_ENABLE_SPDIF
-            spdif_optical_event_poll();     // SPDIF事件：连接、音频流等
+                spdif_optical_event_poll();     // SPDIF事件：连接、音频流等
 #endif
-        } else {
-            // 低端游戏音响：仅轮询必要模块
+#ifdef CONFIG_ENABLE_WIFI_MEDIA
+                wifi_media_event_poll();        // WiFi媒体事件：网络质量、自动重连等
+#endif
+                last_optional_poll = current_time;
+            }
+        }
+
+#ifdef CONFIG_ENABLE_GAME_SPEAKER
+        // 低端游戏音响：仅轮询必要模块
+        if (CURRENT_PRODUCT_TYPE == PRODUCT_GAME_LOW_END) {
             system_event_poll();            // 系统事件：系统状态、资源使用等
         }
+#endif
         
         // 监控系统进程状态
         process_manager_monitor();

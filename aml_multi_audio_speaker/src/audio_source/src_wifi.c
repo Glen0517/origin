@@ -43,7 +43,10 @@ int src_wifi_init(void) {
     WifiMediaConfig_t wifi_cfg = {
         .wifi_name = "Aml_Soundbar",
         .dlna_en = true,
-        .airplay_en = true
+        .airplay_en = true,
+        .spotify_en = true,
+        .google_cast_en = true,
+        .initial_volume = 80
     };
     
     if (wifi_media_init(&wifi_cfg) != 0) {

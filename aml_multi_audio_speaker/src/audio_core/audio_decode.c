@@ -8,6 +8,7 @@ int audio_decode_init(void) {
     memset(&g_decode_cfg, 0, sizeof(AudioDecodeCfg_t));
     
     // 低端游戏音响：仅基础立体声解码
+#ifdef CONFIG_ENABLE_GAME_SPEAKER
     if (CURRENT_PRODUCT_TYPE == PRODUCT_GAME_LOW_END) {
         g_decode_cfg.type = AUDIO_DECODE_PCM; // 仅支持PCM解码
         g_decode_cfg.dolby_en = 0;
@@ -15,6 +16,9 @@ int audio_decode_init(void) {
         LOG_INFO("Audio decode: PCM only (LOW END GAME SPEAKER)");
         LOG_INFO(" 极致裁剪: 仅保留核心解码");
     } else {
+#else
+    {
+#endif
         g_decode_cfg.type = AUDIO_DECODE_MP3;
     #ifdef CONFIG_ENABLE_DOLBY_DTS
         g_decode_cfg.dolby_en = 1;
@@ -45,6 +49,7 @@ int audio_decode_basic_process(uint8_t *input_data, int input_len, uint8_t *outp
     }
     
     // 对于低端游戏音响，直接复制PCM数据
+#ifdef CONFIG_ENABLE_GAME_SPEAKER
     if (CURRENT_PRODUCT_TYPE == PRODUCT_GAME_LOW_END) {
         if (*output_len >= input_len) {
             memcpy(output_data, input_data, input_len);
@@ -55,6 +60,7 @@ int audio_decode_basic_process(uint8_t *input_data, int input_len, uint8_t *outp
             return -1;
         }
     }
+#endif
     
     // 其他产品类型使用标准解码流程
     return -1;

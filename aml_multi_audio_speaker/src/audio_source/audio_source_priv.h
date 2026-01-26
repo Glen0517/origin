@@ -28,6 +28,7 @@ typedef struct {
     int support_src[8];         // 支持的音源列表
     int source_status[8];       // 各音源状态
     bool auto_switch_en;        // 是否开启自动切换
+    bool manual_selected;       // 是否手动选择了音源（用于锁定自动切换）
     int init_ok;                // 初始化状态
 } AudioSource_t;
 
@@ -51,6 +52,15 @@ void src_wifi_deinit(void);
 int src_usb_get_status(void);
 int src_aux_get_status(void);
 int src_uac_get_status(void);
+
+// 播放状态检测函数声明
+bool src_bt_is_playing(void);
+bool src_usb_is_playing(void);
+bool src_hdmi_is_playing(void);
+bool src_spdif_is_playing(void);
+bool src_aux_is_playing(void);
+bool src_uac_is_playing(void);
+bool src_wifi_is_playing(void);
 
 // 自动切换函数声明
 void audio_source_auto_switch(void);
