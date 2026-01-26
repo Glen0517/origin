@@ -11,6 +11,13 @@
 #include <unistd.h>
 #include <signal.h>
 #include <string.h>
+#include <time.h>              // 高精度时间函数
+
+// 条件包含POSIX头文件，仅在Linux编译环境下包含
+#if defined(__linux__) || defined(__linux) || defined(LINUX)
+#include <sys/poll.h>          // poll系统调用
+#include <sys/timerfd.h>       // 定时器fd
+#endif
 
 #include "product_type.h"      // 产品类型定义
 #include "common_def.h"         // 通用定义
@@ -360,8 +367,40 @@ static void module_deinit_all(void) {
 }
 
 /**
+ * @brief 模块事件处理器定义
+ * @details 用于管理各个模块的轮询频率和事件处理
+ */
+typedef void (*EventHandler)(void);
+
+// 外部函数声明，确保可见性
+extern void system_event_poll(void);
+extern void bluetooth_event_poll(void);
+extern void audio_source_event_poll(void);
+extern void play_ctrl_event_poll(void);
+
+/**
+ * @brief 模块轮询配置结构体
+ */
+typedef struct {
+    EventHandler handler;     // 事件处理函数
+    uint32_t interval_ms;     // 轮询间隔（毫秒）
+    uint32_t last_run_ms;     // 上次运行时间（毫秒）
+} ModulePollConfig;
+
+/**
+ * @brief 获取当前高精度时间
+ * @return 当前时间（毫秒）
+ * @details 使用clock_gettime获取CLOCK_MONOTONIC时间，精度更高
+ */
+static uint32_t get_current_time_ms(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint32_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
+}
+
+/**
  * @brief 业务主循环
- * @details 定期轮询各个模块的事件，处理系统的核心业务逻辑
+ * @details 使用高精度时间函数定期轮询各个模块，处理系统的核心业务逻辑
  * @return 无
  */
 static void main_business_loop(void) {
@@ -372,126 +411,231 @@ static void main_business_loop(void) {
     // 启动系统监控
     monitor_start(1000);
     
+    // 初始化模块轮询配置
+    ModulePollConfig poll_configs[] = {
+        {bluetooth_event_poll, 50, 0},        // 蓝牙事件：每50毫秒轮询一次
+        {audio_source_event_poll, 50, 0},     // 音频源事件：每50毫秒轮询一次
+        {play_ctrl_event_poll, 10, 0},        // 播放控制事件：每10毫秒轮询一次（高实时性）
+        {system_event_poll, 2000, 0},         // 系统事件：每2秒轮询一次
+        {NULL, 100, 0}                        // 可选模块：每100毫秒轮询一次（结束标记）
+    };
+    
+    uint32_t optional_last_poll = 0;
+    
+    // 条件编译：根据平台选择不同的事件驱动方式
+#if defined(__linux__) || defined(__linux) || defined(LINUX)
+    // Linux平台：使用poll和timerfd实现事件驱动
+    int timer_fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
+    if (timer_fd == -1) {
+        LOG_ERROR("Failed to create timerfd: %d", errno);
+        return;
+    }
+    
+    // 设置定时器，每10毫秒触发一次
+    struct itimerspec its = {
+        .it_interval = {.tv_sec = 0, .tv_nsec = 10 * 1000 * 1000},  // 10ms
+        .it_value = {.tv_sec = 0, .tv_nsec = 10 * 1000 * 1000}     // 初始10ms后触发
+    };
+    
+    if (timerfd_settime(timer_fd, 0, &its, NULL) == -1) {
+        LOG_ERROR("Failed to set timerfd: %d", errno);
+        close(timer_fd);
+        return;
+    }
+    
+    // 初始化pollfd结构
+    struct pollfd fds[1];
+    fds[0].fd = timer_fd;
+    fds[0].events = POLLIN;
+    
     // 主循环，直到系统运行状态为0时退出
     while (g_sys_running) {
-        // 轮询各个模块的事件
-        // 非游戏音响或非低端游戏音响轮询所有模块
-#ifdef CONFIG_ENABLE_GAME_SPEAKER
-        if (CURRENT_PRODUCT_TYPE != PRODUCT_GAME_LOW_END) {
+        // 使用poll阻塞等待事件
+        int ret = poll(fds, 1, -1);
+        if (ret < 0) {
+            if (errno == EINTR) {
+                continue;  // 被信号中断，继续循环
+            }
+            LOG_ERROR("poll error: %d", errno);
+            break;
+        }
+        
+        // 处理定时器事件
+        if (fds[0].revents & POLLIN) {
+            // 读取定时器数据以清除事件
+            uint64_t exp;
+            read(timer_fd, &exp, sizeof(exp));
+            
+            // 使用高精度时间函数获取当前时间
+            uint32_t current_time = get_current_time_ms();
+            
+            // 轮询各个模块的事件
 #else
-        {
+    // 非Linux平台：使用传统轮询方式
+    while (g_sys_running) {
+        // 使用高精度时间函数获取当前时间
+        uint32_t current_time = get_current_time_ms();
+        
+        // 轮询各个模块的事件
 #endif
-            peripheral_event_poll();        // 外设事件：按键、红外等
-            
-            // 处理按键事件
-            KeyEvent_e key_event = peripheral_get_key_event();
-            if (key_event != KEY_EVENT_NONE) {
-                LOG_INFO("Key event received: %d", key_event);
+#ifdef CONFIG_ENABLE_GAME_SPEAKER
+            if (CURRENT_PRODUCT_TYPE != PRODUCT_GAME_LOW_END) {
+#else
+            {
+#endif
+                peripheral_event_poll();        // 外设事件：按键、红外等
                 
-                // 根据按键事件执行相应操作
-                switch (key_event) {
-                    case KEY_EVENT_PLAY_PAUSE:
-                        // 处理播放/暂停
-                        break;
-                    case KEY_EVENT_VOL_UP:
-                        // 处理音量增加
-                        break;
-                    case KEY_EVENT_VOL_DOWN:
-                        // 处理音量减少
-                        break;
-                    case KEY_EVENT_SOURCE_SWITCH:
-                        // 处理音源切换
-                        break;
-                    case KEY_EVENT_SOUND_MODE:
-                        // 处理音效模式
-                        break;
-                    case KEY_EVENT_BASS_UP:
-                        // 处理低音增加
-                        break;
-                    case KEY_EVENT_TREBLE_UP:
-                        // 处理高音增加
-                        break;
-                    case KEY_EVENT_IR_LEARN:
-                        // 处理红外学习
-                        break;
-                    case KEY_EVENT_NEXT:
-                        // 处理下一曲
-                        file_reader_play_next();
-                        break;
-                    case KEY_EVENT_PREV:
-                        // 处理上一曲
-                        file_reader_play_prev();
-                        break;
-                    default:
-                        break;
+                // 处理按键事件
+                KeyEvent_e key_event = peripheral_get_key_event();
+                if (key_event != KEY_EVENT_NONE) {
+                    LOG_INFO("Key event received: %d", key_event);
+                    
+                    // 根据按键事件执行相应操作
+                    switch (key_event) {
+                        case KEY_EVENT_PLAY_PAUSE:
+                            // 播放/暂停控制
+                            {
+                                PlayState_e current_state = play_ctrl_get_state();
+                                if (current_state == PLAY_STATE_PLAYING) {
+                                    play_ctrl_set_state(PLAY_STATE_PAUSE);
+                                    LOG_INFO("Playback paused");
+                                } else {
+                                    play_ctrl_set_state(PLAY_STATE_PLAYING);
+                                    LOG_INFO("Playback started");
+                                }
+                            }
+                            break;
+                        case KEY_EVENT_VOL_UP:
+                            // 音量增加
+                            {
+                                int new_vol = volume_ctrl_master_up();
+                                LOG_INFO("Volume increased to: %d", new_vol);
+                            }
+                            break;
+                        case KEY_EVENT_VOL_DOWN:
+                            // 音量减少
+                            {
+                                int new_vol = volume_ctrl_master_down();
+                                LOG_INFO("Volume decreased to: %d", new_vol);
+                            }
+                            break;
+                        case KEY_EVENT_SOURCE_SWITCH:
+                            // 音源切换
+                            {
+                                LOG_INFO("Source switch requested");
+                                audio_source_switch_next();
+                            }
+                            break;
+                        case KEY_EVENT_SOUND_MODE:
+                            // 音效模式切换
+                            {
+                                SoundMode_e current_mode = play_ctrl_get_sound_mode();
+                                SoundMode_e next_mode = (current_mode + 1) % SOUND_MODE_MAX;
+                                play_ctrl_set_sound_mode(next_mode);
+                                LOG_INFO("Sound mode switched to: %d", next_mode);
+                            }
+                            break;
+                        case KEY_EVENT_BASS_UP:
+                            // 低音增加
+                            {
+#if CONFIG_ENABLE_2VOL_CTRL || CONFIG_ENABLE_3VOL_CTRL
+                                int new_bass = volume_ctrl_bass_up();
+                                LOG_INFO("Bass increased to: %d", new_bass);
+#else
+                                LOG_INFO("Bass control not supported on this product");
+#endif
+                            }
+                            break;
+                        case KEY_EVENT_TREBLE_UP:
+                            // 高音增加
+                            {
+#if CONFIG_ENABLE_3VOL_CTRL
+                                int new_treble = volume_ctrl_treble_up();
+                                LOG_INFO("Treble increased to: %d", new_treble);
+#else
+                                LOG_INFO("Treble control not supported on this product");
+#endif
+                            }
+                            break;
+                        case KEY_EVENT_IR_LEARN:
+                            // 红外学习
+                            {
+#if CONFIG_ENABLE_IR_LEARN
+                                LOG_INFO("IR learn mode activated");
+                                peripheral_start_ir_learn();
+#else
+                                LOG_INFO("IR learn not supported on this product");
+#endif
+                            }
+                            break;
+                        case KEY_EVENT_NEXT:
+                            // 下一曲
+                            {
+                                LOG_INFO("Next song requested");
+                                play_ctrl_next_song();
+                            }
+                            break;
+                        case KEY_EVENT_PREV:
+                            // 上一曲
+                            {
+                                LOG_INFO("Previous song requested");
+                                play_ctrl_prev_song();
+                            }
+                            break;
+                        default:
+                            LOG_INFO("Unknown key event: %d", key_event);
+                            break;
+                    }
                 }
-            }
-            
-            // 事件轮询频率管理 - 为不同模块设置不同的轮询频率
-            static uint32_t last_bt_poll = 0;
-            static uint32_t last_audio_source_poll = 0;
-            static uint32_t last_play_ctrl_poll = 0;
-            static uint32_t last_system_poll = 0;
-            static uint32_t last_optional_poll = 0;
-            
-            uint32_t current_time = (uint32_t)time(NULL) * 1000;
-            
-            // 蓝牙事件：每50毫秒轮询一次
-            if (current_time - last_bt_poll >= 50) {
-                bluetooth_event_poll();         // 蓝牙事件：连接、媒体流等
-                last_bt_poll = current_time;
-            }
-            
-            // 音频源事件：每50毫秒轮询一次
-            if (current_time - last_audio_source_poll >= 50) {
-                audio_source_event_poll();      // 音频源事件：源切换、状态变化等
-                last_audio_source_poll = current_time;
-            }
-            
-            // 播放控制事件：每10毫秒轮询一次（需要较高实时性）
-            if (current_time - last_play_ctrl_poll >= 10) {
-                play_ctrl_event_poll();         // 播放控制事件：播放状态、音效等
-                last_play_ctrl_poll = current_time;
-            }
-            
-            // 系统事件：每2秒轮询一次
-            if (current_time - last_system_poll >= 2000) {
-                system_event_poll();            // 系统事件：系统状态、资源使用等
-                last_system_poll = current_time;
-            }
-            
-            // 轮询可选模块的事件：每100毫秒轮询一次
-            if (current_time - last_optional_poll >= 100) {
+                
+                // 遍历模块轮询配置，自动管理轮询频率
+                for (int i = 0; i < (int)(sizeof(poll_configs) / sizeof(poll_configs[0]) - 1); i++) {
+                    if (poll_configs[i].handler != NULL &&
+                        current_time - poll_configs[i].last_run_ms >= poll_configs[i].interval_ms) {
+                        poll_configs[i].handler();
+                        poll_configs[i].last_run_ms = current_time;
+                    }
+                }
+                
                 // 轮询可选模块的事件
+                if (current_time - optional_last_poll >= 100) {
 #ifdef CONFIG_ENABLE_BT_MESH
-                subwoofer_comm_event_poll();    // 低音炮通信事件
+                    subwoofer_comm_event_poll();    // 低音炮通信事件
 #endif
 #ifdef CONFIG_ENABLE_HDMI_ARC
-                hdmi_arc_event_poll();          // HDMI ARC事件：连接、音频流等
+                    hdmi_arc_event_poll();          // HDMI ARC事件：连接、音频流等
 #endif
 #ifdef CONFIG_ENABLE_SPDIF
-                spdif_optical_event_poll();     // SPDIF事件：连接、音频流等
+                    spdif_optical_event_poll();     // SPDIF事件：连接、音频流等
 #endif
 #ifdef CONFIG_ENABLE_WIFI_MEDIA
-                wifi_media_event_poll();        // WiFi媒体事件：网络质量、自动重连等
+                    wifi_media_event_poll();        // WiFi媒体事件：网络质量、自动重连等
 #endif
-                last_optional_poll = current_time;
+                    optional_last_poll = current_time;
+                }
             }
-        }
 
 #ifdef CONFIG_ENABLE_GAME_SPEAKER
-        // 低端游戏音响：仅轮询必要模块
-        if (CURRENT_PRODUCT_TYPE == PRODUCT_GAME_LOW_END) {
-            system_event_poll();            // 系统事件：系统状态、资源使用等
-        }
+            // 低端游戏音响：仅轮询必要模块
+            if (CURRENT_PRODUCT_TYPE == PRODUCT_GAME_LOW_END) {
+                system_event_poll();            // 系统事件：系统状态、资源使用等
+            }
 #endif
+            
+            // 监控系统进程状态
+            process_manager_monitor();
         
-        // 监控系统进程状态
-        process_manager_monitor();
-        
-        // 休眠10毫秒，降低CPU占用
+#if defined(__linux__) || defined(__linux) || defined(LINUX)
+        }
+    }
+    
+    // 清理资源
+    close(timer_fd);
+#else
+        // 非Linux平台：使用传统轮询方式，休眠10毫秒
         usleep(10 * 1000);
     }
+#endif
 }
 
 /**

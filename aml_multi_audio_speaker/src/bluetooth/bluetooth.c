@@ -1102,8 +1102,7 @@ void bluetooth_event_poll(void)
         
         // 轮询蓝牙音频流状态
         if (conn_status && g_bt_cfg.bt_media_enable) {
-            // 获取蓝牙A2DP媒体状态 - 检查蓝牙音频流是否正在播放
-            // 返回值：1表示正在播放，0表示停止
+            // 检查蓝牙音频流播放状态（1:播放, 0:停止）
             int media_status = hal_bt_a2dp_get_media_status();
             
             if (media_status != g_bt_cfg.bt_media_playing) {
@@ -1111,23 +1110,21 @@ void bluetooth_event_poll(void)
                 
                 if (media_status) {
                     LOG_INFO("Bluetooth media playing");
-                    // 处理蓝牙媒体播放开始
                     // 更新LED状态
                     led_ctrl_set_state(LED_PLAY, LED_STATE_ON);
                     // 更新LCD显示
                     lcd_display_text(1, 0, "BT: Playing");
-                    // 发送事件给其他模块
+                    // 发送蓝牙媒体播放开始事件
                     event_notify(EVENT_BT_MEDIA_START, NULL);
                     event_notify(EVENT_BT_PLAY_START, NULL);
                     event_notify(EVENT_PLAY_START, NULL);
                 } else {
                     LOG_INFO("Bluetooth media stopped");
-                    // 处理蓝牙媒体播放停止
                     // 更新LED状态
                     led_ctrl_set_state(LED_PLAY, LED_STATE_OFF);
                     // 更新LCD显示
                     lcd_display_text(1, 0, "BT: Stopped");
-                    // 发送事件给其他模块
+                    // 发送蓝牙媒体播放停止事件
                     event_notify(EVENT_BT_MEDIA_STOP, NULL);
                     event_notify(EVENT_BT_PLAY_STOP, NULL);
                     event_notify(EVENT_PLAY_STOP, NULL);

@@ -68,6 +68,29 @@ static int g_event_thread_priority = 0;                           // 事件线�
  ******************************************************************************************/
 
 /**
+ * @brief 异步回调线程函数
+ * @param arg 线程参数
+ * @return 线程返回值
+ */
+static void *async_callback_thread(void *arg) {
+    typedef struct {
+        Event_t *event;
+        EventCallback_t callback;
+        void *user_data;
+    } AsyncCallbackArgs_t;
+    
+    AsyncCallbackArgs_t *args = (AsyncCallbackArgs_t *)arg;
+    // 调用回调函数
+    args->callback(args->event->event_type, 
+                  args->event->event_data, 
+                  args->user_data);
+    // 释放资源
+    free(args->event);
+    free(args);
+    return NULL;
+}
+
+/**
  * @brief 事件队列是否为空
  * @return true-为空，false-不为空
  */
@@ -228,38 +251,72 @@ static void *event_process_thread(void *arg) {
             // 分发事件给所有订阅者
             LOG_DEBUG("Dispatching event: %d, queue size: %d", event.event_type, g_queue_size);
 
-            // 加锁保护注册中心
+            // 加锁保护注册中心，获取订阅者信息的副本
             pthread_mutex_lock(&g_event_mutex);
-
-            // 遍历该事件类型的所有订阅者
             int subscriber_count = g_subscriber_counts[event.event_type];
-            // 按优先级排序回调函数
-            for (int priority = 0; priority <= 9; priority++) {
-                for (i = 0; i < subscriber_count; i++) {
-                    EventSubscription_t *sub = &g_event_subscriptions[event.event_type][i];
-                    if (sub->is_valid && sub->callback != NULL && sub->priority == priority) {
-                        // 解锁，避免回调函数中再次调用event_notify时死锁
-                        pthread_mutex_unlock(&g_event_mutex);
+            // 创建订阅者信息副本，避免长时间持有锁
+            EventSubscription_t temp_subscriptions[MAX_SUBSCRIBERS_PER_EVENT];
+            memcpy(temp_subscriptions, g_event_subscriptions[event.event_type], 
+                  sizeof(EventSubscription_t) * subscriber_count);
+            pthread_mutex_unlock(&g_event_mutex);
 
-                        // 调用回调函数
-                        LOG_DEBUG("Calling callback for event: %d, subscriber: %d, priority: %d", 
-                                 event.event_type, i, priority);
-                        sub->callback(event.event_type, event.event_data, sub->user_data);
-
-                        // 重新加锁
-                        pthread_mutex_lock(&g_event_mutex);
+            // 按优先级排序订阅者（从高到低）
+            for (int j = 0; j < subscriber_count - 1; j++) {
+                for (int k = 0; k < subscriber_count - 1 - j; k++) {
+                    if (temp_subscriptions[k].priority > temp_subscriptions[k+1].priority) {
+                        EventSubscription_t temp = temp_subscriptions[k];
+                        temp_subscriptions[k] = temp_subscriptions[k+1];
+                        temp_subscriptions[k+1] = temp;
                     }
                 }
             }
 
-            // 释放事件数据（如果需要）
+            // 遍历订阅者，异步执行回调函数
+            for (i = 0; i < subscriber_count; i++) {
+                if (temp_subscriptions[i].is_valid && temp_subscriptions[i].callback != NULL) {
+                    // 创建事件数据副本，用于异步处理
+                    Event_t *async_event = (Event_t *)malloc(sizeof(Event_t));
+                    if (async_event != NULL) {
+                        *async_event = event;
+                        // 创建回调参数结构体
+                        typedef struct {
+                            Event_t *event;
+                            EventCallback_t callback;
+                            void *user_data;
+                        } AsyncCallbackArgs_t;
+                        AsyncCallbackArgs_t *args = (AsyncCallbackArgs_t *)malloc(sizeof(AsyncCallbackArgs_t));
+                        if (args != NULL) {
+                            args->event = async_event;
+                            args->callback = temp_subscriptions[i].callback;
+                            args->user_data = temp_subscriptions[i].user_data;
+                            
+                        // 创建线程执行回调函数
+                        pthread_t callback_thread;
+                        pthread_create(&callback_thread, NULL, 
+                                     async_callback_thread, args);
+                            pthread_detach(callback_thread); // 分离线程，自动释放资源
+                        } else {
+                            free(async_event);
+                            // 如果内存分配失败，同步执行回调
+                            temp_subscriptions[i].callback(event.event_type, event.event_data, 
+                                                        temp_subscriptions[i].user_data);
+                        }
+                    } else {
+                        // 如果内存分配失败，同步执行回调
+                        temp_subscriptions[i].callback(event.event_type, event.event_data, 
+                                                    temp_subscriptions[i].user_data);
+                    }
+                }
+            }
+
+            // 释放原始事件数据（如果需要）
             if (event.need_free && event.event_data) {
                 free(event.event_data);
                 LOG_DEBUG("Freed event data for event: %d", event.event_type);
             }
+        } else {
+            pthread_mutex_unlock(&g_event_mutex);
         }
-
-        pthread_mutex_unlock(&g_event_mutex);
     }
 
     LOG_INFO("Event processing thread exited");

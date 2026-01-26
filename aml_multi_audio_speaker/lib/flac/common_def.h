@@ -72,7 +72,8 @@ typedef enum {
     SOUND_MODE_MUSIC,
     SOUND_MODE_GAME,
     SOUND_MODE_NEWS,
-    SOUND_MODE_BASS_ONLY // 低音炮专属
+    SOUND_MODE_BASS_ONLY, // 低音炮专属
+    SOUND_MODE_MAX
 } SoundMode_e;
 
 // 系统状态枚举
