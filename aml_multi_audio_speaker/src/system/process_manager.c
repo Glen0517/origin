@@ -32,6 +32,9 @@
 #include "../lib/flac/audio_core.h"
 #include "../lib/flac/system.h"
 #include "../remote_control/remote_control.h"
+#include "../lib/flac/event.h"
+#include "../lib/flac/peripheral.h"
+#include "../lib/flac/bt.h"  // 蓝牙
 
 /******************************************************************************************
  * 各个进程的main_func实现
@@ -148,6 +151,13 @@ static void remote_control_process_main_impl(void *arg) {
 }
 
 /******************************************************************************************
+ * 事件类型定义
+ ******************************************************************************************/
+
+// 按键事件定义
+#define EVENT_KEY_PRESSED 901 // 按键按下事件
+
+/******************************************************************************************
  * 蓝牙进程线程间通信相关定义
  ******************************************************************************************/
 
@@ -160,6 +170,9 @@ typedef enum {
     BT_MSG_TYPE_CONNECTION_CHANGED, // 连接状态改变
     BT_MSG_TYPE_AUTO_RECONNECT,   // 自动重连
     BT_MSG_TYPE_MESH_EVENT,       // MESH事件
+    BT_MSG_TYPE_PAIR_REQUEST,     // 配对请求
+    BT_MSG_TYPE_PAIR_COMPLETE,    // 配对完成
+    BT_MSG_TYPE_PAIR_CANCEL,      // 取消配对
     BT_MSG_TYPE_MAX
 } BluetoothMsgType_t;
 
@@ -324,6 +337,95 @@ static int bluetooth_receive_message(BluetoothMsg_t *msg) {
 }
 
 /**
+ * @brief 蓝牙按键事件处理函数
+ * @param event_type 事件类型
+ * @param data 事件数据
+ * @param user_data 用户数据
+ */
+static void bluetooth_handle_key_event(int event_type, void *data, void *user_data) {
+    if (event_type == EVENT_KEY_PRESSED) {
+        KeyEvent_e key_event = *(KeyEvent_e *)data;
+        LOG_INFO("Bluetooth received key event: %d", key_event);
+        
+        // 处理按键事件
+        switch (key_event) {
+            case KEY_EVENT_PLAY_PAUSE:
+                LOG_INFO("Bluetooth handling PLAY_PAUSE key event");
+                // 切换音频播放状态
+                pthread_mutex_lock(&g_bluetooth_shared_data.data_mutex);
+                bool is_playing = g_bluetooth_shared_data.audio_playing;
+                g_bluetooth_shared_data.audio_playing = !is_playing;
+                pthread_mutex_unlock(&g_bluetooth_shared_data.data_mutex);
+                
+                // 发送音频状态消息
+                if (!is_playing) {
+                    bluetooth_send_message(BT_MSG_TYPE_AUDIO_START, NULL, 0);
+                } else {
+                    bluetooth_send_message(BT_MSG_TYPE_AUDIO_STOP, NULL, 0);
+                }
+                break;
+                
+            case KEY_EVENT_VOL_UP:
+                LOG_INFO("Bluetooth handling VOL_UP key event");
+                // 增加音量
+                pthread_mutex_lock(&g_bluetooth_shared_data.data_mutex);
+                if (g_bluetooth_shared_data.volume < 100) {
+                    g_bluetooth_shared_data.volume += 5;
+                    if (g_bluetooth_shared_data.volume > 100) {
+                        g_bluetooth_shared_data.volume = 100;
+                    }
+                    LOG_INFO("Bluetooth volume increased to: %d", g_bluetooth_shared_data.volume);
+                }
+                pthread_mutex_unlock(&g_bluetooth_shared_data.data_mutex);
+                break;
+                
+            case KEY_EVENT_VOL_DOWN:
+                LOG_INFO("Bluetooth handling VOL_DOWN key event");
+                // 减少音量
+                pthread_mutex_lock(&g_bluetooth_shared_data.data_mutex);
+                if (g_bluetooth_shared_data.volume > 0) {
+                    g_bluetooth_shared_data.volume -= 5;
+                    if (g_bluetooth_shared_data.volume < 0) {
+                        g_bluetooth_shared_data.volume = 0;
+                    }
+                    LOG_INFO("Bluetooth volume decreased to: %d", g_bluetooth_shared_data.volume);
+                }
+                pthread_mutex_unlock(&g_bluetooth_shared_data.data_mutex);
+                break;
+                
+            case KEY_EVENT_SOURCE_SWITCH:
+                LOG_INFO("Bluetooth handling SOURCE_SWITCH key event");
+                // 切换到蓝牙音源
+                pthread_mutex_lock(&g_bluetooth_shared_data.data_mutex);
+                LOG_INFO("Switching to Bluetooth source");
+                pthread_mutex_unlock(&g_bluetooth_shared_data.data_mutex);
+                break;
+                
+            case KEY_EVENT_NEXT:
+                LOG_INFO("Bluetooth handling NEXT key event");
+                // 下一首
+                break;
+                
+            case KEY_EVENT_PREV:
+                LOG_INFO("Bluetooth handling PREV key event");
+                // 上一首
+                break;
+                
+            case KEY_EVENT_BT_PAIR:
+                LOG_INFO("Bluetooth handling BT_PAIR key event");
+                // 发送配对请求消息到连接管理线程（中高优先级处理）
+                LOG_INFO("Sending pair request message to connection thread");
+                bluetooth_send_message(BT_MSG_TYPE_PAIR_REQUEST, NULL, 0);
+                break;
+                
+            default:
+                LOG_WARN("Bluetooth received unknown key event: %d", key_event);
+                break;
+        }
+    }
+}
+
+/**
  * @brief 蓝牙音频处理线程函数
  * @param arg 线程参数
  */
@@ -347,6 +449,13 @@ static void *bluetooth_audio_thread(void *arg) {
                     pthread_mutex_lock(&g_bluetooth_shared_data.data_mutex);
                     g_bluetooth_shared_data.audio_playing = true;
                     pthread_mutex_unlock(&g_bluetooth_shared_data.data_mutex);
+                    
+                    // 调用蓝牙音频流开始函数
+                    if (bluetooth_start_audio_stream() == SUCCESS) {
+                        LOG_INFO("Bluetooth audio stream started successfully");
+                    } else {
+                        LOG_ERROR("Failed to start Bluetooth audio stream");
+                    }
                     break;
                 case BT_MSG_TYPE_AUDIO_STOP:
                     LOG_INFO("Audio stop message received");
@@ -354,6 +463,29 @@ static void *bluetooth_audio_thread(void *arg) {
                     pthread_mutex_lock(&g_bluetooth_shared_data.data_mutex);
                     g_bluetooth_shared_data.audio_playing = false;
                     pthread_mutex_unlock(&g_bluetooth_shared_data.data_mutex);
+                    
+                    // 调用蓝牙音频流停止函数
+                    if (bluetooth_stop_audio_stream() == SUCCESS) {
+                        LOG_INFO("Bluetooth audio stream stopped successfully");
+                    } else {
+                        LOG_ERROR("Failed to stop Bluetooth audio stream");
+                    }
+                    break;
+                case BT_MSG_TYPE_CONNECTION_CHANGED:
+                    LOG_INFO("Connection changed message received");
+                    // 处理连接状态改变
+                    pthread_mutex_lock(&g_bluetooth_shared_data.data_mutex);
+                    bool connected = g_bluetooth_shared_data.connected;
+                    pthread_mutex_unlock(&g_bluetooth_shared_data.data_mutex);
+                    
+                    if (connected) {
+                        // 连接成功，设置音频参数
+                        if (bluetooth_set_audio_params(44100, 2, 16) == SUCCESS) {
+                            LOG_INFO("Bluetooth audio parameters set successfully");
+                        } else {
+                            LOG_ERROR("Failed to set Bluetooth audio parameters");
+                        }
+                    }
                     break;
                 default:
                     break;
@@ -362,7 +494,23 @@ static void *bluetooth_audio_thread(void *arg) {
         
         // 处理A2DP音频流
         LOG_DEBUG("Processing Bluetooth A2DP audio stream...");
-        // 这里可以添加实际的音频流处理代码
+        
+        // 检查连接状态
+        pthread_mutex_lock(&g_bluetooth_shared_data.data_mutex);
+        bool connected = g_bluetooth_shared_data.connected;
+        bool playing = g_bluetooth_shared_data.audio_playing;
+        int volume = g_bluetooth_shared_data.volume;
+        pthread_mutex_unlock(&g_bluetooth_shared_data.data_mutex);
+        
+        if (connected && playing) {
+            // 检查并更新音量
+            int current_volume = bluetooth_get_audio_volume();
+            if (current_volume != volume) {
+                if (bluetooth_set_audio_volume(volume) == SUCCESS) {
+                    LOG_INFO("Bluetooth volume updated to: %d", volume);
+                }
+            }
+        }
         
         // 短暂休眠
         usleep(10000); // 0.01秒
@@ -391,6 +539,24 @@ static void *bluetooth_connection_thread(void *arg) {
                     LOG_INFO("Connection changed message received");
                     // 处理连接状态改变
                     break;
+                case BT_MSG_TYPE_PAIR_REQUEST:
+                    LOG_INFO("Pair request message received");
+                    // 处理配对请求
+                    if (bluetooth_start_pair() == SUCCESS) {
+                        LOG_INFO("Bluetooth pairing started successfully");
+                    } else {
+                        LOG_ERROR("Failed to start Bluetooth pairing");
+                    }
+                    break;
+                case BT_MSG_TYPE_PAIR_CANCEL:
+                    LOG_INFO("Pair cancel message received");
+                    // 处理取消配对
+                    if (bluetooth_stop_pair() == SUCCESS) {
+                        LOG_INFO("Bluetooth pairing stopped successfully");
+                    } else {
+                        LOG_ERROR("Failed to stop Bluetooth pairing");
+                    }
+                    break;
                 default:
                     break;
             }
@@ -411,13 +577,39 @@ static void *bluetooth_connection_thread(void *arg) {
                 strcpy(g_bluetooth_shared_data.device_name, "Test Device");
                 strcpy(g_bluetooth_shared_data.device_addr, "00:11:22:33:44:55");
                 g_bluetooth_shared_data.reconnect_attempts = 0;
-                LOG_INFO("Bluetooth device connected: %s (%s)",
-                         g_bluetooth_shared_data.device_name,
-                         g_bluetooth_shared_data.device_addr);
-                // 发送连接改变消息
-                bluetooth_send_message(BT_MSG_TYPE_CONNECTION_CHANGED, NULL, 0);
+                LOG_INFO("Attempting to connect to Bluetooth device: %s", g_bluetooth_shared_data.device_addr);
+                
+                // 调用蓝牙连接函数
+                if (bluetooth_connect(g_bluetooth_shared_data.device_addr) == SUCCESS) {
+                    LOG_INFO("Bluetooth device connected: %s (%s)",
+                             g_bluetooth_shared_data.device_name,
+                             g_bluetooth_shared_data.device_addr);
+                    
+                    // 获取连接设备信息
+                    char dev_name[32] = {0};
+                    if (bluetooth_get_dev_name(dev_name, sizeof(dev_name)) == SUCCESS) {
+                        LOG_INFO("Connected device name: %s", dev_name);
+                        strcpy(g_bluetooth_shared_data.device_name, dev_name);
+                    }
+                    
+                    char dev_addr[18] = {0};
+                    if (bluetooth_get_dev_addr(dev_addr, sizeof(dev_addr)) == SUCCESS) {
+                        LOG_INFO("Connected device address: %s", dev_addr);
+                    }
+                    
+                    int dev_type = bluetooth_get_dev_type();
+                    LOG_INFO("Connected device type: %d", dev_type);
+                    
+                    // 发送连接改变消息
+                    bluetooth_send_message(BT_MSG_TYPE_CONNECTION_CHANGED, NULL, 0);
+                } else {
+                    LOG_ERROR("Failed to connect to Bluetooth device: %s", g_bluetooth_shared_data.device_addr);
+                    simulate_connection = false;
+                }
             } else {
                 LOG_INFO("Bluetooth device disconnected");
+                // 调用蓝牙断开函数
+                bluetooth_disconnect();
                 // 发送连接改变消息
                 bluetooth_send_message(BT_MSG_TYPE_CONNECTION_CHANGED, NULL, 0);
             }
@@ -442,32 +634,26 @@ static void *bluetooth_event_thread(void *arg) {
     
     // 主循环
     while (1) {
-        // 轮询蓝牙状态
-        LOG_DEBUG("Polling Bluetooth status...");
-        // 这里可以添加实际的蓝牙状态轮询代码
+        // 轮询蓝牙状态和事件
+        LOG_DEBUG("Polling Bluetooth status and events...");
+        
+        // 调用蓝牙模块的事件轮询函数，处理实际的蓝牙事件
+        bluetooth_event_poll();
         
         // 检查连接状态
         pthread_mutex_lock(&g_bluetooth_shared_data.data_mutex);
         bool connected = g_bluetooth_shared_data.connected;
         pthread_mutex_unlock(&g_bluetooth_shared_data.data_mutex);
         
-        // 模拟音频状态变化
-        if (connected && rand() % 500 == 0) { // 模拟音频状态变化
-            static bool simulate_playing = false;
-            simulate_playing = !simulate_playing;
+        // 检查音频流状态
+        if (connected) {
+            int stream_state = bluetooth_get_audio_stream_state();
+            LOG_DEBUG("Current Bluetooth audio stream state: %d", stream_state);
             
+            // 根据音频流状态更新播放状态
             pthread_mutex_lock(&g_bluetooth_shared_data.data_mutex);
-            g_bluetooth_shared_data.audio_playing = simulate_playing;
+            g_bluetooth_shared_data.audio_playing = (stream_state == 1);
             pthread_mutex_unlock(&g_bluetooth_shared_data.data_mutex);
-            
-            // 发送音频状态消息
-            if (simulate_playing) {
-                LOG_INFO("Bluetooth audio started");
-                bluetooth_send_message(BT_MSG_TYPE_AUDIO_START, NULL, 0);
-            } else {
-                LOG_INFO("Bluetooth audio stopped");
-                bluetooth_send_message(BT_MSG_TYPE_AUDIO_STOP, NULL, 0);
-            }
         }
         
         // 短暂休眠
@@ -509,16 +695,25 @@ static void *bluetooth_reconnect_thread(void *arg) {
             // 发送自动重连消息
             bluetooth_send_message(BT_MSG_TYPE_AUTO_RECONNECT, NULL, 0);
             
-            // 模拟重连成功
-            if (rand() % 10 == 0) { // 10%概率重连成功
+            // 尝试实际重连
+            LOG_INFO("Calling bluetooth_connect() to reconnect to device: %s", device_addr);
+            if (bluetooth_connect(device_addr) == SUCCESS) {
+                LOG_INFO("Successfully reconnected to device: %s", device_addr);
+                
                 pthread_mutex_lock(&g_bluetooth_shared_data.data_mutex);
                 g_bluetooth_shared_data.connected = true;
                 g_bluetooth_shared_data.reconnect_attempts = 0;
                 pthread_mutex_unlock(&g_bluetooth_shared_data.data_mutex);
                 
-                LOG_INFO("Successfully reconnected to device: %s", device_addr);
                 // 发送连接改变消息
                 bluetooth_send_message(BT_MSG_TYPE_CONNECTION_CHANGED, NULL, 0);
+            } else {
+                LOG_ERROR("Failed to reconnect to device: %s", device_addr);
+                
+                // 增加重连尝试次数
+                pthread_mutex_lock(&g_bluetooth_shared_data.data_mutex);
+                g_bluetooth_shared_data.reconnect_attempts++;
+                pthread_mutex_unlock(&g_bluetooth_shared_data.data_mutex);
             }
         }
         
@@ -575,18 +770,54 @@ static void *bluetooth_monitor_thread(void *arg) {
         
         // 检查共享数据状态
         pthread_mutex_lock(&g_bluetooth_shared_data.data_mutex);
-        LOG_DEBUG("Bluetooth status - Connected: %d, Playing: %d, Volume: %d, Reconnect attempts: %d, MESH enabled: %d",
-                 g_bluetooth_shared_data.connected,
-                 g_bluetooth_shared_data.audio_playing,
-                 g_bluetooth_shared_data.volume,
-                 g_bluetooth_shared_data.reconnect_attempts,
-                 g_bluetooth_shared_data.mesh_enabled);
-        if (g_bluetooth_shared_data.connected) {
-            LOG_DEBUG("Connected device - Name: %s, Address: %s",
-                     g_bluetooth_shared_data.device_name,
-                     g_bluetooth_shared_data.device_addr);
-        }
+        bool connected = g_bluetooth_shared_data.connected;
+        bool playing = g_bluetooth_shared_data.audio_playing;
+        int volume = g_bluetooth_shared_data.volume;
+        int reconnect_attempts = g_bluetooth_shared_data.reconnect_attempts;
+        bool mesh_enabled = g_bluetooth_shared_data.mesh_enabled;
+        char device_name[32] = {0};
+        char device_addr[18] = {0};
+        strcpy(device_name, g_bluetooth_shared_data.device_name);
+        strcpy(device_addr, g_bluetooth_shared_data.device_addr);
         pthread_mutex_unlock(&g_bluetooth_shared_data.data_mutex);
+        
+        // 打印当前状态
+        LOG_DEBUG("Bluetooth status - Connected: %d, Playing: %d, Volume: %d, Reconnect attempts: %d, MESH enabled: %d",
+                 connected, playing, volume, reconnect_attempts, mesh_enabled);
+        
+        if (connected) {
+            LOG_DEBUG("Connected device - Name: %s, Address: %s", device_name, device_addr);
+            
+            // 获取并报告更多蓝牙状态信息
+            
+            // 获取设备信息
+            char dev_name[32] = {0};
+            char dev_addr[18] = {0};
+            
+            if (bluetooth_get_dev_name(dev_name, sizeof(dev_name)) == SUCCESS) {
+                LOG_INFO("Monitored - Device Name: %s", dev_name);
+            }
+            
+            if (bluetooth_get_dev_addr(dev_addr, sizeof(dev_addr)) == SUCCESS) {
+                LOG_INFO("Monitored - Device Address: %s", dev_addr);
+            }
+            
+            // 获取音频状态
+            int stream_state = bluetooth_get_audio_stream_state();
+            int audio_volume = bluetooth_get_audio_volume();
+            LOG_INFO("Monitored - Stream State: %d, Audio Volume: %d", stream_state, audio_volume);
+            
+            // 检查自动重连状态
+            bool auto_connect = bluetooth_get_auto_connect();
+            LOG_INFO("Monitored - Auto-connect: %d", auto_connect);
+            
+            // 获取重连参数
+            int max_attempts = 0;
+            int interval = 0;
+            if (bluetooth_get_reconnect_params(&max_attempts, &interval) == SUCCESS) {
+                LOG_INFO("Monitored - Reconnect Params: Max attempts: %d, Interval: %d sec", max_attempts, interval);
+            }
+        }
         
         // 检查线程池状态
         int active_threads, pending_tasks;
@@ -616,6 +847,19 @@ static void bluetooth_process_main(void *arg) {
     // 初始化消息队列
     LOG_INFO("Initializing Bluetooth message queue...");
     bluetooth_msg_queue_init(&g_bluetooth_shared_data.msg_queue, 100);
+    
+    // 订阅按键事件
+    LOG_INFO("Subscribing to key events...");
+    event_subscribe(EVENT_KEY_PRESSED, bluetooth_handle_key_event, NULL);
+    
+    // 初始化蓝牙模块
+    LOG_INFO("Initializing Bluetooth module...");
+    if (bluetooth_init(NULL) == SUCCESS) {
+        LOG_INFO("Bluetooth module initialized successfully");
+    } else {
+        LOG_ERROR("Failed to initialize Bluetooth module");
+        return;
+    }
     
     // 创建蓝牙线程池
     LOG_INFO("Creating Bluetooth thread pool...");

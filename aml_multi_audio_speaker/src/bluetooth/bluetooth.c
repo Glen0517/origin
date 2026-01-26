@@ -967,6 +967,10 @@ void bluetooth_event_poll(void)
             if (conn_status) {
                 LOG_INFO("Bluetooth connected");
                 
+                // 配对完成：关闭可发现和可配对模式，提高设备安全性
+                LOG_INFO("Pairing completed, disabling discoverable and pairable modes");
+                bluetooth_stop_pair();
+                
                 // 获取连接的设备信息
                 if (hal_bt_get_connected_dev_addr(g_connected_dev_addr, sizeof(g_connected_dev_addr)) == 0) {
                     LOG_INFO("Connected device address: %s", g_connected_dev_addr);

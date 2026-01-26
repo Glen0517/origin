@@ -11,12 +11,12 @@
 #include <aml_bt.h>
 #include <aml_bt_a2dp.h>
 #include <aml_bt_hfp.h>
-#include "bluetooth/bluetooth.h"
-#include "bluetooth/hci.h"
-#include "bluetooth/hci_lib.h"
-#include "bluetooth/l2cap.h"
-#include "bluetooth/sdp.h"
-#include "bluetooth/sdp_lib.h"
+#include "../../lib/bluez5/bluetooth.h"
+#include "../../lib/bluez5/hci.h"
+#include "../../lib/bluez5/hci_lib.h"
+#include "../../lib/bluez5/l2cap.h"
+#include "../../lib/bluez5/sdp.h"
+#include "../../lib/bluez5/sdp_lib.h"
 
 static bool g_bt_init = false;
 
