@@ -2582,6 +2582,16 @@ int main(int argc, char *argv[]) {
         goto exit_sys;
     }
 
+    // 启动蓝牙进程
+    LOG_INFO("Starting Bluetooth process...");
+    ret = process_manager_start_process("bluetooth");
+    if (ret != 0) {
+        LOG_ERROR("Failed to start Bluetooth process: %d", ret);
+        LOG_WARN("Continuing with direct Bluetooth module usage");
+    } else {
+        LOG_INFO("Bluetooth process started successfully");
+    }
+
     // 业务循环
     main_business_loop();
 

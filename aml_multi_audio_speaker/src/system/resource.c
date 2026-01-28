@@ -14,7 +14,11 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+
+// 跨平台兼容：只在 Linux 系统上包含 sys/sysinfo.h
+#ifdef __linux__
 #include <sys/sysinfo.h>
+#endif
 
 /******************************************************************************************
  * 资源管理内部数据结构
@@ -85,6 +89,7 @@ static int get_cpu_usage(ResourceUsage_t *usage) {
  * @return SUCCESS/FAILURE
  */
 static int get_memory_usage(ResourceUsage_t *usage) {
+#ifdef __linux__
     struct sysinfo info;
     if (sysinfo(&info) == 0) {
         usage->type = RESOURCE_TYPE_MEMORY;
@@ -104,6 +109,7 @@ static int get_memory_usage(ResourceUsage_t *usage) {
         
         return SUCCESS;
     }
+#endif
     
     // 简化实现，返回模拟数据
     usage->type = RESOURCE_TYPE_MEMORY;

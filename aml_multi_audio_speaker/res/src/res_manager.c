@@ -215,9 +215,9 @@ static int res_get_product_subpath(char *subpath, int buf_size)
 
     switch (CURRENT_PRODUCT_TYPE)
     {
-        case PRODUCT_HIGH_END:  strcpy(subpath, "high_end"); break;
-        case PRODUCT_MID_END:   strcpy(subpath, "mid_end"); break;
-        case PRODUCT_LOW_END:   strcpy(subpath, "low_end"); break;
+        case PRODUCT_HIGH_END_SOUNDBAR:  strcpy(subpath, "high_end"); break;
+        case PRODUCT_MID_END_SOUNDBAR:   strcpy(subpath, "mid_end"); break;
+        case PRODUCT_LOW_END_BT_SPEAKER: strcpy(subpath, "low_end"); break;
         case PRODUCT_SUBWOOFER: strcpy(subpath, "subwoofer"); break;
         default:                strcpy(subpath, "common"); break;
     }

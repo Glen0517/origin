@@ -54,6 +54,12 @@ static int g_audio_stream_buffer_size = 100;  // 音频流缓冲大小（毫秒�
  */
 int bluetooth_init(BluetoothConfig_t *cfg)
 {
+    // 检查是否已经初始化
+    if (g_bt_cfg.init_ok) {
+        LOG_INFO("Bluetooth module already initialized, skipping");
+        return SUCCESS;
+    }
+    
     LOG_INFO("Initializing Bluetooth module...");
     
     // 初始化蓝牙配置
