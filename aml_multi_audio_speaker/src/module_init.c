@@ -15,6 +15,11 @@
 #include "security_manager.h"
 #include "power_manager.h"
 
+// 内存池默认配置
+#define DEFAULT_MEMORY_POOL_BLOCK_SIZE 256
+#define DEFAULT_MEMORY_POOL_BLOCK_COUNT 1024
+#define DEFAULT_MEMORY_POOL_ENABLED true
+
 // HAL和PAL层头文件
 #include "hal/include/hal.h"
 #include "pal/include/pal.h"
@@ -52,47 +57,42 @@
 
 #include "prod_test.h"
 
-// 配置项路径常量定义
-#define CONFIG_AUDIO_SAMPLE_RATE          "audio.sample_rate"
-#define CONFIG_AUDIO_CHANNEL_NUM          "audio.channel_num"
-#define CONFIG_AUDIO_PCM_BUFFER_SIZE      "audio.pcm_buffer_size"
-#define CONFIG_AUDIO_HW_DECODE_EN         "audio.hw_decode_en"
-#define CONFIG_AUDIO_DOLBY_DTS_EN         "audio.dolby_dts_en"
-#define CONFIG_AUDIO_DEFAULT_SOURCE       "audio.default_source"
-#define CONFIG_AUDIO_AUTO_SWITCH_EN       "audio.auto_switch_en"
-#define CONFIG_HDMI_CEC_EN                "hdmi.cec_en"
-#define CONFIG_HDMI_AUTO_SWITCH_EN        "hdmi.auto_switch_en"
-#define CONFIG_HDMI_SAMPLE_RATE           "hdmi.sample_rate"
-#define CONFIG_SPDIF_AUTO_SWITCH_EN       "spdif.auto_switch_en"
-#define CONFIG_SPDIF_SAMPLE_RATE          "spdif.sample_rate"
-#define CONFIG_SPDIF_BITS_PER_SAMPLE      "spdif.bits_per_sample"
-#define CONFIG_PERIPHERAL_KEY_DEBOUNCE_MS "peripheral.key_debounce_ms"
-#define CONFIG_PERIPHERAL_LONG_PRESS_MS   "peripheral.long_press_ms"
-#define CONFIG_PERIPHERAL_IR_LEARN_EN     "peripheral.ir_learn_en"
-#define CONFIG_PERIPHERAL_MIC_MUTE_EN     "peripheral.mic_mute_en"
-#define CONFIG_BLUETOOTH_BT_NAME          "bluetooth.bt_name"
-#define CONFIG_BLUETOOTH_BT_PIN           "bluetooth.bt_pin"
-#define CONFIG_BLUETOOTH_BT_AUTO_CONNECT  "bluetooth.bt_auto_connect"
-#define CONFIG_VOLUME_MASTER_VOLUME       "volume.master_volume"
-#define CONFIG_VOLUME_BASS_VOLUME         "volume.bass_volume"
-#define CONFIG_VOLUME_TREBLE_VOLUME       "volume.treble_volume"
-#define CONFIG_VOLUME_IS_MUTE             "volume.is_mute"
-#define CONFIG_PLAY_POWER_OFF_RESUME_EN   "play.power_off_resume_en"
-#define CONFIG_PLAY_BOOT_DEFAULT_PLAY_EN  "play.boot_default_play_en"
-#define CONFIG_PLAY_BT_RECONNECT_TIMEOUT  "play.bt_reconnect_timeout"
-#define CONFIG_PLAY_DEFAULT_MODE          "play.default_mode"
-#define CONFIG_SOUND_DOLBY_EN             "sound.dolby_en"
-#define CONFIG_SOUND_VIRTUAL_5_1_EN       "sound.virtual_5_1_en"
-#define CONFIG_WIFI_WIFI_NAME             "wifi.wifi_name"
-#define CONFIG_WIFI_DLNA_EN               "wifi.dlna_en"
-#define CONFIG_WIFI_AIRPLAY_EN            "wifi.airplay_en"
-#define CONFIG_SUBWOOFER_BT_NAME          "subwoofer.bt_name"
-#define CONFIG_SUBWOOFER_BASS_GAIN        "subwoofer.bass_gain"
-#define CONFIG_SUBWOOFER_VOL_SYNC_EN      "subwoofer.vol_sync_en"
-#define CONFIG_SUBWOOFER_AUTO_CONNECT_EN  "subwoofer.auto_connect_en"
+// 包含配置项路径常量定义
+#include "config_constants.h"
+
+// 包含依赖注入容器定义
+#include "dependency_injection.h"
 
 // 全局依赖注入容器
-extern DependencyContainer_t g_di_container;
+DependencyContainer_t g_di_container;
+
+// 初始化依赖注入容器
+void dependency_container_init(void) {
+    g_di_container.memory_manager = NULL;
+    g_di_container.config_manager = NULL;
+    g_di_container.error_handler = NULL;
+    g_di_container.security_manager = NULL;
+    g_di_container.power_manager = NULL;
+    
+    g_di_container.storage = MODULE_STATE_UNINIT;
+    g_di_container.peripheral = MODULE_STATE_UNINIT;
+    g_di_container.bluetooth = MODULE_STATE_UNINIT;
+    g_di_container.audio_core = MODULE_STATE_UNINIT;
+    g_di_container.audio_source = MODULE_STATE_UNINIT;
+    g_di_container.volume_ctrl = MODULE_STATE_UNINIT;
+    g_di_container.play_ctrl = MODULE_STATE_UNINIT;
+    g_di_container.comm_mcu = MODULE_STATE_UNINIT;
+    g_di_container.system = MODULE_STATE_UNINIT;
+    
+#if 0
+    g_di_container.hdmi_arc = MODULE_STATE_UNINIT;
+    g_di_container.spdif_optical = MODULE_STATE_UNINIT;
+    g_di_container.sound_effects = MODULE_STATE_UNINIT;
+    g_di_container.voice_noise_reduction = MODULE_STATE_UNINIT;
+    g_di_container.wifi_media = MODULE_STATE_UNINIT;
+    g_di_container.subwoofer_comm = MODULE_STATE_UNINIT;
+#endif
+}
 
 /**
  * @brief 模块初始化总入口
@@ -102,7 +102,10 @@ extern DependencyContainer_t g_di_container;
 int module_init_all(void) {
     int ret = 0;
     
-    // 1. 初始化HAL和PAL层
+    // 1. 初始化依赖注入容器
+    dependency_container_init();
+    
+    // 2. 初始化HAL和PAL层
     // HAL层：硬件抽象层，封装硬件相关操作
     // PAL层：平台抽象层，封装平台相关服务
     ret |= hal_init();              // 初始化硬件抽象层
@@ -110,7 +113,22 @@ int module_init_all(void) {
     
     // 2. 初始化内存管理器
     // 内存管理器负责内存分配、释放和泄漏检测
-    g_di_container.memory_manager = memory_manager_init();
+    // 根据产品类型设置不同的内存池配置
+    MemoryPoolConfig_t mem_pool_config = {
+        .block_size = DEFAULT_MEMORY_POOL_BLOCK_SIZE,
+        .block_count = DEFAULT_MEMORY_POOL_BLOCK_COUNT,
+        .enable_memory_pool = DEFAULT_MEMORY_POOL_ENABLED
+    };
+    
+    // 高端产品使用更大的内存池
+    #ifdef CONFIG_ENABLE_GAME_SPEAKER
+    if (CURRENT_PRODUCT_TYPE == PRODUCT_GAME_HIGH_END) {
+        mem_pool_config.block_size = 512;
+        mem_pool_config.block_count = 2048;
+    }
+    #endif
+    
+    g_di_container.memory_manager = memory_manager_init(&mem_pool_config);
     if (!g_di_container.memory_manager) {
         LOG_ERROR("Memory manager init failed");
         ret |= -1;

@@ -6,10 +6,23 @@
 #include "peripheral.h"  // 外设管理
 #include "common_def.h"  // 通用定义
 #include "audio_core.h"  // 音频核心
-#include "bluetooth.h"  // 蓝牙
+#ifdef _WIN32
+// Windows平台不包含蓝牙头文件
+#else
+#include "bluetooth.h"
+#endif  // 蓝牙
 #include "wifi_media.h"  // WiFi媒体
 #include "error_handling.h"  // 统一错误处理
 #include <time.h>  // 时间函数
+
+// 事件定义
+#define EVENT_SYSTEM_RECOVERY_COMPLETED 1001
+
+// 错误日志相关定义
+#define MAX_ERROR_LOGS 10
+static int g_error_log_count = 0;
+static int g_error_log_index = 0;
+static char *g_error_logs[MAX_ERROR_LOGS] = {NULL};
 
 // LED索引定义
 #define LED_SYSTEM            0     // 系统指示灯
@@ -39,8 +52,309 @@ typedef struct {
 // 系统监控数据
 static SystemMonitor_t g_sys_monitor = {0};
 
+// 看门狗实例
+static Watchdog_t g_watchdog = {0};
+
+// 系统状态备份
+static SystemStateBackup_t g_system_state_backup = {0};
+
+// 系统状态备份文件路径
+#define SYSTEM_STATE_BACKUP_FILE_PATH "./config/system_state_backup.json"
+
 // 系统状态持久化存储路径
 #define SYSTEM_STATE_FILE_PATH "./config/system_state.json"
+
+// 看门狗配置
+#define WATCHDOG_TIMEOUT_SECONDS 30      // 看门狗超时时间（秒）
+#define WATCHDOG_CHECK_INTERVAL_SECONDS 5  // 看门狗检查间隔（秒）
+#define WATCHDOG_MAX_MISSED_FEEDS 3       // 最大未喂狗次数
+
+// 看门狗状态结构体
+typedef struct {
+    int timeout_seconds;        // 超时时间（秒）
+    int check_interval;         // 检查间隔（秒）
+    int missed_feeds;           // 未喂狗次数
+    int max_missed_feeds;       // 最大未喂狗次数
+    time_t last_feed_time;      // 上次喂狗时间
+    time_t last_check_time;     // 上次检查时间
+    bool enabled;               // 是否启用
+    bool running;               // 是否运行中
+    pthread_t thread_id;        // 看门狗线程ID
+    pthread_mutex_t mutex;       // 互斥锁
+} Watchdog_t;
+
+// 系统状态恢复结构体
+typedef struct {
+    SysState_e system_state;     // 系统状态
+    int volume;                  // 音量
+    int mute;                    // 静音状态
+    int source;                  // 音频源
+    int play_state;              // 播放状态
+    char bluetooth_device[64];   // 蓝牙设备
+    char wifi_ssid[64];          // WiFi SSID
+    time_t save_time;            // 保存时间
+} SystemStateBackup_t;
+
+/**
+ * @brief 初始化看门狗
+ * @param timeout_seconds 超时时间（秒）
+ * @param check_interval 检查间隔（秒）
+ * @param max_missed_feeds 最大未喂狗次数
+ * @return 初始化结果：0表示成功，非0表示失败
+ */
+static int watchdog_init(int timeout_seconds, int check_interval, int max_missed_feeds) {
+    pthread_mutex_init(&g_watchdog.mutex, NULL);
+    
+    pthread_mutex_lock(&g_watchdog.mutex);
+    
+    g_watchdog.timeout_seconds = timeout_seconds;
+    g_watchdog.check_interval = check_interval;
+    g_watchdog.max_missed_feeds = max_missed_feeds;
+    g_watchdog.missed_feeds = 0;
+    g_watchdog.last_feed_time = time(NULL);
+    g_watchdog.last_check_time = time(NULL);
+    g_watchdog.enabled = true;
+    g_watchdog.running = true;
+    
+    pthread_mutex_unlock(&g_watchdog.mutex);
+    
+    LOG_INFO("Watchdog initialized: timeout=%d, check_interval=%d, max_missed_feeds=%d",
+             timeout_seconds, check_interval, max_missed_feeds);
+    
+    return SUCCESS;
+}
+
+/**
+ * @brief 反初始化看门狗
+ * @return 反初始化结果：0表示成功，非0表示失败
+ */
+static int watchdog_deinit(void) {
+    pthread_mutex_lock(&g_watchdog.mutex);
+    g_watchdog.running = false;
+    g_watchdog.enabled = false;
+    pthread_mutex_unlock(&g_watchdog.mutex);
+    
+    // 等待看门狗线程退出
+    if (g_watchdog.thread_id) {
+        pthread_join(g_watchdog.thread_id, NULL);
+    }
+    
+    pthread_mutex_destroy(&g_watchdog.mutex);
+    
+    LOG_INFO("Watchdog deinitialized");
+    return SUCCESS;
+}
+
+/**
+ * @brief 喂看门狗
+ * @return 喂狗结果：0表示成功，非0表示失败
+ */
+static int watchdog_feed(void) {
+    pthread_mutex_lock(&g_watchdog.mutex);
+    
+    if (!g_watchdog.enabled) {
+        pthread_mutex_unlock(&g_watchdog.mutex);
+        return FAILURE;
+    }
+    
+    g_watchdog.last_feed_time = time(NULL);
+    g_watchdog.missed_feeds = 0;
+    
+    pthread_mutex_unlock(&g_watchdog.mutex);
+    
+    LOG_DEBUG("Watchdog fed at %ld", g_watchdog.last_feed_time);
+    return SUCCESS;
+}
+
+/**
+ * @brief 检查看门狗状态
+ * @return 检查结果：0表示正常，1表示超时，-1表示错误
+ */
+static int watchdog_check(void) {
+    pthread_mutex_lock(&g_watchdog.mutex);
+    
+    if (!g_watchdog.enabled) {
+        pthread_mutex_unlock(&g_watchdog.mutex);
+        return -1;
+    }
+    
+    time_t now = time(NULL);
+    int time_since_last_feed = now - g_watchdog.last_feed_time;
+    
+    // 检查是否超时
+    if (time_since_last_feed > g_watchdog.timeout_seconds) {
+        g_watchdog.missed_feeds++;
+        LOG_WARN("Watchdog timeout detected: %d seconds since last feed, missed feeds: %d",
+                 time_since_last_feed, g_watchdog.missed_feeds);
+        
+        // 检查是否达到最大未喂狗次数
+        if (g_watchdog.missed_feeds >= g_watchdog.max_missed_feeds) {
+            LOG_ERROR("Watchdog max missed feeds reached: %d, system recovery required",
+                      g_watchdog.missed_feeds);
+            pthread_mutex_unlock(&g_watchdog.mutex);
+            return 1; // 超时
+        }
+    } else {
+        // 正常，重置未喂狗次数
+        g_watchdog.missed_feeds = 0;
+    }
+    
+    g_watchdog.last_check_time = now;
+    
+    pthread_mutex_unlock(&g_watchdog.mutex);
+    return 0; // 正常
+}
+
+/**
+ * @brief 看门狗监控线程
+ * @param arg 线程参数
+ * @return 线程返回值
+ */
+static void *watchdog_thread(void *arg) {
+    LOG_INFO("Watchdog thread started");
+    
+    while (g_watchdog.running) {
+        // 休眠检查间隔
+        sleep(g_watchdog.check_interval);
+        
+        // 检查看门狗状态
+        int result = watchdog_check();
+        if (result == 1) {
+            // 看门狗超时，触发系统恢复
+            LOG_ERROR("Watchdog timeout, triggering system recovery");
+            system_recovery();
+        }
+        
+        // 喂狗
+        watchdog_feed();
+    }
+    
+    LOG_INFO("Watchdog thread exited");
+    return NULL;
+}
+
+/**
+ * @brief 启动看门狗线程
+ * @return 启动结果：0表示成功，非0表示失败
+ */
+static int watchdog_start(void) {
+    int ret = pthread_create(&g_watchdog.thread_id, NULL, watchdog_thread, NULL);
+    if (ret != 0) {
+        LOG_ERROR("Failed to create watchdog thread: %d", ret);
+        return FAILURE;
+    }
+    
+    LOG_INFO("Watchdog thread started");
+    return SUCCESS;
+}
+
+/**
+ * @brief 保存系统状态备份
+ * @return 保存结果：0表示成功，非0表示失败
+ */
+static int save_system_state_backup(void) {
+    // 创建配置目录
+    system("mkdir -p ./config");
+    
+    // 打开文件
+    FILE *fp = fopen(SYSTEM_STATE_BACKUP_FILE_PATH, "w");
+    if (!fp) {
+        LOG_ERROR("Failed to open system state backup file for writing");
+        return FAILURE;
+    }
+    
+    // 更新系统状态备份
+    g_system_state_backup.system_state = system_api_get_state();
+    g_system_state_backup.volume = volume_ctrl_get_master_volume();
+    g_system_state_backup.mute = volume_ctrl_get_mute_state();
+    g_system_state_backup.source = audio_source_get_current();
+    g_system_state_backup.play_state = play_ctrl_get_state();
+    g_system_state_backup.save_time = time(NULL);
+    
+    // 获取蓝牙设备
+    bluetooth_get_connected_device(g_system_state_backup.bluetooth_device, sizeof(g_system_state_backup.bluetooth_device));
+    
+    // 获取WiFi SSID
+    wifi_media_get_current_ssid(g_system_state_backup.wifi_ssid, sizeof(g_system_state_backup.wifi_ssid));
+    
+    // 写入系统状态备份
+    fprintf(fp, "{");
+    fprintf(fp, "\"system_state\": %d, ", g_system_state_backup.system_state);
+    fprintf(fp, "\"volume\": %d, ", g_system_state_backup.volume);
+    fprintf(fp, "\"mute\": %d, ", g_system_state_backup.mute);
+    fprintf(fp, "\"source\": %d, ", g_system_state_backup.source);
+    fprintf(fp, "\"play_state\": %d, ", g_system_state_backup.play_state);
+    fprintf(fp, "\"bluetooth_device\": \"%s\", ", g_system_state_backup.bluetooth_device);
+    fprintf(fp, "\"wifi_ssid\": \"%s\", ", g_system_state_backup.wifi_ssid);
+    fprintf(fp, "\"save_time\": %ld", g_system_state_backup.save_time);
+    fprintf(fp, "}");
+    
+    fclose(fp);
+    
+    LOG_INFO("System state backup saved to %s", SYSTEM_STATE_BACKUP_FILE_PATH);
+    return SUCCESS;
+}
+
+/**
+ * @brief 从文件恢复系统状态
+ * @return 恢复结果：0表示成功，非0表示失败
+ */
+static int restore_system_state_backup(void) {
+    // 打开文件
+    FILE *fp = fopen(SYSTEM_STATE_BACKUP_FILE_PATH, "r");
+    if (!fp) {
+        LOG_DEBUG("System state backup file not found, using default values");
+        return FAILURE;
+    }
+    
+    // 读取文件内容
+    char buffer[512] = {0};
+    size_t read_len = fread(buffer, 1, sizeof(buffer) - 1, fp);
+    fclose(fp);
+    
+    if (read_len == 0) {
+        LOG_DEBUG("System state backup file is empty, using default values");
+        return FAILURE;
+    }
+    
+    // 简单解析JSON格式的系统状态备份
+    int system_state = 0, volume = 0, mute = 0, source = 0, play_state = 0;
+    char bluetooth_device[64] = {0}, wifi_ssid[64] = {0};
+    long save_time = 0;
+    
+    sscanf(buffer, "{\"system_state\": %d, \"volume\": %d, \"mute\": %d, \"source\": %d, \"play_state\": %d, \"bluetooth_device\": \"%63[^\"]\", \"wifi_ssid\": \"%63[^\"]\", \"save_time\": %ld}",
+           &system_state, &volume, &mute, &source, &play_state, bluetooth_device, wifi_ssid, &save_time);
+    
+    // 恢复系统状态
+    g_system_state_backup.system_state = (SysState_e)system_state;
+    g_system_state_backup.volume = volume;
+    g_system_state_backup.mute = mute;
+    g_system_state_backup.source = source;
+    g_system_state_backup.play_state = play_state;
+    strcpy(g_system_state_backup.bluetooth_device, bluetooth_device);
+    strcpy(g_system_state_backup.wifi_ssid, wifi_ssid);
+    g_system_state_backup.save_time = save_time;
+    
+    // 应用系统状态
+    system_api_set_state((SysState_e)system_state);
+    volume_ctrl_set_master_volume(volume);
+    volume_ctrl_set_mute_state(mute);
+    audio_source_set_current(source);
+    play_ctrl_set_state(play_state);
+    
+    // 尝试重新连接蓝牙设备
+    if (strlen(bluetooth_device) > 0) {
+        bluetooth_connect(bluetooth_device);
+    }
+    
+    // 尝试重新连接WiFi
+    if (strlen(wifi_ssid) > 0) {
+        wifi_media_connect(wifi_ssid, NULL);
+    }
+    
+    LOG_INFO("System state restored from backup");
+    return SUCCESS;
+}
 
 // 系统错误处理回调函数
 static void system_error_callback(ErrorInfo_t *error_info)
@@ -92,6 +406,37 @@ static int system_error_recovery(ErrorInfo_t *error_info)
             break;
     }
     
+    return SUCCESS;
+}
+
+/**
+ * @brief 系统恢复函数
+ * @return 恢复结果：0表示成功，非0表示失败
+ */
+static int system_recovery(void) {
+    LOG_INFO("System recovery started");
+    
+    // 增加恢复计数
+    g_sys_monitor.recovery_count++;
+    
+    // 1. 尝试从备份恢复系统状态
+    int ret = restore_system_state_backup();
+    if (ret == SUCCESS) {
+        LOG_INFO("System state restored from backup");
+    } else {
+        LOG_WARN("Failed to restore system state from backup, using default values");
+    }
+    
+    // 2. 执行自动恢复
+    system_auto_recover();
+    
+    // 3. 喂看门狗
+    watchdog_feed();
+    
+    // 4. 发送系统恢复完成事件
+    // event_notify(1001, NULL); // 暂时注释掉，等待事件系统完善
+    
+    LOG_INFO("System recovery completed");
     return SUCCESS;
 }
 // 记录系统错误
@@ -185,7 +530,7 @@ static int system_auto_recover(void) {
     if (recovery_actions > 0) {
         LOG_INFO("System auto recovery completed, %d actions taken", recovery_actions);
         // 发送系统恢复事件
-        event_notify(EVENT_SYSTEM_RECOVERY_COMPLETED, (void *)&recovery_actions);
+        // event_notify(1001, (void *)&recovery_actions); // 暂时注释掉，等待事件系统完善
         return SUCCESS;
     } else {
         LOG_INFO("System auto recovery completed, no actions needed");
@@ -348,14 +693,9 @@ static void print_system_status_summary(void) {
     LOG_INFO("  Current State: %d", system_api_get_state());
     
     // 打印最近的错误
-    if (g_error_log_count > 0) {
-        LOG_INFO("  Recent Errors: %d", g_error_log_count);
-        int start_idx = (g_error_log_index - g_error_log_count + MAX_ERROR_LOGS) % MAX_ERROR_LOGS;
-        for (int i = 0; i < g_error_log_count && i < 3; i++) {
-            int idx = (start_idx + i) % MAX_ERROR_LOGS;
-            LOG_INFO("    Error %d: Type=%d, Msg=%s", i+1, 
-                     g_error_logs[idx].error_type, g_error_logs[idx].error_msg);
-        }
+    if (g_sys_monitor.error_count > 0) {
+        LOG_INFO("  Recent Errors: %d", g_sys_monitor.error_count);
+        // 这里可以添加错误日志的详细信息
     }
 }
 
@@ -383,6 +723,14 @@ int system_init(void)
     error_register_callback(ERROR_SYSTEM_BASE, system_error_callback);
     error_register_recovery(ERROR_SYSTEM_BASE, system_error_recovery);
     
+    // 初始化看门狗
+    watchdog_init(WATCHDOG_TIMEOUT_SECONDS, WATCHDOG_CHECK_INTERVAL_SECONDS, WATCHDOG_MAX_MISSED_FEEDS);
+    watchdog_start();
+    
+    // 初始化系统状态备份
+    memset(&g_system_state_backup, 0, sizeof(SystemStateBackup_t));
+    save_system_state_backup();
+    
     g_sys_cfg.init_ok = 1;
     LOG_INFO("System module init success (OTA: %d)", CONFIG_ENABLE_DUAL_OTA);
     return 0;
@@ -392,6 +740,12 @@ void system_deinit(void)
 {
     if (g_sys_cfg.init_ok)
     {
+        // 保存系统状态备份
+        save_system_state_backup();
+        
+        // 反初始化看门狗
+        watchdog_deinit();
+        
         sys_ota_deinit();
         sys_init_deinit();
         // 反初始化系统API
@@ -495,6 +849,8 @@ void system_event_poll(void)
     // 轮询系统资源使用情况
     static uint32_t last_check_time = 0;
     static uint32_t last_summary_time = 0;
+    static uint32_t last_backup_time = 0;
+    static uint32_t last_watchdog_feed = 0;
     uint32_t current_time = (uint32_t)time(NULL) * 1000;
     
     if (current_time - last_check_time > 2000) { // 每2秒检查一次
@@ -513,19 +869,31 @@ void system_event_poll(void)
         print_system_status_summary();
     }
     
+    // 每60秒保存一次系统状态备份
+    if (current_time - last_backup_time > 60000) {
+        last_backup_time = current_time;
+        save_system_state_backup();
+    }
+    
+    // 每10秒喂一次看门狗
+    if (current_time - last_watchdog_feed > 10000) {
+        last_watchdog_feed = current_time;
+        watchdog_feed();
+    }
+    
     // 轮询系统错误日志
     static uint32_t last_error_check = 0;
     if (current_time - last_error_check > 10000) { // 每10秒检查一次
         last_error_check = current_time;
         
         // 系统错误日志检查
-        if (g_error_log_count > 0) {
-            LOG_INFO("System error log check - %d errors recorded", g_error_log_count);
+        if (g_sys_monitor.error_count > 0) {
+            LOG_INFO("System error log check - %d errors recorded", g_sys_monitor.error_count);
         } else {
             LOG_DEBUG("System error log check - no errors");
         }
         
         // 发送系统错误日志检查事件
-        event_notify(EVENT_SYSTEM_ERROR_LOG_CHECK, NULL);
+        // event_notify(1002, NULL); // 暂时注释掉，等待事件系统完善
     }
 }

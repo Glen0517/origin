@@ -26,10 +26,17 @@ SecurityManager_t *security_manager_init(void) {
     manager->input_validation_enabled = true;
     manager->network_security_enabled = true;
     manager->security_update_enabled = true;
+    manager->crypto_enabled = true;
+    manager->audit_enabled = true;
+    manager->audit_level = AUDIT_LEVEL_BASIC;
     
     // 设置固件版本
     manager->firmware_version = "1.0.0";
     manager->last_security_update = "2026-01-27";
+    
+    // 初始化加密密钥（实际实现中应该从安全存储中读取）
+    manager->encryption_key = "default_encryption_key_123";
+    manager->key_size = strlen(manager->encryption_key);
     
     LOG_INFO("Security manager initialized");
     return manager;
@@ -329,6 +336,290 @@ void security_manager_print_stats(SecurityManager_t *manager) {
     LOG_INFO("  Security Update: %s", manager->security_update_enabled ? "Yes" : "No");
     
     LOG_INFO("========================");
+}
+
+/**
+ * @brief 加密数据
+ * @details 使用指定算法加密数据
+ * @param manager 安全管理器指针
+ * @param algorithm 加密算法
+ * @param input 输入数据
+ * @param input_len 输入数据长度
+ * @param output 输出数据
+ * @param output_len 输出数据长度
+ * @param module_name 模块名称
+ * @return 加密是否成功
+ */
+bool security_manager_encrypt(SecurityManager_t *manager, CryptoAlgorithm_e algorithm, const uint8_t *input, size_t input_len, uint8_t *output, size_t *output_len, const char *module_name) {
+    if (!manager || !manager->crypto_enabled || !input || !output || !output_len) {
+        return false;
+    }
+    
+    // 记录加密操作事件
+    security_manager_record_event(manager, 
+                               SECURITY_EVENT_CRYPTO_OPERATION, 
+                               SECURITY_LEVEL_LOW, 
+                               "Encryption operation", 
+                               module_name, 
+                               "localhost", 
+                               0);
+    
+    // 模拟加密操作（实际实现中应该使用真正的加密算法）
+    LOG_INFO("Encrypting data using algorithm %d", algorithm);
+    
+    // 简单的XOR加密实现（仅用于演示）
+    for (size_t i = 0; i < input_len; i++) {
+        output[i] = input[i] ^ manager->encryption_key[i % manager->key_size];
+    }
+    *output_len = input_len;
+    
+    return true;
+}
+
+/**
+ * @brief 解密数据
+ * @details 使用指定算法解密数据
+ * @param manager 安全管理器指针
+ * @param algorithm 加密算法
+ * @param input 输入数据
+ * @param input_len 输入数据长度
+ * @param output 输出数据
+ * @param output_len 输出数据长度
+ * @param module_name 模块名称
+ * @return 解密是否成功
+ */
+bool security_manager_decrypt(SecurityManager_t *manager, CryptoAlgorithm_e algorithm, const uint8_t *input, size_t input_len, uint8_t *output, size_t *output_len, const char *module_name) {
+    if (!manager || !manager->crypto_enabled || !input || !output || !output_len) {
+        return false;
+    }
+    
+    // 记录解密操作事件
+    security_manager_record_event(manager, 
+                               SECURITY_EVENT_CRYPTO_OPERATION, 
+                               SECURITY_LEVEL_LOW, 
+                               "Decryption operation", 
+                               module_name, 
+                               "localhost", 
+                               0);
+    
+    // 模拟解密操作（实际实现中应该使用真正的加密算法）
+    LOG_INFO("Decrypting data using algorithm %d", algorithm);
+    
+    // 简单的XOR解密实现（仅用于演示）
+    for (size_t i = 0; i < input_len; i++) {
+        output[i] = input[i] ^ manager->encryption_key[i % manager->key_size];
+    }
+    *output_len = input_len;
+    
+    return true;
+}
+
+/**
+ * @brief 计算数据哈希
+ * @details 使用指定算法计算数据哈希值
+ * @param manager 安全管理器指针
+ * @param algorithm 哈希算法
+ * @param input 输入数据
+ * @param input_len 输入数据长度
+ * @param output 输出哈希值
+ * @param output_len 输出哈希值长度
+ * @param module_name 模块名称
+ * @return 计算是否成功
+ */
+bool security_manager_hash(SecurityManager_t *manager, CryptoAlgorithm_e algorithm, const uint8_t *input, size_t input_len, uint8_t *output, size_t *output_len, const char *module_name) {
+    if (!manager || !manager->crypto_enabled || !input || !output || !output_len) {
+        return false;
+    }
+    
+    // 记录哈希操作事件
+    security_manager_record_event(manager, 
+                               SECURITY_EVENT_CRYPTO_OPERATION, 
+                               SECURITY_LEVEL_LOW, 
+                               "Hash operation", 
+                               module_name, 
+                               "localhost", 
+                               0);
+    
+    // 模拟哈希操作（实际实现中应该使用真正的哈希算法）
+    LOG_INFO("Hashing data using algorithm %d", algorithm);
+    
+    // 简单的哈希实现（仅用于演示）
+    uint32_t hash = 0;
+    for (size_t i = 0; i < input_len; i++) {
+        hash = hash * 31 + input[i];
+    }
+    
+    // 将哈希值复制到输出
+    memcpy(output, &hash, sizeof(hash));
+    *output_len = sizeof(hash);
+    
+    return true;
+}
+
+/**
+ * @brief 验证数据签名
+ * @details 验证数据签名的有效性
+ * @param manager 安全管理器指针
+ * @param algorithm 签名算法
+ * @param data 原始数据
+ * @param data_len 原始数据长度
+ * @param signature 签名数据
+ * @param signature_len 签名数据长度
+ * @param module_name 模块名称
+ * @return 验证是否成功
+ */
+bool security_manager_verify_signature(SecurityManager_t *manager, CryptoAlgorithm_e algorithm, const uint8_t *data, size_t data_len, const uint8_t *signature, size_t signature_len, const char *module_name) {
+    if (!manager || !manager->crypto_enabled || !data || !signature) {
+        return false;
+    }
+    
+    // 记录签名验证事件
+    security_manager_record_event(manager, 
+                               SECURITY_EVENT_CRYPTO_OPERATION, 
+                               SECURITY_LEVEL_MEDIUM, 
+                               "Signature verification", 
+                               module_name, 
+                               "localhost", 
+                               0);
+    
+    // 模拟签名验证（实际实现中应该使用真正的签名验证算法）
+    LOG_INFO("Verifying signature using algorithm %d", algorithm);
+    
+    // 简单的签名验证实现（仅用于演示）
+    // 这里只是检查签名长度是否合理
+    if (signature_len < 4) {
+        return false;
+    }
+    
+    return true;
+}
+
+/**
+ * @brief 配置安全审计
+ * @details 配置安全审计级别和功能
+ * @param manager 安全管理器指针
+ * @param enabled 是否启用
+ * @param level 审计级别
+ * @return 配置是否成功
+ */
+bool security_manager_config_audit(SecurityManager_t *manager, bool enabled, AuditLevel_e level) {
+    if (!manager) {
+        return false;
+    }
+    
+    manager->audit_enabled = enabled;
+    manager->audit_level = level;
+    
+    // 记录审计配置事件
+    security_manager_record_event(manager, 
+                               SECURITY_EVENT_AUDIT_LOG, 
+                               SECURITY_LEVEL_LOW, 
+                               "Audit configuration changed", 
+                               "security_manager", 
+                               "localhost", 
+                               0);
+    
+    LOG_INFO("Audit configured: enabled=%d, level=%d", enabled, level);
+    return true;
+}
+
+/**
+ * @brief 记录安全审计事件
+ * @details 记录详细的安全审计事件
+ * @param manager 安全管理器指针
+ * @param event_type 事件类型
+ * @param security_level 安全级别
+ * @param event_msg 事件消息
+ * @param module_name 模块名称
+ * @param source_ip 源IP地址
+ * @param source_port 源端口
+ * @param details 详细信息
+ * @return 记录是否成功
+ */
+bool security_manager_audit_event(SecurityManager_t *manager, SecurityEvent_e event_type, SecurityLevel_e security_level, const char *event_msg, const char *module_name, const char *source_ip, uint16_t source_port, const char *details) {
+    if (!manager || !manager->audit_enabled) {
+        return false;
+    }
+    
+    // 记录审计事件
+    security_manager_record_event(manager, 
+                               event_type, 
+                               security_level, 
+                               event_msg, 
+                               module_name, 
+                               source_ip, 
+                               source_port);
+    
+    // 输出详细审计信息
+    LOG_INFO("Audit event: %s (Module: %s, Source: %s:%d, Details: %s)", 
+             event_msg, module_name, source_ip, source_port, details);
+    
+    return true;
+}
+
+/**
+ * @brief 导出安全审计日志
+ * @details 导出安全审计日志到文件
+ * @param manager 安全管理器指针
+ * @param file_path 文件路径
+ * @return 导出是否成功
+ */
+bool security_manager_export_audit_log(SecurityManager_t *manager, const char *file_path) {
+    if (!manager || !manager->audit_enabled || !file_path) {
+        return false;
+    }
+    
+    // 记录审计日志导出事件
+    security_manager_record_event(manager, 
+                               SECURITY_EVENT_AUDIT_LOG, 
+                               SECURITY_LEVEL_LOW, 
+                               "Audit log exported", 
+                               "security_manager", 
+                               "localhost", 
+                               0);
+    
+    // 模拟审计日志导出（实际实现中应该将日志写入文件）
+    LOG_INFO("Exporting audit log to: %s", file_path);
+    
+    // 遍历安全记录并输出
+    SecurityRecord_t *curr = manager->security_records;
+    while (curr) {
+        LOG_INFO("Record %d: Type=%d, Level=%d, Msg=%s, Module=%s, Source=%s:%d", 
+                 curr->record_id, curr->event_type, curr->security_level, 
+                 curr->event_msg, curr->module_name, curr->source_ip, curr->source_port);
+        curr = curr->next;
+    }
+    
+    return true;
+}
+
+/**
+ * @brief 设置加密密钥
+ * @details 设置用于加密的密钥
+ * @param manager 安全管理器指针
+ * @param key 加密密钥
+ * @param key_size 密钥大小
+ * @return 设置是否成功
+ */
+bool security_manager_set_encryption_key(SecurityManager_t *manager, const char *key, uint32_t key_size) {
+    if (!manager || !key || key_size == 0) {
+        return false;
+    }
+    
+    manager->encryption_key = key;
+    manager->key_size = key_size;
+    
+    // 记录密钥设置事件
+    security_manager_record_event(manager, 
+                               SECURITY_EVENT_CRYPTO_OPERATION, 
+                               SECURITY_LEVEL_HIGH, 
+                               "Encryption key changed", 
+                               "security_manager", 
+                               "localhost", 
+                               0);
+    
+    LOG_INFO("Encryption key set with size: %d", key_size);
+    return true;
 }
 
 /**

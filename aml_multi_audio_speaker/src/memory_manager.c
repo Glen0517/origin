@@ -8,16 +8,18 @@
 
 #include "memory_manager.h"
 
-// 内存池配置
-#define MEMORY_POOL_BLOCK_SIZE 256
-#define MEMORY_POOL_BLOCK_COUNT 1024
+// 默认内存池配置
+#define DEFAULT_MEMORY_POOL_BLOCK_SIZE 256
+#define DEFAULT_MEMORY_POOL_BLOCK_COUNT 1024
+#define DEFAULT_MEMORY_POOL_ENABLED true
 
 /**
  * @brief 初始化内存池
  * @details 创建并初始化内存池，分配指定数量的内存块
+ * @param config 内存池配置
  * @return 内存池指针，失败返回NULL
  */
-static MemoryPool_t *memory_pool_init(void) {
+static MemoryPool_t *memory_pool_init(MemoryPoolConfig_t *config) {
     MemoryPool_t *pool = (MemoryPool_t *)malloc(sizeof(MemoryPool_t));
     if (!pool) {
         LOG_ERROR("Failed to allocate memory pool");
@@ -25,12 +27,19 @@ static MemoryPool_t *memory_pool_init(void) {
     }
     
     memset(pool, 0, sizeof(MemoryPool_t));
-    pool->total_blocks = MEMORY_POOL_BLOCK_COUNT;
+    
+    // 使用配置或默认值
+    size_t block_size = config ? config->block_size : DEFAULT_MEMORY_POOL_BLOCK_SIZE;
+    uint32_t block_count = config ? config->block_count : DEFAULT_MEMORY_POOL_BLOCK_COUNT;
+    
+    pool->total_blocks = block_count;
+    pool->block_size = block_size;
     
     // 分配内存块并链接成空闲列表
     MemoryBlock_t *prev = NULL;
-    for (uint32_t i = 0; i < MEMORY_POOL_BLOCK_COUNT; i++) {
-        MemoryBlock_t *block = (MemoryBlock_t *)malloc(sizeof(MemoryBlock_t));
+    for (uint32_t i = 0; i < block_count; i++) {
+        // 动态分配内存块，包含数据区域
+        MemoryBlock_t *block = (MemoryBlock_t *)malloc(sizeof(MemoryBlock_t) + block_size);
         if (!block) {
             LOG_ERROR("Failed to allocate memory block %d", i);
             // 释放已分配的块
@@ -49,7 +58,7 @@ static MemoryPool_t *memory_pool_init(void) {
     
     pool->free_list = prev;
     LOG_INFO("Memory pool initialized: %d blocks of %d bytes each", 
-             MEMORY_POOL_BLOCK_COUNT, MEMORY_POOL_BLOCK_SIZE);
+             block_count, block_size);
     
     return pool;
 }
@@ -129,9 +138,10 @@ static void memory_pool_deinit(MemoryPool_t *pool) {
 /**
  * @brief 初始化内存管理器
  * @details 创建并初始化内存管理器，包括内存池和内存分配记录
+ * @param config 内存池配置，为NULL时使用默认配置
  * @return 内存管理器指针，失败返回NULL
  */
-MemoryManager_t *memory_manager_init(void) {
+MemoryManager_t *memory_manager_init(MemoryPoolConfig_t *config) {
     MemoryManager_t *manager = (MemoryManager_t *)malloc(sizeof(MemoryManager_t));
     if (!manager) {
         LOG_ERROR("Failed to allocate memory manager");
@@ -140,13 +150,27 @@ MemoryManager_t *memory_manager_init(void) {
     
     memset(manager, 0, sizeof(MemoryManager_t));
     
-    // 初始化内存池
-    manager->memory_pool = memory_pool_init();
-    if (!manager->memory_pool) {
-        LOG_ERROR("Failed to initialize memory pool");
-        free(manager);
-        return NULL;
+    // 设置默认配置
+    if (!config) {
+        manager->pool_config.block_size = DEFAULT_MEMORY_POOL_BLOCK_SIZE;
+        manager->pool_config.block_count = DEFAULT_MEMORY_POOL_BLOCK_COUNT;
+        manager->pool_config.enable_memory_pool = DEFAULT_MEMORY_POOL_ENABLED;
+    } else {
+        manager->pool_config = *config;
     }
+    
+    // 初始化内存池
+    if (manager->pool_config.enable_memory_pool) {
+        manager->memory_pool = memory_pool_init(&manager->pool_config);
+        if (!manager->memory_pool) {
+            LOG_ERROR("Failed to initialize memory pool");
+            free(manager);
+            return NULL;
+        }
+    }
+    
+    // 启用内存监控
+    manager->memory_monitoring_enabled = true;
     
     LOG_INFO("Memory manager initialized");
     return manager;
@@ -162,10 +186,15 @@ MemoryManager_t *memory_manager_init(void) {
  * @return 分配的内存指针，失败返回NULL
  */
 void *memory_manager_alloc(MemoryManager_t *manager, size_t size, const char *file, int line) {
+    if (!manager) {
+        return NULL;
+    }
+    
     void *ptr = NULL;
     
     // 尝试从内存池分配（小内存）
-    if (size <= MEMORY_POOL_BLOCK_SIZE && manager->memory_pool) {
+    if (manager->pool_config.enable_memory_pool && manager->memory_pool && 
+        size <= manager->pool_config.block_size) {
         ptr = memory_pool_alloc(manager->memory_pool);
     }
     
@@ -189,6 +218,19 @@ void *memory_manager_alloc(MemoryManager_t *manager, size_t size, const char *fi
             manager->current_allocations++;
             manager->total_allocated_size += size;
             manager->current_allocated_size += size;
+            
+            // 更新峰值统计
+            if (manager->current_allocations > manager->peak_allocations) {
+                manager->peak_allocations = manager->current_allocations;
+            }
+            if (manager->current_allocated_size > manager->peak_allocated_size) {
+                manager->peak_allocated_size = manager->current_allocated_size;
+            }
+            
+            // 监控内存使用
+            if (manager->memory_monitoring_enabled) {
+                memory_manager_monitor_usage(manager, 80); // 80% 阈值
+            }
         }
     }
     
@@ -221,7 +263,8 @@ void memory_manager_free(MemoryManager_t *manager, void *ptr) {
             
             // 释放内存
             bool pool_freed = false;
-            if (curr->size <= MEMORY_POOL_BLOCK_SIZE && manager->memory_pool) {
+            if (manager->pool_config.enable_memory_pool && manager->memory_pool && 
+                curr->size <= manager->pool_config.block_size) {
                 pool_freed = memory_pool_free(manager->memory_pool, ptr);
             }
             
@@ -287,6 +330,60 @@ void memory_manager_check_leaks(MemoryManager_t *manager) {
              manager->total_allocations, manager->total_allocated_size);
     LOG_INFO("Current allocations: %d, current allocated size: %zu bytes", 
              manager->current_allocations, manager->current_allocated_size);
+    LOG_INFO("Peak allocations: %d, peak allocated size: %zu bytes", 
+             manager->peak_allocations, manager->peak_allocated_size);
+}
+
+/**
+ * @brief 获取内存使用统计信息
+ * @details 获取内存使用情况的统计信息
+ * @param manager 内存管理器指针
+ * @param stats 内存使用统计结构体指针
+ */
+void memory_manager_get_stats(MemoryManager_t *manager, MemoryUsageStats_t *stats) {
+    if (!manager || !stats) {
+        return;
+    }
+    
+    memset(stats, 0, sizeof(MemoryUsageStats_t));
+    
+    stats->current_allocations = manager->current_allocations;
+    stats->current_allocated_size = manager->current_allocated_size;
+    stats->total_allocations = manager->total_allocations;
+    stats->total_allocated_size = manager->total_allocated_size;
+    stats->peak_allocations = manager->peak_allocations;
+    stats->peak_allocated_size = manager->peak_allocated_size;
+    
+    if (manager->memory_pool) {
+        stats->memory_pool_used_blocks = manager->memory_pool->used_blocks;
+        stats->memory_pool_total_blocks = manager->memory_pool->total_blocks;
+    }
+}
+
+/**
+ * @brief 监控内存使用情况
+ * @details 监控内存使用情况，当内存使用超过阈值时输出警告
+ * @param manager 内存管理器指针
+ * @param usage_threshold 内存使用阈值（0-100，表示百分比）
+ */
+void memory_manager_monitor_usage(MemoryManager_t *manager, uint8_t usage_threshold) {
+    if (!manager || !manager->memory_monitoring_enabled) {
+        return;
+    }
+    
+    // 计算内存使用百分比（基于内存池总大小）
+    if (manager->memory_pool) {
+        size_t memory_pool_total_size = manager->memory_pool->total_blocks * manager->memory_pool->block_size;
+        size_t memory_pool_used_size = manager->memory_pool->used_blocks * manager->memory_pool->block_size;
+        
+        if (memory_pool_total_size > 0) {
+            uint8_t usage_percent = (uint8_t)((memory_pool_used_size * 100) / memory_pool_total_size);
+            if (usage_percent >= usage_threshold) {
+                LOG_WARN("Memory pool usage high: %d%% (used: %zu bytes, total: %zu bytes)", 
+                         usage_percent, memory_pool_used_size, memory_pool_total_size);
+            }
+        }
+    }
 }
 
 /**
@@ -312,7 +409,9 @@ void memory_manager_deinit(MemoryManager_t *manager) {
     }
     
     // 反初始化内存池
-    memory_pool_deinit(manager->memory_pool);
+    if (manager->memory_pool) {
+        memory_pool_deinit(manager->memory_pool);
+    }
     
     // 释放内存管理器
     free(manager);

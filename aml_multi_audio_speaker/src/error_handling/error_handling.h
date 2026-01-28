@@ -13,6 +13,35 @@
 #include "logger.h"
 #include "event.h"
 
+// 错误聚合配置
+#define ERROR_AGGREGATION_WINDOW_SECONDS 60  // 错误聚合窗口（秒）
+#define ERROR_AGGREGATION_THRESHOLD 5       // 错误聚合阈值
+
+// 错误监控配置
+#define ERROR_MONITOR_INTERVAL_SECONDS 300   // 错误监控间隔（秒）
+#define ERROR_RATE_THRESHOLD 10              // 错误率阈值（每秒）
+
+// 错误聚合结构体
+typedef struct {
+    ErrorType_e type;
+    ErrorLevel_e level;
+    const char *module;
+    int count;
+    int first_timestamp;
+    int last_timestamp;
+} ErrorAggregation_t;
+
+// 错误监控结构体
+typedef struct {
+    uint32_t total_errors;
+    uint32_t errors_in_window;
+    uint32_t error_rate;
+    ErrorType_e most_frequent_error;
+    uint32_t most_frequent_error_count;
+    const char *most_error_prone_module;
+    uint32_t module_error_count;
+} ErrorMonitor_t;
+
 /**
  * @brief 错误类型定义
  */
@@ -193,5 +222,25 @@ int error_clear_count(ErrorType_e type);
  * @return SUCCESS/FAILURE
  */
 int error_print_statistics(void);
+
+/**
+ * @brief 获取错误监控信息
+ * @param monitor 错误监控信息指针
+ * @return SUCCESS/FAILURE
+ */
+int error_get_monitor_info(ErrorMonitor_t *monitor);
+
+/**
+ * @brief 重置错误监控信息
+ * @return SUCCESS/FAILURE
+ */
+int error_reset_monitor_info(void);
+
+/**
+ * @brief 检查错误率是否超过阈值
+ * @param threshold 错误率阈值（每秒）
+ * @return true表示超过阈值，false表示未超过
+ */
+bool error_check_rate_threshold(uint32_t threshold);
 
 #endif /* __ERROR_HANDLING_H__ */
