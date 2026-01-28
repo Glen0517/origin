@@ -1,4 +1,6 @@
 # PAL层编译配置
+include ../../../lib/toolchain.mk
+include ../../../lib/compile_flags.mk
 
 PAL_INCLUDE = -I../include -I../../.. -I../../../include -I../../../src/hal/include
 
@@ -15,6 +17,6 @@ libpal.a: $(PAL_OBJS)
 	$(AR) rcs $@ $^
 
 clean:
-	rm -f $(PAL_OBJS) libpal.a
+	$(RM) -f $(PAL_OBJS) libpal.a
 
 .PHONY: clean

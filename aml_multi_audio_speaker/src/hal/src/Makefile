@@ -1,4 +1,6 @@
 # HAL层编译配置
+include ../../../lib/toolchain.mk
+include ../../../lib/compile_flags.mk
 
 HAL_INCLUDE = -I../include -I../../.. -I../../../include
 
@@ -16,6 +18,6 @@ libhal.a: $(HAL_OBJS)
 	$(AR) rcs $@ $^
 
 clean:
-	rm -f $(HAL_OBJS) libhal.a
+	$(RM) -f $(HAL_OBJS) libhal.a
 
 .PHONY: clean

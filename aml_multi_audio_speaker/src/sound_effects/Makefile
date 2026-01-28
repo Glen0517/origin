@@ -11,7 +11,7 @@ all: $(LIB_OUT)
 
 $(LIB_OUT): $(OBJ_FILES)
 	$(MKDIR) -p ../../lib/output
-	$(AR) $(ARFLAGS) $@ $^
+	$(AR) rcs $@ $^
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@ -I./ -I../../include -I../../res/include
